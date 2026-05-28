@@ -243,16 +243,24 @@ the table.
   showing every row, a RejectionBreakdownCard, and (per P2/P3) the
   PriceChart with VWAP + OR overlays + trade markers.
 - **FR-007**: System MUST include a reusable `HelpTooltip` component
-  with the API `<HelpTooltip title="..." description="..." />`. The
-  component renders a small `?` icon and opens a popover on hover or
-  click. The description MUST follow the three-part structure: *what
-  is this*, *why does it matter*, *how is the app using it*.
+  with the API `<HelpTooltip helpKey="..." />`. The `helpKey` is a
+  TypeScript literal-union value (`HelpContentKey`) that indexes a
+  central `HELP_CONTENT` dictionary in
+  `frontend/src/components/help-content.ts`. The component renders a
+  small `?` icon and opens a popover on hover or click. Each
+  dictionary entry MUST follow the three-part description structure:
+  *what is this*, *why does it matter*, *how is the app using it*.
+  The centralized dictionary is what enables the FR-008 contract
+  test to walk every concept programmatically.
 - **FR-008**: Every concept in the following contract list MUST be
   paired with a `HelpTooltip` instance somewhere on the page:
   VWAP, Opening Range, R Multiple, Profit Factor, Max Drawdown, Win
   Rate, Rejected Signal, Position Cap, Cooldown, Lockout, Force-Flat
-  Exit, Take-Profit, Stop-Loss, Risk per Trade, Daily Drawdown. An
-  automated test MUST verify this contract.
+  Exit, Take-Profit, Stop-Loss, Risk per Trade. (14 concepts.) The
+  backend's `SummaryMetrics` does not separately track daily-only
+  drawdown, so "Daily Drawdown" is intentionally omitted — Max
+  Drawdown is the only drawdown shown. An automated test MUST verify
+  this contract.
 - **FR-009**: Frontend dev mode MUST be invokable via
   `cd frontend && npm run dev` (default port 5173) and MUST proxy
   `/api/*` to the backend server on port 8000 via Vite's proxy
@@ -304,8 +312,11 @@ the table.
   make ui-server &` followed by `make ui-dev`, then open the browser
   and see the Backtest Viewer rendered with a sample run in under 5
   minutes (npm install included).
-- **SC-002**: 100% line coverage on the API server module under
-  pytest.
+- **SC-002**: 100% line coverage on the API server module's
+  request-handling code paths under pytest. The argparse +
+  `uvicorn.run()` bootstrap inside `main()` is excluded via
+  `# pragma: no cover` markers — it can't be unit-tested without
+  actually starting a server.
 - **SC-003**: A DOM-scanning frontend test verifies that 100% of the
   concepts in the FR-008 contract list have a paired `HelpTooltip` on
   the page.
