@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-RUNS_DIR = Path("backend/data/backtests")
+RUNS_DIR = Path("data/backtests")
 
 app = FastAPI(title="intraday-trade-spy static server", version="0.1.0")
 app.add_middleware(

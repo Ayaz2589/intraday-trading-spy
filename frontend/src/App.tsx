@@ -1,9 +1,14 @@
-// Phase 3 will wire react-router with the Root and RunViewer routes.
+import { BrowserRouter, Routes, Route } from "react-router";
+import { Root } from "@/routes/root";
+import { RunViewer } from "@/routes/run-viewer";
+
 export function App() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold">Backtest Viewer</h1>
-      <p className="text-gray-500 mt-2">Phase 3 will mount the routes here.</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Root />} />
+        <Route path="/runs/:run_id" element={<RunViewer />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

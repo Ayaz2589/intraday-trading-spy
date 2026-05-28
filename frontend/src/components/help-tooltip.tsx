@@ -11,11 +11,11 @@ export function HelpTooltip({ helpKey }: { helpKey: HelpContentKey }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 ml-1 inline-flex"
+          className="h-5 w-5 ml-1 inline-flex text-blue-600 hover:text-blue-700"
           data-help-key={helpKey}
           aria-label={`Help: ${content.title}`}
         >
-          <HelpCircle className="h-3.5 w-3.5" />
+          <HelpCircle className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
