@@ -1,11 +1,13 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/002-historical-spy-yfinance-loader/plan.md](specs/002-historical-spy-yfinance-loader/plan.md)
+**Active plan**: [specs/003-backtest-viewer-ui/plan.md](specs/003-backtest-viewer-ui/plan.md)
 
-**Active spec**: [specs/002-historical-spy-yfinance-loader/spec.md](specs/002-historical-spy-yfinance-loader/spec.md)
+**Active spec**: [specs/003-backtest-viewer-ui/spec.md](specs/003-backtest-viewer-ui/spec.md)
 
-**Prior plan (Feature 001, in flight)**: [specs/001-backtest-mvp-spy-vwap-pullback/plan.md](specs/001-backtest-mvp-spy-vwap-pullback/plan.md)
+**Prior plans**:
+- [specs/001-backtest-mvp-spy-vwap-pullback/plan.md](specs/001-backtest-mvp-spy-vwap-pullback/plan.md) — implemented
+- [specs/002-historical-spy-yfinance-loader/plan.md](specs/002-historical-spy-yfinance-loader/plan.md) — implemented
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
