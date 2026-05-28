@@ -7,11 +7,11 @@ from intraday_trade_spy.models import Bar, Direction, Signal, TradePlan
 ET = ZoneInfo("America/New_York")
 
 
-def _bar(ts, o, h, l, c):
+def _bar(ts, o, h, lo, c):
     return Bar(
         symbol="SPY",
         timestamp=ts,
-        open=o, high=h, low=l, close=c,
+        open=o, high=h, low=lo, close=c,
         volume=1,
         session_date=date(ts.year, ts.month, ts.day),
     )

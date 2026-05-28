@@ -43,8 +43,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Loaded {result.run.data_fingerprint.bar_count} bars from {data_path}")
         for r in result.journal_rows:
             print(f"{r.timestamp.isoformat()} {r.status.value:10} {r.reason}")
+        s = result.summary.model_dump()
+        print()
         print("=== SUMMARY ===")
-        print(json.dumps(result.summary.model_dump(), indent=2, sort_keys=True))
+        print(f"  Total trades:        {s['total_trades']}")
+        print(f"  Wins / Losses:       {s['wins']} / {s['losses']}")
+        print(f"  Win rate:            {s['win_rate']:.1%}")
+        print(f"  Average R:           {s['average_r']:.3f}")
+        print(f"  Total R:             {s['total_r']:.3f}")
+        print(f"  Max drawdown:        {s['max_drawdown_r']:.3f}R")
+        pf = s["profit_factor"]
+        print(f"  Profit factor:       {'n/a' if pf is None else f'{pf:.3f}'}")
+        print(f"  Rejected signals:    {s['rejected_signal_count']}")
+        if s["rejection_breakdown"]:
+            for reason, count in sorted(s["rejection_breakdown"].items()):
+                print(f"    - {reason}: {count}")
+        print()
         print(f"Wrote run to {run_dir}")
     return 0
 

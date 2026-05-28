@@ -69,7 +69,11 @@ def test_rejects_position_already_open():
     # Build a phony open position by passing a sentinel; the manager just checks for not-None.
     from intraday_trade_spy.models import Position, TradePlan
     plan = TradePlan(signal=_sig(), quantity=1, planned_risk_dollars=1.0)
-    pos = Position(plan=plan, entry_timestamp=datetime(2026, 5, 28, 10, 0, tzinfo=ET), entry_price=500.0)
+    pos = Position(
+        plan=plan,
+        entry_timestamp=datetime(2026, 5, 28, 10, 0, tzinfo=ET),
+        entry_price=500.0,
+    )
     dec = mgr.validate(_sig(), _state(open_position=pos))
     assert dec.approved is False
     assert dec.reason == "position_already_open"

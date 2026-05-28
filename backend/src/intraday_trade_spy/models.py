@@ -1,15 +1,15 @@
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
-class Direction(str, Enum):
+class Direction(StrEnum):
     LONG = "long"
 
 
-class SignalStatus(str, Enum):
+class SignalStatus(StrEnum):
     EMITTED = "emitted"
     APPROVED = "approved"
     REJECTED = "rejected"

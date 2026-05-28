@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from intraday_trade_spy.backtest.manifest import build_run
 from intraday_trade_spy.backtest.metrics import compute_summary
@@ -11,8 +11,8 @@ def test_manifest_has_required_fields(default_config_path, sample_csv_path):
         csv_path=sample_csv_path,
         cfg=cfg,
         summary=compute_summary([]),
-        started=datetime.now(timezone.utc),
-        ended=datetime.now(timezone.utc),
+        started=datetime.now(UTC),
+        ended=datetime.now(UTC),
     )
     assert len(run.data_fingerprint.sha256) == 64
     assert run.code_version

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 
 from intraday_trade_spy.broker.paper import PaperBroker
@@ -39,7 +39,7 @@ class BacktestEngine:
         from intraday_trade_spy.backtest.manifest import build_run
         from intraday_trade_spy.backtest.metrics import compute_summary
 
-        started = datetime.now(timezone.utc)
+        started = datetime.now(UTC)
         df = load_bars(csv_path, market=self.cfg.market)
         df = attach_indicators(df, or_minutes=self.cfg.strategy.opening_range.minutes)
         bars = list(BarIterator(df))
@@ -115,7 +115,7 @@ class BacktestEngine:
                             rejection_check=decision.reason,
                         )
 
-        ended = datetime.now(timezone.utc)
+        ended = datetime.now(UTC)
         summary = compute_summary(log.rows())
         run = build_run(
             csv_path=csv_path, cfg=self.cfg, summary=summary,
@@ -123,7 +123,14 @@ class BacktestEngine:
         )
         return BacktestResult(journal_rows=log.rows(), summary=summary, run=run)
 
-    def _log_signal(self, log, sig, snap, status, *, decision=None, actual_entry=None, rejection_check=None):
+    def _log_signal(
+        self, log, sig, snap, status,
+        *, decision=None, actual_entry=None, rejection_check=None,
+    ):
+        approved_qty = decision.quantity if decision and decision.approved else None
+        approved_risk = (
+            decision.planned_risk_dollars if decision and decision.approved else None
+        )
         log.log(
             status=status,
             timestamp=sig.timestamp,
@@ -132,8 +139,8 @@ class BacktestEngine:
             planned_entry=sig.planned_entry,
             stop_loss=sig.stop_loss,
             take_profit=sig.take_profit,
-            quantity=(decision.quantity if decision and decision.approved else None),
-            planned_risk_dollars=(decision.planned_risk_dollars if decision and decision.approved else None),
+            quantity=approved_qty,
+            planned_risk_dollars=approved_risk,
             actual_entry=actual_entry,
             vwap=snap.vwap,
             or_high=snap.or_high,

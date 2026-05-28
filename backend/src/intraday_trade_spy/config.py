@@ -47,7 +47,9 @@ class VwapPullbackConfirmationConfig(BaseModel):
 class VwapPullbackConfig(BaseModel):
     min_minutes_after_open: int = 15
     max_distance_from_vwap_pct: float = 0.25
-    confirmation: VwapPullbackConfirmationConfig = Field(default_factory=VwapPullbackConfirmationConfig)
+    confirmation: VwapPullbackConfirmationConfig = Field(
+        default_factory=VwapPullbackConfirmationConfig
+    )
     stop: VwapPullbackStopConfig = Field(default_factory=VwapPullbackStopConfig)
     target: VwapPullbackTargetConfig = Field(default_factory=VwapPullbackTargetConfig)
 

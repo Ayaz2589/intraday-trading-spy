@@ -8,11 +8,11 @@ from intraday_trade_spy.strategy.vwap_pullback import VwapPullbackLong
 ET = ZoneInfo("America/New_York")
 
 
-def _bar(ts, o, h, l, c):
+def _bar(ts, o, h, lo, c):
     return Bar(
         symbol="SPY",
         timestamp=ts,
-        open=o, high=h, low=l, close=c,
+        open=o, high=h, low=lo, close=c,
         volume=1000,
         session_date=date(ts.year, ts.month, ts.day),
     )

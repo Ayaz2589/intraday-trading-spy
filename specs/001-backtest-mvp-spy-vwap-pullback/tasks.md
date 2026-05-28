@@ -1710,17 +1710,17 @@ byte-identical `journal.csv`.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T065 [P] Polish the stdout summary formatter in `backend/src/intraday_trade_spy/cli/run_backtest.py`. Replace the raw JSON dump with a readable table. Don't change behavior of `journal.csv`, `summary.json`, or `run.yaml` (covered by reproducibility test). Verify visually with `python -m intraday_trade_spy.cli.run_backtest --config backend/config/config.yaml`.
+- [X] T065 [P] Polish the stdout summary formatter in `backend/src/intraday_trade_spy/cli/run_backtest.py`. Replace the raw JSON dump with a readable table. Don't change behavior of `journal.csv`, `summary.json`, or `run.yaml` (covered by reproducibility test). Verify visually with `python -m intraday_trade_spy.cli.run_backtest --config backend/config/config.yaml`.
 
-- [ ] T066 [P] Expand the backend README at `backend/README.md` to include the dev quickstart sequence (mirror of `specs/001-backtest-mvp-spy-vwap-pullback/quickstart.md` with absolute repo paths).
+- [X] T066 [P] Expand the backend README at `backend/README.md` to include the dev quickstart sequence (mirror of `specs/001-backtest-mvp-spy-vwap-pullback/quickstart.md` with absolute repo paths).
 
-- [ ] T067 [P] Expand the root README at `README.md` to add: a one-paragraph project summary, the constitution link, an explicit "v1 = backtest only" callout, and a link to the active spec.
+- [X] T067 [P] Expand the root README at `README.md` to add: a one-paragraph project summary, the constitution link, an explicit "v1 = backtest only" callout, and a link to the active spec.
 
-- [ ] T068 Run `ruff check backend/src backend/tests && ruff format --check backend/src backend/tests`. Fix any findings. Re-run until clean.
+- [X] T068 Run `ruff check backend/src backend/tests && ruff format --check backend/src backend/tests`. Fix any findings. Re-run until clean.
 
-- [ ] T069 Run `pytest --cov=intraday_trade_spy --cov-report=term-missing backend/tests`. Confirm coverage for `strategy/`, `risk/`, `broker/`, `backtest/`, `journal/`, and `data/indicators.py` is 100% (spec SC-002). If any uncovered branch exists, add a test for it.
+- [X] T069 Run `pytest --cov=intraday_trade_spy --cov-report=term-missing backend/tests`. Confirm coverage for `strategy/`, `risk/`, `broker/`, `backtest/`, `journal/`, and `data/indicators.py` is 100% (spec SC-002). If any uncovered branch exists, add a test for it.
 
-- [ ] T070 Run the quickstart end-to-end on a clean shell (no editable install yet): `cd backend && python -m venv .venv2 && source .venv2/bin/activate && pip install -e ".[dev]"`. Then `python -m intraday_trade_spy.cli.run_backtest --config config/config.yaml`. Confirm it completes in under 5 seconds (spec SC-001 performance bound is 5 minutes incl. install; this measures pure execution).
+- [X] T070 Run the quickstart end-to-end on a clean shell (no editable install yet): `cd backend && python -m venv .venv2 && source .venv2/bin/activate && pip install -e ".[dev]"`. Then `python -m intraday_trade_spy.cli.run_backtest --config config/config.yaml`. Confirm it completes in under 5 seconds (spec SC-001 performance bound is 5 minutes incl. install; this measures pure execution).
 
 **Checkpoint (Phase 8)**: All tests green. Ruff clean. Coverage targets
 met. Quickstart confirmed in under 5 minutes from a fresh shell.
