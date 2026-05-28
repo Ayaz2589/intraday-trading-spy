@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi } from "vitest";
 import { JournalTable } from "./journal-table";
 import type { JournalRowView } from "@/api/types";
 
@@ -46,5 +47,31 @@ describe("JournalTable", () => {
     expect(
       document.querySelector('[data-help-key="risk_per_trade"]'),
     ).toBeTruthy();
+  });
+
+  it("filter='executed' hides rejected rows", () => {
+    const both: JournalRowView[] = [
+      rows[0],
+      {
+        ...rows[0],
+        row_seq: 1,
+        status: "rejected",
+        rejection_check: "position_value_exceeds_cap",
+      },
+    ];
+    render(<JournalTable rows={both} filter="executed" />);
+    // No chips rendered (onFilterChange omitted), so any "rejected" text would
+    // come from a row badge — there should be none.
+    expect(screen.queryByText("rejected")).toBeNull();
+    expect(screen.getByText("executed")).toBeInTheDocument();
+  });
+
+  it("clicking a filter chip fires onFilterChange", async () => {
+    const onFilterChange = vi.fn();
+    render(
+      <JournalTable rows={rows} filter="all" onFilterChange={onFilterChange} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^rejected$/i }));
+    expect(onFilterChange).toHaveBeenCalledWith("rejected");
   });
 });

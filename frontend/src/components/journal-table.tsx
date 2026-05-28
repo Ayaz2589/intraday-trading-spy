@@ -6,17 +6,52 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./status-badge";
 import { HelpTooltip } from "./help-tooltip";
-import type { JournalRowView } from "@/api/types";
+import type { JournalFilter, JournalRowView } from "@/api/types";
+
+const FILTERS: JournalFilter[] = [
+  "all",
+  "executed",
+  "exited",
+  "rejected",
+  "lockout",
+  "force_flat",
+];
 
 function f(v: number | null, digits = 4): string {
   return v == null ? "—" : v.toFixed(digits);
 }
 
-export function JournalTable({ rows }: { rows: JournalRowView[] }) {
+export function JournalTable({
+  rows,
+  filter = "all",
+  onFilterChange,
+}: {
+  rows: JournalRowView[];
+  filter?: JournalFilter;
+  onFilterChange?: (f: JournalFilter) => void;
+}) {
+  const visible =
+    filter === "all" ? rows : rows.filter((r) => r.status === filter);
   return (
-    <Table>
+    <div className="space-y-2">
+      {onFilterChange && (
+        <div className="flex gap-1 flex-wrap">
+          {FILTERS.map((f) => (
+            <Button
+              key={f}
+              size="sm"
+              variant={f === filter ? "default" : "outline"}
+              onClick={() => onFilterChange(f)}
+            >
+              {f}
+            </Button>
+          ))}
+        </div>
+      )}
+      <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Time</TableHead>
@@ -38,7 +73,7 @@ export function JournalTable({ rows }: { rows: JournalRowView[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((r) => (
+        {visible.map((r) => (
           <TableRow key={r.row_seq}>
             <TableCell className="font-mono text-xs">
               {r.timestamp.slice(11, 16)}
@@ -64,5 +99,6 @@ export function JournalTable({ rows }: { rows: JournalRowView[] }) {
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }

@@ -1297,7 +1297,7 @@ renders with all overlays.
 
 ### Backend: GET /api/runs/{run_id}/bars
 
-- [ ] T173 [US2] Test: in `backend/tests/test_static_server.py`:
+- [X] T173 [US2] Test: in `backend/tests/test_static_server.py`:
   ```python
   def test_get_bars_happy_path(tmp_path, monkeypatch):
       bars = tmp_path / "spy_bars.csv"
@@ -1331,7 +1331,7 @@ renders with all overlays.
   ```
   Run — expect failure.
 
-- [ ] T174 [US2] Implement `GET /api/runs/{run_id}/bars` in static_server.py:
+- [X] T174 [US2] Implement `GET /api/runs/{run_id}/bars` in static_server.py:
   ```python
   @app.get("/api/runs/{run_id}/bars")
   def get_bars(run_id: str):
@@ -1358,7 +1358,7 @@ renders with all overlays.
 
 ### Frontend: PriceChart
 
-- [ ] T175 [P] [US2] Test: in `frontend/src/components/price-chart.test.tsx`:
+- [X] T175 [P] [US2] Test: in `frontend/src/components/price-chart.test.tsx`:
   ```tsx
   import { render } from "@testing-library/react";
   import { PriceChart } from "./price-chart";
@@ -1380,7 +1380,7 @@ renders with all overlays.
   ```
   Run — expect failure.
 
-- [ ] T176 [US2] Implement `frontend/src/components/price-chart.tsx`. **lightweight-charts v5 expects timestamps as `UTCTimestamp` (Unix seconds), not ISO 8601 strings — M7 fix**:
+- [X] T176 [US2] Implement `frontend/src/components/price-chart.tsx`. **lightweight-charts v5 expects timestamps as `UTCTimestamp` (Unix seconds), not ISO 8601 strings — M7 fix**:
   ```tsx
   import { useEffect, useRef } from "react";
   import {
@@ -1440,7 +1440,7 @@ renders with all overlays.
 
 ### Frontend: SessionPicker
 
-- [ ] T177 [P] [US2] Test: in `frontend/src/components/session-picker.test.tsx`:
+- [X] T177 [P] [US2] Test: in `frontend/src/components/session-picker.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import userEvent from "@testing-library/user-event";
@@ -1455,7 +1455,7 @@ renders with all overlays.
   ```
   Run — expect failure.
 
-- [ ] T178 [US2] Implement `frontend/src/components/session-picker.tsx`:
+- [X] T178 [US2] Implement `frontend/src/components/session-picker.tsx`:
   ```tsx
   import { Button } from "@/components/ui/button";
 
@@ -1479,7 +1479,7 @@ renders with all overlays.
 
 ### Integration
 
-- [ ] T179 [US2] Update `run-viewer.tsx` to fetch bars via `fetchBars`, compute VWAP from journal (or fetch directly), group bars by session, render `<SessionPicker>` + `<PriceChart>` between the header and journal. Use the same `SectionState` pattern from T170 so a `source_data_missing` 404 renders "Chart: source data missing" inline instead of breaking the page (M2 fix). Update its test to:
+- [X] T179 [US2] Update `run-viewer.tsx` to fetch bars via `fetchBars`, compute VWAP from journal (or fetch directly), group bars by session, render `<SessionPicker>` + `<PriceChart>` between the header and journal. Use the same `SectionState` pattern from T170 so a `source_data_missing` 404 renders "Chart: source data missing" inline instead of breaking the page (M2 fix). Update its test to:
   1. Assert the chart is present on the happy path.
   2. Mock `/bars` → 404 with `error: "source_data_missing"` and assert the chart slot renders the "Source data missing" message while summary + journal still render normally.
 
@@ -1491,7 +1491,7 @@ renders with all overlays.
 
 **Goal**: Overlay entry/exit markers on the chart from journal events.
 
-- [ ] T180 [US3] Test: in `frontend/src/components/price-chart.test.tsx`, add:
+- [X] T180 [US3] Test: in `frontend/src/components/price-chart.test.tsx`, add:
   ```tsx
   test("renders markers passed in", () => {
     const bars = [{ symbol:"SPY",timestamp:"2026-01-01T09:30:00-05:00",open:525,high:526,low:524,close:525.5,volume:1000 }];
@@ -1505,12 +1505,12 @@ renders with all overlays.
   ```
   Run — expect PASS if the PriceChart impl from T176 already accepts markers; otherwise update T176 to accept the markers prop.
 
-- [ ] T181 [US3] In `run-viewer.tsx`, build the markers array from journal:
+- [X] T181 [US3] In `run-viewer.tsx`, build the markers array from journal:
   - For each `executed` row → marker at `row.timestamp` with arrowUp + entry label.
   - For each `exited` / `force_flat` row → marker with arrowDown + color by `exit_reason` (target=green, stop=red, force_flat=gray).
   - (Optional) For each `rejected` row → small × marker when toggle is on.
-- [ ] T182 [US3] Test: hover an exit marker shows realized R + dollar pnl in chart tooltip (lightweight-charts has a built-in crosshair tooltip; we surface marker text). Add a test that the marker text contains both values.
-- [ ] T183 [US3] Test + impl the rejection-marker toggle: add a `Switch` button next to the chart legend; toggling it adds/removes rejection markers from the markers array.
+- [X] T182 [US3] Test: hover an exit marker shows realized R + dollar pnl in chart tooltip (lightweight-charts has a built-in crosshair tooltip; we surface marker text). Add a test that the marker text contains both values.
+- [X] T183 [US3] Test + impl the rejection-marker toggle: add a `Switch` button next to the chart legend; toggling it adds/removes rejection markers from the markers array.
 
 **Checkpoint (Phase 5)**: Browser smoke test — pick a run with executed trades (`make demo` if needed). See entry/exit markers; hover shows R + pnl. Toggle rejection markers.
 
@@ -1520,7 +1520,7 @@ renders with all overlays.
 
 **Goal**: Automated test asserts every concept in HELP_CONTENT has a paired rendered HelpTooltip on the viewer page.
 
-- [ ] T184 [US4] Test: in `frontend/src/routes/run-viewer.test.tsx`, add the contract test:
+- [X] T184 [US4] Test: in `frontend/src/routes/run-viewer.test.tsx`, add the contract test:
   ```tsx
   import { HELP_CONTENT } from "@/components/help-content";
 
@@ -1535,7 +1535,7 @@ renders with all overlays.
   ```
   If this fails for a key, the failing key tells you which component is missing its HelpTooltip. Fix that component.
 
-- [ ] T185 [US4] Type-only test: in `frontend/src/components/help-content.test.ts`, add:
+- [X] T185 [US4] Type-only test: in `frontend/src/components/help-content.test.ts`, add:
   ```ts
   import { HELP_CONTENT, type HelpContentKey } from "./help-content";
 
@@ -1547,7 +1547,7 @@ renders with all overlays.
   ```
   Run — expect PASS (TypeScript already enforces exhaustiveness at compile time; this is the runtime sanity check).
 
-- [ ] T186 [US4] If T184 fails, walk the failing keys and add HelpTooltips to the missing components. Re-run until green.
+- [X] T186 [US4] If T184 fails, walk the failing keys and add HelpTooltips to the missing components. Re-run until green.
 
 **Checkpoint (Phase 6)**: Contract test green. Every concept in the dictionary has a paired tooltip.
 
@@ -1557,7 +1557,7 @@ renders with all overlays.
 
 **Goal**: Filter the journal (and chart markers) by status.
 
-- [ ] T187 [US5] Test: in `frontend/src/components/journal-table.test.tsx`, add filter test:
+- [X] T187 [US5] Test: in `frontend/src/components/journal-table.test.tsx`, add filter test:
   ```tsx
   test("filter chips filter rows", async () => {
     const rows = [
@@ -1570,11 +1570,11 @@ renders with all overlays.
   ```
   Run — expect failure.
 
-- [ ] T188 [US5] Update `journal-table.tsx` to accept `filter` and `onFilterChange` props; render filter chips above the table; filter rows by `r.status === filter` (or show all when filter is `"all"`).
+- [X] T188 [US5] Update `journal-table.tsx` to accept `filter` and `onFilterChange` props; render filter chips above the table; filter rows by `r.status === filter` (or show all when filter is `"all"`).
 
-- [ ] T189 [US5] Test: in `frontend/src/routes/run-viewer.test.tsx`, add a test that selecting a filter propagates to the markers array passed to PriceChart. (Simplest: mock fetch + click chip + assert that the chart receives a filtered markers array — easier via spying on PriceChart props.)
+- [X] T189 [US5] Test: in `frontend/src/routes/run-viewer.test.tsx`, add a test that selecting a filter propagates to the markers array passed to PriceChart. (Simplest: mock fetch + click chip + assert that the chart receives a filtered markers array — easier via spying on PriceChart props.)
 
-- [ ] T190 [US5] In `run-viewer.tsx`, lift filter state into the route; pass it to both `<JournalTable>` and (via filtered markers) `<PriceChart>`.
+- [X] T190 [US5] In `run-viewer.tsx`, lift filter state into the route; pass it to both `<JournalTable>` and (via filtered markers) `<PriceChart>`.
 
 **Checkpoint (Phase 7)**: Browser smoke test — click each filter chip, see the journal and chart markers update.
 

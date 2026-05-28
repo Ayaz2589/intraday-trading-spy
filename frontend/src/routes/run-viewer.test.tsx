@@ -1,7 +1,42 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { RunViewer } from "./run-viewer";
+import { HELP_CONTENT } from "@/components/help-content";
+
+const priceChartCalls: Array<{ markers: unknown[] }> = [];
+vi.mock("@/components/price-chart", () => ({
+  PriceChart: (props: { markers: unknown[] }) => {
+    priceChartCalls.push({ markers: props.markers });
+    return (
+      <div data-testid="price-chart-mock">
+        <span data-help-key="vwap" />
+        <span data-help-key="opening_range" />
+        <span data-help-key="force_flat_exit" />
+      </div>
+    );
+  },
+}));
+
+const { RunViewer } = await import("./run-viewer");
+
+vi.mock("lightweight-charts", () => {
+  const series = {
+    setData: vi.fn(),
+    setMarkers: vi.fn(),
+    createPriceLine: vi.fn(),
+  };
+  const chart = {
+    addSeries: vi.fn(() => series),
+    timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
+    remove: vi.fn(),
+  };
+  return {
+    createChart: vi.fn(() => chart),
+    CandlestickSeries: "Candlestick",
+    LineSeries: "Line",
+  };
+});
 
 const summary = {
   total_trades: 4,
@@ -59,6 +94,7 @@ function mockFetchAll() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  priceChartCalls.length = 0;
 });
 
 describe("RunViewer route", () => {
@@ -116,5 +152,164 @@ describe("RunViewer route", () => {
     // Header + summary still rendered ("r1" appears in sidebar + header).
     expect(screen.getAllByText("r1").length).toBeGreaterThan(0);
     expect(screen.getByText("Summary")).toBeInTheDocument();
+  });
+
+  it("US4 — every HELP_CONTENT key has a rendered HelpTooltip", async () => {
+    const journal = [
+      {
+        row_seq: 0,
+        timestamp: "2026-01-02T09:30:00-05:00",
+        status: "executed",
+        actual_entry: 525.1,
+        reason: "entry",
+      },
+      {
+        row_seq: 1,
+        timestamp: "2026-01-02T10:00:00-05:00",
+        status: "force_flat",
+        exit_reason: "force_flat",
+        actual_exit: 525.2,
+        realized_r: 0,
+        realized_pnl: 0,
+        reason: "force-flat exit",
+      },
+    ];
+    const summaryWithAllRejections = {
+      ...summary,
+      rejected_signal_count: 3,
+      rejection_breakdown: {
+        position_value_exceeds_cap: 2,
+        cooldown_active: 1,
+        daily_loss_limit_reached: 1,
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      const u = String(url);
+      if (u === "/api/runs")
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([
+              { run_id: "r1", started_at: "x", summary: summaryWithAllRejections },
+            ]),
+          ),
+        );
+      if (u.endsWith("/journal"))
+        return Promise.resolve(new Response(JSON.stringify(journal)));
+      if (u.endsWith("/summary"))
+        return Promise.resolve(
+          new Response(JSON.stringify(summaryWithAllRejections)),
+        );
+      if (u.endsWith("/manifest"))
+        return Promise.resolve(new Response(JSON.stringify(manifest)));
+      if (u.endsWith("/bars"))
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([
+              {
+                symbol: "SPY",
+                timestamp: "2026-01-02T09:30:00-05:00",
+                open: 525,
+                high: 525.5,
+                low: 524.8,
+                close: 525.1,
+                volume: 1000,
+              },
+            ]),
+          ),
+        );
+      return Promise.resolve(new Response("[]"));
+    });
+    render(
+      <MemoryRouter initialEntries={["/runs/r1"]}>
+        <Routes>
+          <Route path="/runs/:run_id" element={<RunViewer />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getAllByText("r1").length).toBeGreaterThan(0);
+    });
+    const missing: string[] = [];
+    for (const key of Object.keys(HELP_CONTENT)) {
+      if (!document.querySelector(`[data-help-key="${key}"]`)) missing.push(key);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("US5 — selecting a filter chip propagates to the chart markers", async () => {
+    const journal = [
+      {
+        row_seq: 0,
+        timestamp: "2026-01-02T09:30:00-05:00",
+        status: "executed",
+        actual_entry: 525.1,
+        reason: "x",
+      },
+      {
+        row_seq: 1,
+        timestamp: "2026-01-02T09:35:00-05:00",
+        status: "rejected",
+        rejection_check: "position_value_exceeds_cap",
+        reason: "x",
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      const u = String(url);
+      if (u === "/api/runs")
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([{ run_id: "r1", started_at: "x", summary }]),
+          ),
+        );
+      if (u.endsWith("/journal"))
+        return Promise.resolve(new Response(JSON.stringify(journal)));
+      if (u.endsWith("/summary"))
+        return Promise.resolve(new Response(JSON.stringify(summary)));
+      if (u.endsWith("/manifest"))
+        return Promise.resolve(new Response(JSON.stringify(manifest)));
+      if (u.endsWith("/bars"))
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([
+              {
+                symbol: "SPY",
+                timestamp: "2026-01-02T09:30:00-05:00",
+                open: 525, high: 525.5, low: 524.8, close: 525.1, volume: 1000,
+              },
+            ]),
+          ),
+        );
+      return Promise.resolve(new Response("[]"));
+    });
+    render(
+      <MemoryRouter initialEntries={["/runs/r1"]}>
+        <Routes>
+          <Route path="/runs/:run_id" element={<RunViewer />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("price-chart-mock")).toBeInTheDocument();
+    });
+    // Initial render with filter='all' — chart should have at least one Entry marker.
+    const initial = priceChartCalls.at(-1)!.markers as Array<{ text: string }>;
+    expect(initial.some((m) => m.text.startsWith("Entry"))).toBe(true);
+
+    // Click the "executed" filter chip — markers should still contain Entry.
+    await userEvent.click(
+      screen.getByRole("button", { name: /^executed$/i }),
+    );
+    const filtered = priceChartCalls.at(-1)!.markers as Array<{ text: string }>;
+    expect(filtered.every((m) => m.text.startsWith("Entry"))).toBe(true);
+
+    // Click "rejected" filter chip — no Entry markers (rejections aren't shown
+    // unless the rejection-toggle is on).
+    await userEvent.click(
+      screen.getByRole("button", { name: /^rejected$/i }),
+    );
+    const afterRejected = priceChartCalls.at(-1)!.markers as Array<{
+      text: string;
+    }>;
+    expect(afterRejected.some((m) => m.text.startsWith("Entry"))).toBe(false);
   });
 });

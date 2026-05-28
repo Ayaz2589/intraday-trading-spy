@@ -120,6 +120,42 @@ def get_manifest(run_id: str):
     return yaml.safe_load(path.read_text())
 
 
+@app.get("/api/runs/{run_id}/bars")
+def get_bars(run_id: str):
+    manifest_path = RUNS_DIR / run_id / "run.yaml"
+    if not manifest_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "run_not_found", "run_id": run_id},
+        )
+    manifest = yaml.safe_load(manifest_path.read_text())
+    csv_path = Path(manifest["config_snapshot"]["data"]["csv_path"])
+    if not csv_path.is_absolute():
+        csv_path = (RUNS_DIR.parent.parent / csv_path).resolve()
+    if not csv_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "source_data_missing",
+                "run_id": run_id,
+                "expected_path": str(csv_path),
+            },
+        )
+    out = []
+    with open(csv_path, encoding="utf-8") as f:
+        for r in _csv.DictReader(f):
+            out.append({
+                "symbol": r["symbol"],
+                "timestamp": r["timestamp"],
+                "open": float(r["open"]),
+                "high": float(r["high"]),
+                "low": float(r["low"]),
+                "close": float(r["close"]),
+                "volume": int(r["volume"]),
+            })
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     """Bootstrap the static server. Excluded from coverage per M5 (the
     argparse + uvicorn.run() path can't be unit-tested without actually

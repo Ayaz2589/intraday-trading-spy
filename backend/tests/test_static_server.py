@@ -180,3 +180,45 @@ def test_get_manifest_404(tmp_path, monkeypatch):
     resp = client.get("/api/runs/missing/manifest")
     assert resp.status_code == 404
     assert resp.json()["error"] == "run_not_found"
+
+
+def test_get_bars_happy_path(tmp_path, monkeypatch):
+    bars = tmp_path / "spy_bars.csv"
+    bars.write_text(
+        "symbol,timestamp,open,high,low,close,volume\n"
+        "SPY,2026-01-01T09:30:00-05:00,525.0,525.5,524.8,525.1,1000000\n"
+    )
+    d = tmp_path / "abc"
+    d.mkdir()
+    (d / "run.yaml").write_text(
+        f"run_id: abc\nconfig_snapshot:\n  data:\n    csv_path: {bars}\n"
+    )
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.get("/api/runs/abc/bars")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["symbol"] == "SPY"
+    assert data[0]["close"] == 525.1
+    assert data[0]["volume"] == 1000000
+
+
+def test_get_bars_404_when_run_missing(tmp_path, monkeypatch):
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.get("/api/runs/missing/bars")
+    assert resp.status_code == 404
+    assert resp.json()["error"] == "run_not_found"
+
+
+def test_get_bars_404_when_source_data_missing(tmp_path, monkeypatch):
+    d = tmp_path / "abc"
+    d.mkdir()
+    (d / "run.yaml").write_text(
+        "run_id: abc\nconfig_snapshot:\n  data:\n    csv_path: /nope/missing.csv\n"
+    )
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.get("/api/runs/abc/bars")
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["error"] == "source_data_missing"
+    assert "expected_path" in body
