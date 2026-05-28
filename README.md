@@ -17,19 +17,25 @@ learning app.
 
 ## Quickstart
 
+The `Makefile` at the project root wraps every common workflow.
+Run `make help` for the full target list. The essentials:
+
 ```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-
-# Backtest against the synthetic fixture (offline)
-python -m intraday_trade_spy.cli.run_backtest --config config/config.yaml
-
-# Or: download real SPY data, then backtest it
-python -m intraday_trade_spy.cli.download_spy_data --start 2026-04-01 --end 2026-04-15
-python -m intraday_trade_spy.cli.run_backtest --config config/config.yaml \
-    --data data/raw/spy_5m_2026-04-01_2026-04-15.csv
+make install                                    # one-time: create venv + install deps
+make test                                       # run the offline test suite
+make backtest                                   # backtest the bundled synthetic fixture
+make demo                                       # backtest with a permissive cap → real trades visible
+make download START=2026-04-01 END=2026-04-15   # fetch real SPY data
+make backtest-real DATA=spy_5m_2026-04-01_2026-04-15.csv   # backtest the downloaded data
 ```
+
+All targets `cd` into `backend/` internally, so the relative paths
+in `config.yaml` (`data/raw/…`, `data/backtests/…`) resolve correctly
+no matter where you invoke `make` from.
+
+If you'd rather skip the Makefile, the console scripts are
+`intraday-trade-spy-backtest` and `intraday-trade-spy-download` (run
+`--help` on either).
 
 See `specs/001-backtest-mvp-spy-vwap-pullback/quickstart.md` for full
 details.
