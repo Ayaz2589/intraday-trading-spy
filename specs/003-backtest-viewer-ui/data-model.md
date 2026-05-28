@@ -129,8 +129,10 @@ export type HelpContentKey =
   | "force_flat_exit"
   | "take_profit"
   | "stop_loss"
-  | "risk_per_trade"
-  | "daily_drawdown";
+  | "risk_per_trade";
+// 14 concepts. "daily_drawdown" intentionally absent — the backend
+// SummaryMetrics doesn't track per-day drawdown separately, only
+// run-wide max_drawdown_r. See analyze finding M6 for context.
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -236,13 +238,6 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
       "of account size. The app uses this + the stop distance to compute " +
       "how many shares to buy. Default 1%: with $1,000 account, max risk " +
       "is $10/trade.",
-  },
-  daily_drawdown: {
-    title: "Daily Drawdown",
-    description:
-      "How much the account is down during the current trading day. If " +
-      "it passes the daily loss limit, lockout activates and no new " +
-      "trades fire for the rest of the session.",
   },
 };
 ```

@@ -65,7 +65,23 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
 
 ### Backend additions
 
-- [ ] T121 Modify `backend/pyproject.toml` — add `fastapi>=0.115` and `uvicorn>=0.32` to `dependencies`; add `httpx>=0.27` to `[project.optional-dependencies].dev`; add `intraday-trade-spy-server = "intraday_trade_spy.api.static_server:main"` under `[project.scripts]`. Then `pip install -e ".[dev]"` to register the deps + new console script.
+- [ ] T121 Modify `backend/pyproject.toml`:
+  - Add `fastapi>=0.115` and `uvicorn>=0.32` to `dependencies`.
+  - Add `httpx>=0.27` to `[project.optional-dependencies].dev`.
+  - Add `intraday-trade-spy-server = "intraday_trade_spy.api.static_server:main"` under `[project.scripts]`.
+  - **Add a coverage exclude section** (M5 fix for SC-002 reachability):
+    ```toml
+    [tool.coverage.run]
+    branch = false
+    omit = []
+
+    [tool.coverage.report]
+    exclude_lines = [
+        "pragma: no cover",
+        "if __name__ == .__main__.:",
+    ]
+    ```
+  Then `pip install -e ".[dev]"` to register the deps + new console script.
 
 - [ ] T122 [P] Create `backend/src/intraday_trade_spy/api/__init__.py` — empty file (just marks the package).
 
@@ -287,14 +303,15 @@ is complete.**
   ```
   Run `pytest backend/tests/test_static_server.py -v` — expect failure (`ModuleNotFoundError`).
 
-- [ ] T138 Implement `backend/src/intraday_trade_spy/api/static_server.py` minimal skeleton:
+- [ ] T138 Implement `backend/src/intraday_trade_spy/api/static_server.py` minimal skeleton. **Includes a custom HTTPException handler so 404 responses return `{"error": ...}` directly (not wrapped under `{"detail": {...}}`)** — this is the H2 fix from analyze:
   ```python
   import argparse
   from pathlib import Path
 
   import uvicorn
-  from fastapi import FastAPI
+  from fastapi import FastAPI, HTTPException, Request
   from fastapi.middleware.cors import CORSMiddleware
+  from fastapi.responses import JSONResponse
 
   RUNS_DIR = Path("backend/data/backtests")
 
@@ -306,7 +323,17 @@ is complete.**
       allow_headers=["*"],
   )
 
-  def main(argv: list[str] | None = None) -> int:
+  @app.exception_handler(HTTPException)
+  async def _http_exception_handler(request: Request, exc: HTTPException):
+      # If detail is a dict, return it verbatim (so the frontend sees
+      # {"error": "...", ...} at the top level, not nested under "detail").
+      if isinstance(exc.detail, dict):
+          return JSONResponse(status_code=exc.status_code, content=exc.detail)
+      return JSONResponse(
+          status_code=exc.status_code, content={"error": str(exc.detail)}
+      )
+
+  def main(argv: list[str] | None = None) -> int:  # pragma: no cover
       p = argparse.ArgumentParser(prog="intraday-trade-spy-server")
       p.add_argument("--port", type=int, default=8000)
       p.add_argument("--host", default="0.0.0.0")
@@ -314,10 +341,24 @@ is complete.**
       uvicorn.run(app, host=args.host, port=args.port)
       return 0
 
-  if __name__ == "__main__":
+  if __name__ == "__main__":  # pragma: no cover
       raise SystemExit(main())
   ```
   Run T137 — expect PASS. Commit.
+
+- [ ] T138b Test (M3 fix): in `backend/tests/test_static_server.py`, add a CLI smoke test:
+  ```python
+  import subprocess, sys
+
+  def test_console_script_help_runs_cleanly():
+      result = subprocess.run(
+          [sys.executable, "-m", "intraday_trade_spy.api.static_server", "--help"],
+          capture_output=True, text=True,
+      )
+      assert result.returncode == 0
+      assert "--port" in result.stdout
+  ```
+  Run — expect PASS (argparse `--help` exits cleanly before uvicorn starts).
 
 ### Frontend TypeScript types
 
@@ -353,18 +394,19 @@ is complete.**
   import { HELP_CONTENT, type HelpContentKey } from "./help-content";
 
   describe("HELP_CONTENT", () => {
-    it("has every HelpContentKey covered", () => {
+    it("has every HelpContentKey covered (14 concepts)", () => {
       const expected: HelpContentKey[] = [
         "vwap", "opening_range", "r_multiple", "profit_factor",
         "max_drawdown", "win_rate", "rejected_signal", "position_cap",
         "cooldown", "lockout", "force_flat_exit", "take_profit",
-        "stop_loss", "risk_per_trade", "daily_drawdown",
+        "stop_loss", "risk_per_trade",
       ];
       for (const key of expected) {
         expect(HELP_CONTENT[key]).toBeDefined();
         expect(HELP_CONTENT[key].title.length).toBeGreaterThan(0);
         expect(HELP_CONTENT[key].description.length).toBeGreaterThan(20);
       }
+      expect(Object.keys(HELP_CONTENT).length).toBe(14);
     });
   });
   ```
@@ -456,7 +498,11 @@ run. Confirm all four sections render.
       client = TestClient(app)
       resp = client.get("/api/runs/missing-id/journal")
       assert resp.status_code == 404
+      # Custom exception handler in T138 unwraps the detail dict to the
+      # top level (analyze finding H2). So resp.json()["error"] works
+      # directly without going through ["detail"].
       assert resp.json()["error"] == "run_not_found"
+      assert resp.json()["missing"] == "journal.csv"
 
   def test_get_journal_returns_rows(tmp_path, monkeypatch):
       d = tmp_path / "20260101-100000-aaaaaaaa"
@@ -873,13 +919,14 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T162 [US1] Implement `frontend/src/components/summary-metrics-card.tsx`:
+- [ ] T162 [US1] Implement `frontend/src/components/summary-metrics-card.tsx`. **M6 fix**: the "Daily DD" tile is removed — there is no separate daily_drawdown metric in the backend; rendering `max_drawdown_r` twice was misleading. 7 metrics now:
   ```tsx
   import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
   import { HelpTooltip } from "./help-tooltip";
   import type { SummaryMetricsView } from "@/api/types";
+  import type { HelpContentKey } from "./help-content";
 
-  function Metric({ label, value, helpKey }: { label: string; value: string; helpKey: any }) {
+  function Metric({ label, value, helpKey }: { label: string; value: string; helpKey: HelpContentKey }) {
     return (
       <div>
         <div className="text-xs text-muted-foreground flex items-center">
@@ -903,13 +950,12 @@ run. Confirm all four sections render.
           <Metric label="Total R" value={(summary.total_r >= 0 ? "+" : "") + summary.total_r.toFixed(3)} helpKey="r_multiple" />
           <Metric label="Max Drawdown" value={`${summary.max_drawdown_r.toFixed(3)}R`} helpKey="max_drawdown" />
           <Metric label="Profit Factor" value={pf == null ? "—" : pf.toFixed(3)} helpKey="profit_factor" />
-          <Metric label="Daily DD" value={`${summary.max_drawdown_r.toFixed(3)}R`} helpKey="daily_drawdown" />
         </CardContent>
       </Card>
     );
   }
   ```
-  Run T161 — expect PASS.
+  Run T161 — expect PASS. (Update T161's tooltip expectation list: drop `data-help-key="daily_drawdown"` from the assertions.)
 
 ### Frontend: RejectionBreakdownCard
 
@@ -1140,7 +1186,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T170 [US1] Implement `frontend/src/routes/run-viewer.tsx`:
+- [ ] T170 [US1] Implement `frontend/src/routes/run-viewer.tsx` with **per-section error tracking** (M1 fix — each fetch's outcome is tracked independently so a single 404 doesn't silence the whole page):
   ```tsx
   import { useEffect, useState } from "react";
   import { useParams } from "react-router";
@@ -1152,12 +1198,29 @@ run. Confirm all four sections render.
   import { JournalTable } from "@/components/journal-table";
   import type { JournalRowView, RunManifestView, RunSummaryView, SummaryMetricsView } from "@/api/types";
 
+  type SectionState<T> = { loading: true } | { error: string } | { data: T };
+
+  function Section<T>({ state, children }: { state: SectionState<T>; children: (data: T) => React.ReactNode }) {
+    if ("loading" in state) return <div className="text-sm text-muted-foreground p-4">Loading…</div>;
+    if ("error" in state) return <div className="text-sm text-red-700 p-4">Error: {state.error}</div>;
+    return <>{children(state.data)}</>;
+  }
+
+  function loadSection<T>(fn: (signal: AbortSignal) => Promise<T>, setter: (s: SectionState<T>) => void, ctrl: AbortController) {
+    fn(ctrl.signal)
+      .then((data) => setter({ data }))
+      .catch((e) => {
+        if (e.name === "AbortError") return;
+        setter({ error: String(e.message || e) });
+      });
+  }
+
   export function RunViewer() {
     const { run_id } = useParams<{ run_id: string }>();
     const [runs, setRuns] = useState<RunSummaryView[]>([]);
-    const [manifest, setManifest] = useState<RunManifestView | null>(null);
-    const [summary, setSummary] = useState<SummaryMetricsView | null>(null);
-    const [journal, setJournal] = useState<JournalRowView[] | null>(null);
+    const [manifest, setManifest] = useState<SectionState<RunManifestView>>({ loading: true });
+    const [summary, setSummary] = useState<SectionState<SummaryMetricsView>>({ loading: true });
+    const [journal, setJournal] = useState<SectionState<JournalRowView[]>>({ loading: true });
 
     useEffect(() => {
       const ctrl = new AbortController();
@@ -1167,12 +1230,13 @@ run. Confirm all four sections render.
 
     useEffect(() => {
       if (!run_id) return;
+      setManifest({ loading: true });
+      setSummary({ loading: true });
+      setJournal({ loading: true });
       const ctrl = new AbortController();
-      Promise.all([
-        fetchManifest(run_id, { signal: ctrl.signal }).then(setManifest),
-        fetchSummary(run_id, { signal: ctrl.signal }).then(setSummary),
-        fetchJournal(run_id, { signal: ctrl.signal }).then(setJournal),
-      ]).catch(() => {});
+      loadSection((s) => fetchManifest(run_id, { signal: s }), setManifest, ctrl);
+      loadSection((s) => fetchSummary(run_id, { signal: s }), setSummary, ctrl);
+      loadSection((s) => fetchJournal(run_id, { signal: s }), setJournal, ctrl);
       return () => ctrl.abort();
     }, [run_id]);
 
@@ -1180,18 +1244,22 @@ run. Confirm all four sections render.
       <div className="flex h-screen">
         <RunsSidebar runs={runs} selectedRunId={run_id ?? null} />
         <main className="flex-1 overflow-y-auto">
-          {manifest && <RunHeader manifest={manifest} />}
+          <Section state={manifest}>{(m) => <RunHeader manifest={m} />}</Section>
           <div className="p-4 grid grid-cols-3 gap-4">
-            {summary && <div className="col-span-2"><SummaryMetricsCard summary={summary} /></div>}
-            {summary && <RejectionBreakdownCard breakdown={summary.rejection_breakdown} total={summary.rejected_signal_count} />}
+            <div className="col-span-2">
+              <Section state={summary}>{(s) => <SummaryMetricsCard summary={s} />}</Section>
+            </div>
+            <Section state={summary}>{(s) => <RejectionBreakdownCard breakdown={s.rejection_breakdown} total={s.rejected_signal_count} />}</Section>
           </div>
-          {journal && <div className="p-4"><JournalTable rows={journal} /></div>}
+          <div className="p-4">
+            <Section state={journal}>{(j) => <JournalTable rows={j} />}</Section>
+          </div>
         </main>
       </div>
     );
   }
   ```
-  Run T169 — expect PASS.
+  Update T169 test to add a case mocking `/journal` → 404 and assert that "Error: ..." text renders in that section while summary still shows. Run — expect PASS.
 
 - [ ] T171 [US1] Create `frontend/src/App.tsx` (TDD-EXEMPT — thin router shell):
   ```tsx
@@ -1258,7 +1326,8 @@ renders with all overlays.
       from intraday_trade_spy.api.static_server import app
       resp = TestClient(app).get("/api/runs/abc/bars")
       assert resp.status_code == 404
-      assert resp.json()["detail"]["error"] == "source_data_missing"
+      assert resp.json()["error"] == "source_data_missing"
+      assert "expected_path" in resp.json()
   ```
   Run — expect failure.
 
@@ -1311,18 +1380,26 @@ renders with all overlays.
   ```
   Run — expect failure.
 
-- [ ] T176 [US2] Implement `frontend/src/components/price-chart.tsx`:
+- [ ] T176 [US2] Implement `frontend/src/components/price-chart.tsx`. **lightweight-charts v5 expects timestamps as `UTCTimestamp` (Unix seconds), not ISO 8601 strings — M7 fix**:
   ```tsx
   import { useEffect, useRef } from "react";
-  import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
+  import {
+    createChart,
+    CandlestickSeries,
+    LineSeries,
+    type UTCTimestamp,
+  } from "lightweight-charts";
   import { HelpTooltip } from "./help-tooltip";
   import type { BarView } from "@/api/types";
+
+  const toUtc = (iso: string): UTCTimestamp =>
+    Math.floor(new Date(iso).getTime() / 1000) as UTCTimestamp;
 
   export function PriceChart({ bars, vwap, or, markers }: {
     bars: BarView[];
     vwap: { time: string; value: number }[];
     or: { high: number; low: number; from: string; to: string } | null;
-    markers: any[];
+    markers: { time: string; position: "aboveBar" | "belowBar"; color: string; shape: "arrowUp" | "arrowDown" | "circle"; text: string }[];
   }) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -1331,18 +1408,20 @@ renders with all overlays.
       const chart = createChart(ref.current, { height: 400 });
       const candles = chart.addSeries(CandlestickSeries);
       candles.setData(bars.map((b) => ({
-        time: b.timestamp,
+        time: toUtc(b.timestamp),
         open: b.open, high: b.high, low: b.low, close: b.close,
       })));
       if (vwap.length) {
         const line = chart.addSeries(LineSeries, { color: "#3b82f6", lineWidth: 1 });
-        line.setData(vwap.map((p) => ({ time: p.time, value: p.value })));
+        line.setData(vwap.map((p) => ({ time: toUtc(p.time), value: p.value })));
       }
       if (or) {
         candles.createPriceLine({ price: or.high, color: "#22c55e", lineStyle: 2, title: "OR high" });
         candles.createPriceLine({ price: or.low, color: "#ef4444", lineStyle: 2, title: "OR low" });
       }
-      if (markers.length) candles.setMarkers(markers);
+      if (markers.length) {
+        candles.setMarkers(markers.map((m) => ({ ...m, time: toUtc(m.time) })));
+      }
       return () => chart.remove();
     }, [bars, vwap, or, markers]);
 
@@ -1357,7 +1436,7 @@ renders with all overlays.
     );
   }
   ```
-  Run T175 — expect PASS.
+  Run T175 — expect PASS. The Vitest test (T175) asserts the container exists and doesn't throw; lightweight-charts renders to canvas in happy-dom and won't crash on valid input.
 
 ### Frontend: SessionPicker
 
@@ -1400,7 +1479,9 @@ renders with all overlays.
 
 ### Integration
 
-- [ ] T179 [US2] Update `run-viewer.tsx` to fetch bars via `fetchBars`, compute VWAP from journal (or fetch directly), group bars by session, render `<SessionPicker>` + `<PriceChart>` between the header and journal. Update its test to assert the chart is present.
+- [ ] T179 [US2] Update `run-viewer.tsx` to fetch bars via `fetchBars`, compute VWAP from journal (or fetch directly), group bars by session, render `<SessionPicker>` + `<PriceChart>` between the header and journal. Use the same `SectionState` pattern from T170 so a `source_data_missing` 404 renders "Chart: source data missing" inline instead of breaking the page (M2 fix). Update its test to:
+  1. Assert the chart is present on the happy path.
+  2. Mock `/bars` → 404 with `error: "source_data_missing"` and assert the chart slot renders the "Source data missing" message while summary + journal still render normally.
 
 **Checkpoint (Phase 4)**: Browser smoke test — pick a run with bar data. Chart renders. Switch sessions if multi-session. VWAP + OR bands visible.
 
@@ -1461,7 +1542,7 @@ renders with all overlays.
   test("HELP_CONTENT covers every HelpContentKey (TypeScript-enforced via Record)", () => {
     const keys = Object.keys(HELP_CONTENT) as HelpContentKey[];
     expect(keys).toContain("vwap");  // sanity
-    expect(keys.length).toBe(15);    // 15 concepts
+    expect(keys.length).toBe(14);    // 14 concepts (daily_drawdown removed per M6)
   });
   ```
   Run — expect PASS (TypeScript already enforces exhaustiveness at compile time; this is the runtime sanity check).
@@ -1508,6 +1589,8 @@ renders with all overlays.
 - [ ] T193 [P] Run `cd backend && .venv/bin/ruff check src tests`. Fix any findings.
 
 - [ ] T194 [P] Run `cd frontend && npm run lint && npm run typecheck`. Fix any findings.
+
+- [ ] T194b [P] **M4 fix**: Run `cd frontend && npm run build` and verify `frontend/dist/index.html` exists plus the build emits no errors. This catches misconfigured Vite + TypeScript build settings that the dev server wouldn't catch.
 
 - [ ] T195 Run the full quickstart end-to-end (Phase 1 install → Phase 7 polish):
   ```bash

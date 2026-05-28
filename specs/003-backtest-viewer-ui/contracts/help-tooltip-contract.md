@@ -64,7 +64,6 @@ HelpTooltip somewhere on the Backtest Viewer page (`/runs/{run_id}`).
 | `take_profit` | `JournalTable` (next to "Take Profit" column header) |
 | `stop_loss` | `JournalTable` (next to "Stop Loss" column header) |
 | `risk_per_trade` | `JournalTable` (next to "Risk $" column header), `SummaryMetricsCard` |
-| `daily_drawdown` | `SummaryMetricsCard` next to "Max Drawdown" (paired with `max_drawdown`) |
 
 ---
 
