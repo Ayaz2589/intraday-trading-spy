@@ -8,6 +8,7 @@ dependencies = [
     "pyyaml>=6.0",
     "pandas>=2.2",
     "python-dateutil>=2.9",
+    "yfinance>=0.2.40",
 ]
 
 [project.optional-dependencies]
@@ -39,3 +40,6 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
+markers = [
+    "slow: opt-in tests that hit the real yfinance API (deselect with -m 'not slow')",
+]

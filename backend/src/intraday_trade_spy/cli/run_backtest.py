@@ -49,7 +49,10 @@ def main(argv: list[str] | None = None) -> int:
             elif r.status.value in ("exited", "force_flat") and r.exit_reason:
                 detail = f"{r.exit_reason} @ {r.actual_exit:.4f} (R={r.realized_r:+.3f})"
             elif r.status.value == "executed" and r.actual_entry is not None:
-                detail = f"entry @ {r.actual_entry:.4f}, qty={r.quantity}, risk=${r.planned_risk_dollars:.2f}"
+                detail = (
+                    f"entry @ {r.actual_entry:.4f}, qty={r.quantity}, "
+                    f"risk=${r.planned_risk_dollars:.2f}"
+                )
             else:
                 detail = r.reason
             print(f"{r.timestamp.isoformat()} {r.status.value:10} {detail}")

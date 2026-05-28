@@ -57,7 +57,7 @@ Each task runs:
 test discipline (mock fixture + socket blocker). No production logic
 yet.
 
-- [ ] T071 Modify `backend/pyproject.toml` to add `yfinance>=0.2.40` to the `[project] dependencies` list, and add the `slow` marker plus a `markers` config under `[tool.pytest.ini_options]`. Diff:
+- [X] T071 Modify `backend/pyproject.toml` to add `yfinance>=0.2.40` to the `[project] dependencies` list, and add the `slow` marker plus a `markers` config under `[tool.pytest.ini_options]`. Diff:
   ```toml
   [project]
   dependencies = [
@@ -77,7 +77,7 @@ yet.
   ```
   Re-install dependencies: `cd backend && pip install -e ".[dev]"`. Verify `python -c "import yfinance; print(yfinance.__version__)"` succeeds.
 
-- [ ] T072 Test: in `backend/tests/conftest.py`, add a session-scope autouse socket-blocker fixture (the test for it is in Phase 7 T117). Surface area:
+- [X] T072 Test: in `backend/tests/conftest.py`, add a session-scope autouse socket-blocker fixture (the test for it is in Phase 7 T117). Surface area:
   ```python
   # ... existing imports/fixtures ...
   import socket
@@ -94,7 +94,7 @@ yet.
   ```
   No standalone test in this task — Phase 7's T117 validates it.
 
-- [ ] T073 [P] Test: in `backend/tests/conftest.py`, add a `mock_yfinance_download` fixture that returns a deterministic synthetic DataFrame shaped like yfinance's output. Surface area:
+- [X] T073 [P] Test: in `backend/tests/conftest.py`, add a `mock_yfinance_download` fixture that returns a deterministic synthetic DataFrame shaped like yfinance's output. Surface area:
   ```python
   from datetime import datetime
   from zoneinfo import ZoneInfo
@@ -139,7 +139,7 @@ until this phase is complete.**
 
 ### Module constants
 
-- [ ] T074 Test: in `backend/tests/test_downloader.py`, add:
+- [X] T074 Test: in `backend/tests/test_downloader.py`, add:
   ```python
   from intraday_trade_spy.data.downloader import (
       MAX_CHUNK_DAYS, MAX_5M_HISTORY_DAYS, RETRY_BACKOFF_SECONDS, RETRY_MAX_ATTEMPTS,
@@ -153,7 +153,7 @@ until this phase is complete.**
   ```
   Run — expect failure (module doesn't exist).
 
-- [ ] T075 Implement the constants block at the top of `backend/src/intraday_trade_spy/data/downloader.py`:
+- [X] T075 Implement the constants block at the top of `backend/src/intraday_trade_spy/data/downloader.py`:
   ```python
   from zoneinfo import ZoneInfo
 
@@ -167,7 +167,7 @@ until this phase is complete.**
 
 ### `DownloadRequest`
 
-- [ ] T076 Test: in `backend/tests/test_downloader.py`, add:
+- [X] T076 Test: in `backend/tests/test_downloader.py`, add:
   ```python
   from datetime import date, timedelta
   from pathlib import Path
@@ -203,7 +203,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T077 Add `DownloadRequest` to `backend/src/intraday_trade_spy/data/downloader.py`:
+- [X] T077 Add `DownloadRequest` to `backend/src/intraday_trade_spy/data/downloader.py`:
   ```python
   from datetime import date, timedelta
   from pathlib import Path
@@ -241,7 +241,7 @@ until this phase is complete.**
 
 ### `FetchResult`
 
-- [ ] T078 Test: in `backend/tests/test_downloader.py`, add:
+- [X] T078 Test: in `backend/tests/test_downloader.py`, add:
   ```python
   import pandas as pd
   from datetime import date
@@ -255,7 +255,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T079 Add `FetchResult` to `downloader.py`:
+- [X] T079 Add `FetchResult` to `downloader.py`:
   ```python
   import pandas as pd
   from pydantic import Field
@@ -272,7 +272,7 @@ until this phase is complete.**
 
 ### `FetchManifest`
 
-- [ ] T080 Test: in `backend/tests/test_fetch_manifest.py`:
+- [X] T080 Test: in `backend/tests/test_fetch_manifest.py`:
   ```python
   from datetime import date, datetime, timezone
   from intraday_trade_spy.data.downloader import FetchManifest
@@ -293,7 +293,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T081 Add `FetchManifest` to `downloader.py`:
+- [X] T081 Add `FetchManifest` to `downloader.py`:
   ```python
   from datetime import datetime
   from pydantic import AwareDatetime
@@ -331,7 +331,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### Pure chunker
 
-- [ ] T082 [US1] Test: in `backend/tests/test_chunker.py`:
+- [X] T082 [US1] Test: in `backend/tests/test_chunker.py`:
   ```python
   from datetime import date
   from intraday_trade_spy.data.downloader import iter_windows, MAX_CHUNK_DAYS
@@ -353,7 +353,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure.
 
-- [ ] T083 [US1] Implement `iter_windows` in `downloader.py`:
+- [X] T083 [US1] Implement `iter_windows` in `downloader.py`:
   ```python
   from datetime import timedelta
 
@@ -370,7 +370,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### Downloader: single-chunk happy path (no retry, no gaps)
 
-- [ ] T084 [US1] Test: in `backend/tests/test_downloader.py`:
+- [X] T084 [US1] Test: in `backend/tests/test_downloader.py`:
   ```python
   from datetime import date
   from pathlib import Path
@@ -392,7 +392,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure.
 
-- [ ] T085 [US1] Implement `Downloader.__init__` + `Downloader.fetch` happy path in `downloader.py`. Surface area:
+- [X] T085 [US1] Implement `Downloader.__init__` + `Downloader.fetch` happy path in `downloader.py`. Surface area:
   ```python
   import csv
   import hashlib
@@ -441,7 +441,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### 429 retry (FR-010 — C1 finding)
 
-- [ ] T085b [US1] Test: in `backend/tests/test_downloader.py`, add a retry test that patches `time.sleep` so the test runs instantly:
+- [X] T085b [US1] Test: in `backend/tests/test_downloader.py`, add a retry test that patches `time.sleep` so the test runs instantly:
   ```python
   from datetime import date
   from pathlib import Path
@@ -481,7 +481,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure (current `_call_yf` is a passthrough).
 
-- [ ] T085c [US1] Implement the retry in `_call_yf` in `backend/src/intraday_trade_spy/data/downloader.py`:
+- [X] T085c [US1] Implement the retry in `_call_yf` in `backend/src/intraday_trade_spy/data/downloader.py`:
   ```python
   import time
 
@@ -508,7 +508,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### Column normalizer
 
-- [ ] T086 [US1] Test: in `backend/tests/test_downloader.py`:
+- [X] T086 [US1] Test: in `backend/tests/test_downloader.py`:
   ```python
   import pandas as pd
   from datetime import date
@@ -525,7 +525,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure or wrong columns.
 
-- [ ] T087 [US1] Implement `_normalize` in `downloader.py`:
+- [X] T087 [US1] Implement `_normalize` in `downloader.py`:
   ```python
   def _normalize(self, raw: pd.DataFrame) -> pd.DataFrame:
       # Handle both single-symbol (flat columns) and multi-symbol (multi-index) shapes.
@@ -549,7 +549,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### Session filter + dedupe coverage (M2, M3 findings)
 
-- [ ] T087b [US1] Test: in `backend/tests/test_downloader.py`, add a pre-market / after-hours filter test:
+- [X] T087b [US1] Test: in `backend/tests/test_downloader.py`, add a pre-market / after-hours filter test:
   ```python
   import pandas as pd
   from zoneinfo import ZoneInfo
@@ -576,7 +576,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect PASS (the existing `_normalize` from T087 already filters; this just locks the behavior). If it fails, fix `_normalize`. Commit.
 
-- [ ] T087c [US1] Test: in `backend/tests/test_downloader.py`, add an intra-chunk dedupe test:
+- [X] T087c [US1] Test: in `backend/tests/test_downloader.py`, add an intra-chunk dedupe test:
   ```python
   import pandas as pd
   from zoneinfo import ZoneInfo
@@ -599,7 +599,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### Glitch dropper
 
-- [ ] T088 [US1] Test: in `backend/tests/test_downloader.py`:
+- [X] T088 [US1] Test: in `backend/tests/test_downloader.py`:
   ```python
   import numpy as np
   import pandas as pd
@@ -623,7 +623,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure.
 
-- [ ] T089 [US1] Implement `_drop_glitches` in `downloader.py`:
+- [X] T089 [US1] Implement `_drop_glitches` in `downloader.py`:
   ```python
   def _drop_glitches(self, df: pd.DataFrame) -> int:
       before = len(df)
@@ -636,7 +636,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### CSV writer (deterministic formatting)
 
-- [ ] T090 [US1] Test: in `backend/tests/test_downloader.py`:
+- [X] T090 [US1] Test: in `backend/tests/test_downloader.py`:
   ```python
   import pandas as pd
   from datetime import datetime
@@ -663,7 +663,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure.
 
-- [ ] T091 [US1] Implement `_write_csv` in `downloader.py`:
+- [X] T091 [US1] Implement `_write_csv` in `downloader.py`:
   ```python
   def _write_csv(self, df: pd.DataFrame, out: Path) -> None:
       out.parent.mkdir(parents=True, exist_ok=True)
@@ -681,7 +681,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### SHA256 + manifest writer
 
-- [ ] T092 [US1] Test: in `backend/tests/test_downloader.py`:
+- [X] T092 [US1] Test: in `backend/tests/test_downloader.py`:
   ```python
   import hashlib
   from pathlib import Path
@@ -696,7 +696,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure.
 
-- [ ] T093 [US1] Implement `_sha256` + `_build_manifest` + `_write_manifest` in `downloader.py`:
+- [X] T093 [US1] Implement `_sha256` + `_build_manifest` + `_write_manifest` in `downloader.py`:
   ```python
   def _sha256(self, path: Path) -> str:
       return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -721,7 +721,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### CLI
 
-- [ ] T094 [US1] Test: in `backend/tests/test_download_cli.py`:
+- [X] T094 [US1] Test: in `backend/tests/test_download_cli.py`:
   ```python
   import subprocess, sys
   from pathlib import Path
@@ -744,7 +744,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect failure.
 
-- [ ] T095 [US1] Implement `backend/src/intraday_trade_spy/cli/download_spy_data.py`:
+- [X] T095 [US1] Implement `backend/src/intraday_trade_spy/cli/download_spy_data.py`:
   ```python
   import argparse
   import sys
@@ -839,7 +839,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect PASS if T095 and T100 thread `req.show_progress` correctly. Otherwise fix the CLI's resolved-range print and T100's chunk progress to honor `req.show_progress`. Commit.
 
-- [ ] T094d [US1] Test: in `backend/tests/test_download_cli.py`, add an FR-009 exit-code test for "output exists without --force":
+- [X] T094d [US1] Test: in `backend/tests/test_download_cli.py`, add an FR-009 exit-code test for "output exists without --force":
   ```python
   def test_cli_exits_2_when_output_exists_without_force(tmp_path, monkeypatch):
       _patch_yf(monkeypatch)
@@ -851,7 +851,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect PASS if T095 catches `OutputExistsError` → exit 2. Otherwise fix. Commit.
 
-- [ ] T094e [US1] Test: in `backend/tests/test_download_cli.py`, add an FR-009 exit-code test for "yfinance returned zero rows":
+- [X] T094e [US1] Test: in `backend/tests/test_download_cli.py`, add an FR-009 exit-code test for "yfinance returned zero rows":
   ```python
   def test_cli_exits_4_when_yfinance_returns_zero_rows(tmp_path, monkeypatch):
       import pandas as pd
@@ -865,7 +865,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
 
 ### Script wrapper (TDD-exempt per constitution v1.1.0)
 
-- [ ] T096 [US1] **TDD-EXEMPT** (≤5-line wrapper, per constitution principle IV exempt list). Create `backend/scripts/download_spy_data.py`:
+- [X] T096 [US1] **TDD-EXEMPT** (≤5-line wrapper, per constitution principle IV exempt list). Create `backend/scripts/download_spy_data.py`:
   ```python
   import sys
   from intraday_trade_spy.cli.download_spy_data import main
