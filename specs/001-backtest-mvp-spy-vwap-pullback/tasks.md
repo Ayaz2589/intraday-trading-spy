@@ -212,7 +212,7 @@ until this phase is complete.**
 
 ### Config (FR-001, FR-002, FR-017)
 
-- [ ] T015 Test: in `backend/tests/test_config.py`, add:
+- [X] T015 Test: in `backend/tests/test_config.py`, add:
   ```python
   from intraday_trade_spy.config import load_config
 
@@ -224,7 +224,7 @@ until this phase is complete.**
   ```
   Run `pytest backend/tests/test_config.py::test_loads_default_config -v` — expect failure (`ModuleNotFoundError: intraday_trade_spy.config` or `AttributeError`).
 
-- [ ] T016 Implement `backend/src/intraday_trade_spy/config.py`. Surface area:
+- [X] T016 Implement `backend/src/intraday_trade_spy/config.py`. Surface area:
   ```python
   from typing import Literal
   from pathlib import Path
@@ -309,7 +309,7 @@ until this phase is complete.**
   ```
   Run `pytest backend/tests/test_config.py::test_loads_default_config -v` — expect PASS. Commit.
 
-- [ ] T017 Test: add `test_rejects_non_spy_symbol` and `test_rejects_live_auto_enabled` in `backend/tests/test_config.py`:
+- [X] T017 Test: add `test_rejects_non_spy_symbol` and `test_rejects_live_auto_enabled` in `backend/tests/test_config.py`:
   ```python
   import pytest
   from pydantic import ValidationError
@@ -330,7 +330,7 @@ until this phase is complete.**
 
 ### Models (FR-002, FR-006, FR-007, FR-009)
 
-- [ ] T018 [P] Test: in `backend/tests/test_models.py`, add:
+- [X] T018 [P] Test: in `backend/tests/test_models.py`, add:
   ```python
   import pytest
   from datetime import datetime, date
@@ -357,11 +357,11 @@ until this phase is complete.**
   ```
   Run — expect failure (models don't exist yet).
 
-- [ ] T019 Implement `backend/src/intraday_trade_spy/models.py` with every entity from `data-model.md`: `Direction`, `SignalStatus`, `Bar`, `IndicatorSnapshot`, `Signal`, `RiskDecision`, `TradePlan`, `Position`, `JournalEntry`, `BacktestRun`, `DataFingerprint`, `SummaryMetrics`. Use the exact field definitions from `data-model.md`. All immutable models use `model_config = ConfigDict(frozen=True)`. The `Bar` validator for `high >= low` and the `Signal` `model_validator(mode="after")` for `stop < entry < target` come from `data-model.md`. Run T018 tests — expect PASS. Commit.
+- [X] T019 Implement `backend/src/intraday_trade_spy/models.py` with every entity from `data-model.md`: `Direction`, `SignalStatus`, `Bar`, `IndicatorSnapshot`, `Signal`, `RiskDecision`, `TradePlan`, `Position`, `JournalEntry`, `BacktestRun`, `DataFingerprint`, `SummaryMetrics`. Use the exact field definitions from `data-model.md`. All immutable models use `model_config = ConfigDict(frozen=True)`. The `Bar` validator for `high >= low` and the `Signal` `model_validator(mode="after")` for `stop < entry < target` come from `data-model.md`. Run T018 tests — expect PASS. Commit.
 
 ### Clock (Engineering Standards — single source of truth)
 
-- [ ] T020 Test: in `backend/tests/test_clock.py`:
+- [X] T020 Test: in `backend/tests/test_clock.py`:
   ```python
   from datetime import datetime, time
   from zoneinfo import ZoneInfo
@@ -393,7 +393,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T021 Implement `backend/src/intraday_trade_spy/clock.py`. Surface area:
+- [X] T021 Implement `backend/src/intraday_trade_spy/clock.py`. Surface area:
   ```python
   from dataclasses import dataclass
   from datetime import datetime, time, timedelta
@@ -432,7 +432,7 @@ until this phase is complete.**
 
 ### Journal sink (FR-012)
 
-- [ ] T022 Test: in `backend/tests/test_journal.py`:
+- [X] T022 Test: in `backend/tests/test_journal.py`:
   ```python
   from datetime import datetime
   from zoneinfo import ZoneInfo
@@ -452,7 +452,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T023 Implement `backend/src/intraday_trade_spy/journal/logger.py`. Surface area:
+- [X] T023 Implement `backend/src/intraday_trade_spy/journal/logger.py`. Surface area:
   ```python
   from typing import Any
   from intraday_trade_spy.models import JournalEntry
@@ -471,7 +471,7 @@ until this phase is complete.**
   ```
   Run T022 — expect PASS. Commit.
 
-- [ ] T024 Test: in `backend/tests/test_journal.py`, add `test_exporter_writes_deterministic_csv`:
+- [X] T024 Test: in `backend/tests/test_journal.py`, add `test_exporter_writes_deterministic_csv`:
   ```python
   from pathlib import Path
   from datetime import datetime
@@ -498,7 +498,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T025 Implement `backend/src/intraday_trade_spy/journal/exporter.py`. Surface area:
+- [X] T025 Implement `backend/src/intraday_trade_spy/journal/exporter.py`. Surface area:
   ```python
   import csv
   from pathlib import Path
@@ -553,7 +553,7 @@ until this phase is complete.**
 
 ### Data loader (FR-003)
 
-- [ ] T026 Test: in `backend/tests/test_loader.py`:
+- [X] T026 Test: in `backend/tests/test_loader.py`:
   ```python
   from intraday_trade_spy.data.loader import load_bars
   from intraday_trade_spy.config import MarketConfig
@@ -575,7 +575,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T027 Implement `backend/src/intraday_trade_spy/data/loader.py`. Surface area:
+- [X] T027 Implement `backend/src/intraday_trade_spy/data/loader.py`. Surface area:
   ```python
   from pathlib import Path
   import pandas as pd
@@ -601,7 +601,7 @@ until this phase is complete.**
 
 ### BarIterator (FR-013 — structural future-leak prevention)
 
-- [ ] T028 Test: in `backend/tests/test_loader.py`, add:
+- [X] T028 Test: in `backend/tests/test_loader.py`, add:
   ```python
   from intraday_trade_spy.data.bars import BarIterator
 
@@ -617,7 +617,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T029 Implement `backend/src/intraday_trade_spy/data/bars.py`. Surface area:
+- [X] T029 Implement `backend/src/intraday_trade_spy/data/bars.py`. Surface area:
   ```python
   from typing import Iterator
   import pandas as pd
@@ -640,7 +640,7 @@ until this phase is complete.**
 
 ### Data fingerprint (FR-014)
 
-- [ ] T030 [P] Test: in `backend/tests/test_loader.py`, add:
+- [X] T030 [P] Test: in `backend/tests/test_loader.py`, add:
   ```python
   from intraday_trade_spy.data.fingerprint import fingerprint_csv
 
@@ -652,7 +652,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T031 Implement `backend/src/intraday_trade_spy/data/fingerprint.py`. Surface area:
+- [X] T031 Implement `backend/src/intraday_trade_spy/data/fingerprint.py`. Surface area:
   ```python
   import hashlib
   from pathlib import Path
@@ -677,7 +677,7 @@ until this phase is complete.**
 
 ### Indicators (FR-004, FR-005)
 
-- [ ] T032 Test: in `backend/tests/test_indicators.py`:
+- [X] T032 Test: in `backend/tests/test_indicators.py`:
   ```python
   import pandas as pd
   from intraday_trade_spy.data.indicators import attach_indicators
@@ -707,7 +707,7 @@ until this phase is complete.**
   ```
   Run — expect failure.
 
-- [ ] T033 Implement `backend/src/intraday_trade_spy/data/indicators.py`. Surface area:
+- [X] T033 Implement `backend/src/intraday_trade_spy/data/indicators.py`. Surface area:
   ```python
   from datetime import timedelta
   import pandas as pd
@@ -749,7 +749,7 @@ until this phase is complete.**
 
 ### Architecture guard
 
-- [ ] T034 Test: in `backend/tests/test_module_boundaries.py`:
+- [X] T034 Test: in `backend/tests/test_module_boundaries.py`:
   ```python
   import ast
   from pathlib import Path
