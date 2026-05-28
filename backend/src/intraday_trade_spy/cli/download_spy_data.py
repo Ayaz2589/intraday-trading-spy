@@ -14,7 +14,9 @@ from intraday_trade_spy.data.downloader import (
 
 
 def _default_out(timeframe: str, start: date, end: date) -> Path:
-    return Path("backend/data/raw") / f"spy_{timeframe}_{start}_{end}.csv"
+    # Relative to cwd. The conventional invocation is from `backend/`, where
+    # `data/raw/` is the right place. Run from elsewhere → pass --out.
+    return Path("data/raw") / f"spy_{timeframe}_{start}_{end}.csv"
 
 
 def main(argv: list[str] | None = None) -> int:

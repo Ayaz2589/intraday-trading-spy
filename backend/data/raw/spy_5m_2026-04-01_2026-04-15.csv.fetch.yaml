@@ -1,0 +1,16 @@
+bar_count: 780
+data_source: yfinance
+fetched_at: '2026-05-28T21:35:46.578537Z'
+gap_session_dates:
+- '2026-04-03'
+- '2026-04-04'
+- '2026-04-05'
+- '2026-04-11'
+- '2026-04-12'
+output_path: data/raw/spy_5m_2026-04-01_2026-04-15.csv
+output_sha256: 3fd519b0bf0d0f7a922ecebba4fc2202736f31ffd7dab0dfa1107653087e0168
+requested_end: '2026-04-15'
+requested_start: '2026-04-01'
+requested_timeframe: 5m
+session_count: 10
+yfinance_version: 1.4.1
