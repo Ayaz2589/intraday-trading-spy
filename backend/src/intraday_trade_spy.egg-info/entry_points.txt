@@ -1,0 +1,2 @@
+[console_scripts]
+intraday-trade-spy-backtest = intraday_trade_spy.cli.run_backtest:main

@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: intraday-trade-spy
+Version: 0.1.0
+Summary: SPY-only intraday backtester + (later) paper trader
+Requires-Python: >=3.11
+Requires-Dist: pydantic>=2.6
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: pandas>=2.2
+Requires-Dist: python-dateutil>=2.9
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: freezegun>=1.5; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
