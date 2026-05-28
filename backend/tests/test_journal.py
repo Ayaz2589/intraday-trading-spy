@@ -35,6 +35,22 @@ def test_logger_assigns_sequential_row_seq():
     assert [r.row_seq for r in log.rows()] == [0, 1, 2]
 
 
+def test_every_row_has_snapshot_and_reason(default_config_path, sample_csv_path, tmp_path):
+    from intraday_trade_spy.backtest.engine import BacktestEngine
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(default_config_path)
+    eng = BacktestEngine(cfg)
+    result = eng.run(csv_path=sample_csv_path, output_dir=tmp_path)
+    for r in result.journal_rows:
+        assert r.reason
+        # Every row produced by the engine carries the snapshot; lockout rows
+        # also call log.log with vwap set.
+        assert r.vwap is not None or r.status.value == "lockout"
+        if r.status.value == "rejected":
+            assert r.rejection_check
+
+
 def test_exporter_writes_deterministic_csv(tmp_path: Path):
     log = JournalLogger()
     log.log(

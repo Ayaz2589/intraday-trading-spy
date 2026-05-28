@@ -1507,7 +1507,7 @@ that failed.
 and the spec, write one sentence explaining the system's decision at
 that moment.
 
-- [ ] T055 [US2] Verification test: in `backend/tests/test_journal.py`, add `test_every_row_has_snapshot_and_reason`:
+- [X] T055 [US2] Verification test: in `backend/tests/test_journal.py`, add `test_every_row_has_snapshot_and_reason`:
   ```python
   from intraday_trade_spy.backtest.engine import BacktestEngine
   from intraday_trade_spy.config import load_config
@@ -1524,9 +1524,9 @@ that moment.
   ```
   Run — should PASS already if Phase 3 is correct. If not, fix the engine `_log_signal` / `_log_exit` calls to populate `vwap` for every row including `lockout`. Commit.
 
-- [ ] T056 [US2] Test: complete the per-rejection-reason coverage in `backend/tests/test_risk_manager.py`. For each of the remaining FR-007 reasons not yet covered in T041, add an explicit `test_rejects_<reason>` case. Required minimum set: `position_already_open`, `cooldown_active`, `no_new_trades_after`, `position_size_zero`, `position_value_exceeds_cap`. Run all — expect PASS.
+- [X] T056 [US2] Test: complete the per-rejection-reason coverage in `backend/tests/test_risk_manager.py`. For each of the remaining FR-007 reasons not yet covered in T041, add an explicit `test_rejects_<reason>` case. Required minimum set: `position_already_open`, `cooldown_active`, `no_new_trades_after`, `position_size_zero`, `position_value_exceeds_cap`. Run all — expect PASS.
 
-- [ ] T057 [US2] Test: in `backend/tests/test_backtest_engine.py`, add `test_lockout_logged_on_daily_loss_hit`:
+- [X] T057 [US2] Test: in `backend/tests/test_backtest_engine.py`, add `test_lockout_logged_on_daily_loss_hit`:
   ```python
   def test_lockout_logged_on_daily_loss_hit(default_config_path, sample_csv_path, tmp_path):
       from intraday_trade_spy.backtest.engine import BacktestEngine
@@ -1553,7 +1553,7 @@ row's `reason` field is non-empty. Every `rejected` row has a populated
 scenario US3-1 produces a deterministic, explainable change in the
 journal output.
 
-- [ ] T058 [US3] Test: in `backend/tests/test_config_knobs.py`, add a parametrized test:
+- [X] T058 [US3] Test: in `backend/tests/test_config_knobs.py`, add a parametrized test:
   ```python
   import copy, json, yaml
   import pytest
@@ -1588,7 +1588,7 @@ journal output.
   ```
   Run — some cases may need the fixture to be sensitive to the knob. If a case fails because the fixture is unaffected, augment the fixture so the change visibly matters. Commit.
 
-- [ ] T059 [US3] Test: in `backend/tests/test_default_config_blocks_live.py`:
+- [X] T059 [US3] Test: in `backend/tests/test_default_config_blocks_live.py`:
   ```python
   import pytest
   from pydantic import ValidationError
@@ -1622,9 +1622,9 @@ position sizes are halved.
 **Goal**: The engine cannot accidentally look at future bars; an
 adversarial fixture exists to prove it.
 
-- [ ] T060 [US4] Create the adversarial fixture at `backend/tests/fixtures/adversarial_future_leak.csv`. Design: one session of 5-minute bars where bar N+1's high is huge (e.g., +5%) compared to bar N. A leaking strategy that peeked at bar N+1 would emit a signal at bar N. The correct (non-leaking) engine emits no signal at bar N because bar N's indicators say "no setup." Document the design intent in a comment header (CSV-comment alternative: pair it with `backend/tests/fixtures/adversarial_future_leak.README.md` explaining the leak hypothesis and the expected non-leaking behavior).
+- [X] T060 [US4] Create the adversarial fixture at `backend/tests/fixtures/adversarial_future_leak.csv`. Design: one session of 5-minute bars where bar N+1's high is huge (e.g., +5%) compared to bar N. A leaking strategy that peeked at bar N+1 would emit a signal at bar N. The correct (non-leaking) engine emits no signal at bar N because bar N's indicators say "no setup." Document the design intent in a comment header (CSV-comment alternative: pair it with `backend/tests/fixtures/adversarial_future_leak.README.md` explaining the leak hypothesis and the expected non-leaking behavior).
 
-- [ ] T061 [US4] Test: in `backend/tests/test_backtest_engine.py`, add `test_no_future_bar_leakage`:
+- [X] T061 [US4] Test: in `backend/tests/test_backtest_engine.py`, add `test_no_future_bar_leakage`:
   ```python
   def test_no_future_bar_leakage(default_config_path, adversarial_future_leak_csv_path, tmp_path):
       from intraday_trade_spy.backtest.engine import BacktestEngine
@@ -1639,7 +1639,7 @@ adversarial fixture exists to prove it.
   ```
   Run — expect PASS (BarIterator's structural guard ensures this). If it fails, the strategy or indicators are reading from a bar with a larger timestamp than the current bar — fix.
 
-- [ ] T062 [US4] Test: in `backend/tests/test_backtest_engine.py`, add `test_engine_rejects_out_of_order_bars`:
+- [X] T062 [US4] Test: in `backend/tests/test_backtest_engine.py`, add `test_engine_rejects_out_of_order_bars`:
   ```python
   def test_engine_rejects_out_of_order_bars(default_config_path, tmp_path):
       from intraday_trade_spy.backtest.engine import BacktestEngine
@@ -1667,7 +1667,7 @@ adversarial fixture exists to prove it.
 **Goal**: Re-running with identical config and identical data produces
 byte-identical `journal.csv`.
 
-- [ ] T063 [US5] Test: in `backend/tests/test_reproducibility.py`:
+- [X] T063 [US5] Test: in `backend/tests/test_reproducibility.py`:
   ```python
   import subprocess, sys
   from pathlib import Path
@@ -1687,7 +1687,7 @@ byte-identical `journal.csv`.
   ```
   Run — expect PASS. If it fails, the journal exporter (T025) or the engine ordering is non-deterministic; fix by sorting strictly per `journal-csv-schema.md`.
 
-- [ ] T064 [US5] Test: in `backend/tests/test_manifest.py`, add `test_run_yaml_has_fingerprint_and_resolved_config`:
+- [X] T064 [US5] Test: in `backend/tests/test_manifest.py`, add `test_run_yaml_has_fingerprint_and_resolved_config`:
   ```python
   import subprocess, sys, yaml
   def test_run_yaml_has_fingerprint_and_resolved_config(tmp_path, default_config_path):
