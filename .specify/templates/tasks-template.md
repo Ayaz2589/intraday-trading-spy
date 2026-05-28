@@ -9,7 +9,13 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Tests are OPTIONAL in general, BUT per constitution principle IV
+(Test-First for Strategy & Risk, NON-NEGOTIABLE), tests are MANDATORY for
+any task that touches `backend/src/intraday_trade_spy/strategy/`,
+`backend/src/intraday_trade_spy/risk/`, `backend/src/intraday_trade_spy/broker/`,
+`backend/src/intraday_trade_spy/backtest/`, or `backend/src/intraday_trade_spy/data/indicators.py`.
+For those tasks, the failing test MUST be authored before implementation and
+listed as a preceding task in this file.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
