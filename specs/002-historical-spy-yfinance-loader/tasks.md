@@ -22,6 +22,21 @@ also carry the user-story tag (`[US1]` … `[US5]`).
 
 **Task IDs**: Continuous with Feature 001 — this file starts at T071.
 
+## Cross-feature prerequisite (H1)
+
+This feature consumes **Feature 001**'s `data/loader.py::load_bars` and
+`config::MarketConfig`. Specifically, T107 (the slow integration test)
+imports both. Implementation order:
+
+1. Feature 001 MUST be at least through T027 (loader implemented) and
+   T016 (config implemented) before this feature's T107 will pass.
+2. The recommended global execution order is: Feature 001 MVP
+   (T001–T054) → Feature 002 MVP (T071–T096) → Feature 001 polish
+   (T055–T070) → Feature 002 polish (T097–T112).
+3. If you must start Feature 002 standalone for any reason, mark
+   T107 with `pytest.importorskip("intraday_trade_spy.data.loader")`
+   so the suite degrades gracefully instead of erroring at collection.
+
 ## TDD micro-cycle convention
 
 For each implementation task whose target is under
@@ -418,11 +433,78 @@ against a mocked yfinance. The output CSV passes Feature 001's
           return manifest
 
       def _call_yf(self, start: date, end: date, timeframe: Timeframe) -> pd.DataFrame:
-          # T091 will add retry; this is the minimal version for the test.
+          # T085c will replace this passthrough with the FR-010 retry loop.
           return self._download_fn(tickers="SPY", interval=timeframe, start=str(start),
                                     end=str(end + timedelta(days=1)), auto_adjust=False, progress=False)
   ```
   Plus add the four private helpers stubbed below (the next four task pairs flesh them out). For now make `_normalize`, `_drop_glitches`, `_write_csv`, `_sha256`, `_build_manifest`, `_write_manifest` minimal enough to make T084 pass. Commit.
+
+### 429 retry (FR-010 — C1 finding)
+
+- [ ] T085b [US1] Test: in `backend/tests/test_downloader.py`, add a retry test that patches `time.sleep` so the test runs instantly:
+  ```python
+  from datetime import date
+  from pathlib import Path
+  import pytest
+  from intraday_trade_spy.data.downloader import (
+      Downloader, DownloadRequest, RETRY_BACKOFF_SECONDS,
+  )
+
+  class _Yfinance429(Exception):
+      """Stand-in for a yfinance HTTP 429 (its concrete type varies by version)."""
+
+  def test_retries_once_on_429_then_succeeds(tmp_path, monkeypatch, mock_yfinance_download):
+      slept = []
+      monkeypatch.setattr("time.sleep", lambda s: slept.append(s))
+      good_mock = mock_yfinance_download(start="2026-04-01", end="2026-04-01", n_bars=78)
+      calls = {"n": 0}
+      def _flaky(**kw):
+          calls["n"] += 1
+          if calls["n"] == 1:
+              raise _Yfinance429("429 Too Many Requests")
+          return good_mock(**kw)
+      d = Downloader(download_fn=_flaky, data_source="mock")
+      req = DownloadRequest(start=date(2026,4,1), end=date(2026,4,1), out=tmp_path/"spy.csv")
+      manifest = d.fetch(req)
+      assert calls["n"] == 2
+      assert slept == [RETRY_BACKOFF_SECONDS]
+      assert manifest.bar_count == 78
+
+  def test_fails_fast_on_second_429(tmp_path, monkeypatch):
+      monkeypatch.setattr("time.sleep", lambda s: None)
+      def _always_429(**kw):
+          raise _Yfinance429("429 Too Many Requests")
+      d = Downloader(download_fn=_always_429, data_source="mock")
+      req = DownloadRequest(start=date(2026,4,1), end=date(2026,4,1), out=tmp_path/"spy.csv")
+      with pytest.raises(_Yfinance429):
+          d.fetch(req)
+  ```
+  Run — expect failure (current `_call_yf` is a passthrough).
+
+- [ ] T085c [US1] Implement the retry in `_call_yf` in `backend/src/intraday_trade_spy/data/downloader.py`:
+  ```python
+  import time
+
+  def _call_yf(self, start: date, end: date, timeframe: Timeframe) -> pd.DataFrame:
+      last_exc: Exception | None = None
+      for attempt in range(RETRY_MAX_ATTEMPTS):
+          try:
+              return self._download_fn(
+                  tickers="SPY", interval=timeframe,
+                  start=str(start), end=str(end + timedelta(days=1)),
+                  auto_adjust=False, progress=False,
+              )
+          except Exception as exc:
+              # yfinance raises various concrete types; we sniff the message for "429".
+              if "429" in str(exc) and attempt < RETRY_MAX_ATTEMPTS - 1:
+                  time.sleep(RETRY_BACKOFF_SECONDS)
+                  last_exc = exc
+                  continue
+              raise
+      assert last_exc is not None
+      raise last_exc
+  ```
+  Run T085b — expect PASS. Commit.
 
 ### Column normalizer
 
@@ -464,6 +546,56 @@ against a mocked yfinance. The output CSV passes Feature 001's
       return df.loc[mask].reset_index(drop=True)
   ```
   Run T086 — expect PASS. Commit.
+
+### Session filter + dedupe coverage (M2, M3 findings)
+
+- [ ] T087b [US1] Test: in `backend/tests/test_downloader.py`, add a pre-market / after-hours filter test:
+  ```python
+  import pandas as pd
+  from zoneinfo import ZoneInfo
+  from intraday_trade_spy.data.downloader import Downloader
+
+  ET = ZoneInfo("America/New_York")
+
+  def test_normalize_filters_pre_market_and_after_hours():
+      # Build a yfinance-shaped DataFrame with one pre-market bar, one in-session bar,
+      # and one after-hours bar.
+      idx = pd.DatetimeIndex([
+          pd.Timestamp("2026-04-01 12:00:00", tz="UTC"),  # 08:00 ET — pre-market
+          pd.Timestamp("2026-04-01 13:30:00", tz="UTC"),  # 09:30 ET — in-session
+          pd.Timestamp("2026-04-01 20:30:00", tz="UTC"),  # 16:30 ET — after-hours
+      ], name="Datetime")
+      raw = pd.DataFrame({"Open":[1,1,1],"High":[1,1,1],"Low":[1,1,1],
+                          "Close":[1,1,1],"Adj Close":[1,1,1],"Volume":[100,100,100]}, index=idx)
+      d = Downloader(download_fn=lambda **kw: raw, data_source="mock")
+      norm = d._normalize(raw)
+      times = norm["timestamp"].dt.time.tolist()
+      assert pd.Timestamp("09:30").time() in times
+      assert pd.Timestamp("08:00").time() not in times
+      assert pd.Timestamp("16:30").time() not in times
+  ```
+  Run — expect PASS (the existing `_normalize` from T087 already filters; this just locks the behavior). If it fails, fix `_normalize`. Commit.
+
+- [ ] T087c [US1] Test: in `backend/tests/test_downloader.py`, add an intra-chunk dedupe test:
+  ```python
+  import pandas as pd
+  from zoneinfo import ZoneInfo
+  from intraday_trade_spy.data.downloader import Downloader
+
+  ET = ZoneInfo("America/New_York")
+
+  def test_normalize_dedupes_duplicate_timestamps_within_chunk():
+      # Two rows with the same in-session timestamp; only the first should survive.
+      ts = pd.Timestamp("2026-04-01 13:30:00", tz="UTC")  # 09:30 ET
+      idx = pd.DatetimeIndex([ts, ts], name="Datetime")
+      raw = pd.DataFrame({"Open":[1,2],"High":[1,2],"Low":[1,2],
+                          "Close":[1,2],"Adj Close":[1,2],"Volume":[100,200]}, index=idx)
+      d = Downloader(download_fn=lambda **kw: raw, data_source="mock")
+      norm = d._normalize(raw)
+      assert len(norm) == 1
+      assert norm.iloc[0]["open"] == 1  # kept the first
+  ```
+  Run — expect PASS (the existing `_normalize` uses `drop_duplicates(keep="first")`). If it fails, fix `_normalize`. Commit.
 
 ### Glitch dropper
 
@@ -657,6 +789,79 @@ against a mocked yfinance. The output CSV passes Feature 001's
       raise SystemExit(main())
   ```
   Run T094 — expect PASS. Commit.
+
+### CLI flag + exit-code coverage (M1, H2 findings)
+
+- [ ] T094b [US1] Test: in `backend/tests/test_download_cli.py`, add a `--force` overwrite test:
+  ```python
+  from pathlib import Path
+  import pandas as pd
+
+  def _patch_yf(monkeypatch, n_bars=78):
+      import numpy as np
+      idx = pd.date_range("2026-04-01T13:30:00Z", periods=n_bars, freq="5min", tz="UTC")
+      df = pd.DataFrame({"Open":1,"High":1,"Low":1,"Close":1,"Adj Close":1,"Volume":[100]*n_bars}, index=idx)
+      df.index.name = "Datetime"
+      monkeypatch.setattr("yfinance.download", lambda **kw: df)
+
+  def test_force_overwrites_existing_output(tmp_path, monkeypatch):
+      _patch_yf(monkeypatch)
+      from intraday_trade_spy.cli.download_spy_data import main
+      out = tmp_path / "spy.csv"
+      out.write_text("pre-existing")  # simulate existing output
+      rc = main(["--start","2026-04-01","--end","2026-04-01","--out",str(out),"--force"])
+      assert rc == 0
+      assert out.read_text() != "pre-existing"
+  ```
+  Run — expect PASS if T095's CLI threads `--force` through to `DownloadRequest`. Otherwise fix. Commit.
+
+- [ ] T094c [US1] Test: in `backend/tests/test_download_cli.py`, add a `--no-progress` suppression test for a chunked range:
+  ```python
+  def test_no_progress_suppresses_chunk_lines(capsys, tmp_path, monkeypatch):
+      import pandas as pd
+      idx_a = pd.date_range("2026-03-01T14:30:00Z", periods=78, freq="5min", tz="UTC")
+      idx_b = pd.date_range("2026-05-01T13:30:00Z", periods=78, freq="5min", tz="UTC")
+      df_a = pd.DataFrame({"Open":1,"High":1,"Low":1,"Close":1,"Adj Close":1,"Volume":[100]*78}, index=idx_a)
+      df_b = pd.DataFrame({"Open":1,"High":1,"Low":1,"Close":1,"Adj Close":1,"Volume":[100]*78}, index=idx_b)
+      df_a.index.name = "Datetime"; df_b.index.name = "Datetime"
+      calls = {"n": 0}
+      def _mock(**kw):
+          calls["n"] += 1
+          return df_a if calls["n"] == 1 else df_b
+      monkeypatch.setattr("yfinance.download", _mock)
+      from intraday_trade_spy.cli.download_spy_data import main
+      out = tmp_path / "spy.csv"
+      rc = main(["--start","2026-03-01","--end","2026-05-01","--out",str(out),"--no-progress"])
+      assert rc == 0
+      captured = capsys.readouterr().out
+      assert "chunk" not in captured.lower()
+      assert "Resolved range" not in captured  # the resolved-range line is also suppressed
+  ```
+  Run — expect PASS if T095 and T100 thread `req.show_progress` correctly. Otherwise fix the CLI's resolved-range print and T100's chunk progress to honor `req.show_progress`. Commit.
+
+- [ ] T094d [US1] Test: in `backend/tests/test_download_cli.py`, add an FR-009 exit-code test for "output exists without --force":
+  ```python
+  def test_cli_exits_2_when_output_exists_without_force(tmp_path, monkeypatch):
+      _patch_yf(monkeypatch)
+      from intraday_trade_spy.cli.download_spy_data import main
+      out = tmp_path / "spy.csv"
+      out.write_text("pre-existing")
+      rc = main(["--start","2026-04-01","--end","2026-04-01","--out",str(out)])
+      assert rc == 2
+  ```
+  Run — expect PASS if T095 catches `OutputExistsError` → exit 2. Otherwise fix. Commit.
+
+- [ ] T094e [US1] Test: in `backend/tests/test_download_cli.py`, add an FR-009 exit-code test for "yfinance returned zero rows":
+  ```python
+  def test_cli_exits_4_when_yfinance_returns_zero_rows(tmp_path, monkeypatch):
+      import pandas as pd
+      monkeypatch.setattr("yfinance.download", lambda **kw: pd.DataFrame(columns=["Open","High","Low","Close","Adj Close","Volume"]))
+      from intraday_trade_spy.cli.download_spy_data import main
+      out = tmp_path / "spy.csv"
+      rc = main(["--start","2026-04-01","--end","2026-04-01","--out",str(out)])
+      assert rc == 4
+  ```
+  Run — expect PASS if T095 catches `NoBarsFetchedError` → exit 4. Note that `_normalize` must gracefully handle an empty input DataFrame (returning an empty DataFrame). If T087's `_normalize` errors on empty input, add a one-line guard at its top: `if raw.empty: return raw.assign(symbol="SPY")[["symbol"]].iloc[0:0]` — adjust columns accordingly. Commit.
 
 ### Script wrapper (TDD-exempt per constitution v1.1.0)
 
@@ -856,18 +1061,24 @@ and `gap_session_dates` lists weekend / holiday dates correctly.
   ```
   Run — expect PASS if `_build_manifest` gap logic is correct; else fix. Commit.
 
-- [ ] T105 [US4] Test: in `backend/tests/test_downloader.py`, add a reproducibility check on the CSV bytes (FR-015):
+- [ ] T105 [US4] Test: in `backend/tests/test_downloader.py`, add a reproducibility check on the CSV bytes AND the sidecar manifest (FR-015; M4 finding):
   ```python
+  import yaml
   from datetime import date
   from intraday_trade_spy.data.downloader import Downloader, DownloadRequest
 
-  def test_two_runs_byte_identical_csv(tmp_path, mock_yfinance_download):
+  def test_two_runs_byte_identical_csv_and_manifest(tmp_path, mock_yfinance_download):
       mock_fn = mock_yfinance_download(start="2026-04-01", end="2026-04-01", n_bars=78)
       out1 = tmp_path / "a.csv"; out2 = tmp_path / "b.csv"
       d = Downloader(download_fn=mock_fn, data_source="mock")
       d.fetch(DownloadRequest(start=date(2026,4,1), end=date(2026,4,1), out=out1))
       d.fetch(DownloadRequest(start=date(2026,4,1), end=date(2026,4,1), out=out2))
       assert out1.read_bytes() == out2.read_bytes()
+      # Sidecar manifest is byte-identical except for `fetched_at` (wall-clock time).
+      m1 = yaml.safe_load((tmp_path / "a.csv.fetch.yaml").read_text())
+      m2 = yaml.safe_load((tmp_path / "b.csv.fetch.yaml").read_text())
+      m1.pop("fetched_at"); m2.pop("fetched_at")
+      assert m1 == m2
   ```
   Run — expect PASS. If not, locate the source of non-determinism and pin it (most likely a missing format string). Commit.
 
@@ -896,7 +1107,7 @@ hits real yfinance.
   ```
   Run `pytest backend/tests/test_download_cli.py::test_socket_is_blocked_by_default -v` — expect PASS. Run `pytest -m slow backend/tests/test_download_cli.py::test_socket_allowed_when_marked_slow -v` — expect PASS. Commit.
 
-- [ ] T107 [US5] Test: in `backend/tests/test_yfinance_integration.py` (opt-in, real network):
+- [ ] T107 [US5] Test: in `backend/tests/test_yfinance_integration.py` (opt-in, real network). **Parametrized over three independent date ranges per SC-003 (M5 finding):**
   ```python
   import pytest
   from datetime import date, timedelta
@@ -907,11 +1118,17 @@ hits real yfinance.
 
   pytestmark = pytest.mark.slow
 
-  def test_real_yfinance_fetch_loads_via_feature_001(tmp_path):
-      # Use a 3-day window ending one trading day ago to avoid edge effects.
+  def _ranges():
       end = date.today() - timedelta(days=1)
-      start = end - timedelta(days=2)
-      out = tmp_path / "spy_real.csv"
+      return [
+          (end - timedelta(days=2),  end),                              # last 3 days
+          (end - timedelta(days=30), end - timedelta(days=27)),         # ~1 month back, 3-day window
+          (end - timedelta(days=120), end - timedelta(days=117)),       # ~4 months back, 3-day window
+      ]
+
+  @pytest.mark.parametrize("start,end", _ranges())
+  def test_real_yfinance_fetch_loads_via_feature_001(tmp_path, start, end):
+      out = tmp_path / f"spy_real_{start}_{end}.csv"
       d = Downloader(data_source="yfinance")
       req = DownloadRequest(start=start, end=end, out=out)
       m = d.fetch(req)
@@ -922,7 +1139,7 @@ hits real yfinance.
       df = load_bars(out, market=market)
       assert len(df) == m.bar_count
   ```
-  Run `pytest -m slow backend/tests/test_yfinance_integration.py -v` once manually with internet. Expect PASS. Commit.
+  Run `pytest -m slow backend/tests/test_yfinance_integration.py -v` once manually with internet. Expect 3 PASS. If one range is on a market-closed week (rare), substitute another business-day window. Commit.
 
 **Checkpoint (Phase 7)**: `pytest -m "not slow"` green and provably offline. `pytest -m slow` green (when run with internet).
 
@@ -938,11 +1155,17 @@ hits real yfinance.
 
 - [ ] T111 Run `pytest --cov=intraday_trade_spy.data.downloader --cov=intraday_trade_spy.cli.download_spy_data --cov-report=term-missing backend/tests -m "not slow"`. Confirm 100% line coverage for both modules (SC-002). If any uncovered branch exists, add a test.
 
-- [ ] T112 Run the quickstart end-to-end with a real yfinance fetch (`pytest -m slow`). Confirm the produced CSV runs through Feature 001's `run_backtest` cleanly:
+- [ ] T112 Run the quickstart end-to-end with a real yfinance fetch (`pytest -m slow`). Confirm the produced CSV runs through Feature 001's `run_backtest` cleanly **AND record the wall-clock duration of the 30-day fetch (SC-001 — M6 finding):**
   ```bash
-  python -m intraday_trade_spy.cli.download_spy_data --start $(date -v-30d +%Y-%m-%d) --end $(date -v-1d +%Y-%m-%d)
-  python -m intraday_trade_spy.cli.run_backtest --config backend/config/config.yaml --data backend/data/raw/spy_5m_*.csv
+  # SC-001: 30-day fetch must complete in <60s on a residential connection.
+  time python -m intraday_trade_spy.cli.download_spy_data \
+      --start $(date -v-30d +%Y-%m-%d) --end $(date -v-1d +%Y-%m-%d)
+  # The wall-clock line `real ... ` SHOULD show under 60 seconds.
+  python -m intraday_trade_spy.cli.run_backtest \
+      --config backend/config/config.yaml \
+      --data backend/data/raw/spy_5m_*.csv
   ```
+  If the 30-day fetch exceeds 60s, investigate (residential connection variability is allowed; CI runners are not the SLA target). Record the observed time in the commit message for posterity.
 
 **Checkpoint (Phase 8)**: All tests green. Ruff clean. Coverage targets met. End-to-end fetch → backtest works on real data.
 

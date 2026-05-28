@@ -115,9 +115,29 @@ MAX_5M_HISTORY_DAYS = 730          # yfinance's 5m history limit
 RETRY_BACKOFF_SECONDS = 5          # delay between attempts on 429
 RETRY_MAX_ATTEMPTS = 2             # initial + 1 retry
 ET = ZoneInfo("America/New_York")
+SESSION_START = time(9, 30)        # ET — duplicated from Feature 001's default MarketConfig
+SESSION_END = time(16, 0)          # ET — half-open: bars at 16:00 are excluded
 ```
 
 These are NOT in `config.yaml` (see research.md Decision 9).
+
+**Note on the session-time duplication (L1 finding from /speckit-analyze
+on this feature):** `SESSION_START` and `SESSION_END` here duplicate the
+values held in Feature 001's `config.yaml::market.session_start` /
+`session_end`. This is deliberate, not a bug. Reasons:
+
+1. The downloader has no `Config` object to draw from — it's a standalone
+   CLI that produces input for the backtester, not a downstream
+   consumer.
+2. The values are constitutionally fixed at 09:30–16:00 ET (regular US
+   session). Adding a config-threading layer to support a future where
+   they differ would be premature.
+3. Keeping them at the top of `downloader.py` makes them visible to any
+   reader; a single-file edit is enough to change them if yfinance
+   ever returns a different session shape.
+
+If a later feature consolidates session-time configuration into a
+shared package, this duplication should resolve at that time.
 
 ---
 
