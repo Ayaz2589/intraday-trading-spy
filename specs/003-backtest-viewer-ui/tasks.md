@@ -431,7 +431,7 @@ run. Confirm all four sections render.
 
 ### Backend: GET /api/runs
 
-- [ ] T143 [US1] Test: in `backend/tests/test_static_server.py`, add:
+- [X] T143 [US1] Test: in `backend/tests/test_static_server.py`, add:
   ```python
   def test_get_runs_returns_empty_array_when_no_runs(tmp_path, monkeypatch):
       monkeypatch.setattr("intraday_trade_spy.api.static_server.RUNS_DIR", tmp_path)
@@ -459,7 +459,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T144 [US1] Implement `GET /api/runs` in `backend/src/intraday_trade_spy/api/static_server.py`:
+- [X] T144 [US1] Implement `GET /api/runs` in `backend/src/intraday_trade_spy/api/static_server.py`:
   ```python
   import yaml
   from datetime import datetime
@@ -490,7 +490,7 @@ run. Confirm all four sections render.
 
 ### Backend: GET /api/runs/{run_id}/journal
 
-- [ ] T145 [US1] Test: in `backend/tests/test_static_server.py`:
+- [X] T145 [US1] Test: in `backend/tests/test_static_server.py`:
   ```python
   def test_get_journal_404_when_run_missing(tmp_path, monkeypatch):
       monkeypatch.setattr("intraday_trade_spy.api.static_server.RUNS_DIR", tmp_path)
@@ -525,7 +525,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T146 [US1] Implement `GET /api/runs/{run_id}/journal`:
+- [X] T146 [US1] Implement `GET /api/runs/{run_id}/journal`:
   ```python
   import csv as _csv
 
@@ -556,7 +556,7 @@ run. Confirm all four sections render.
 
 ### Backend: GET /api/runs/{run_id}/summary
 
-- [ ] T147 [US1] Test: in `backend/tests/test_static_server.py`:
+- [X] T147 [US1] Test: in `backend/tests/test_static_server.py`:
   ```python
   def test_get_summary_returns_json(tmp_path, monkeypatch):
       d = tmp_path / "abc"; d.mkdir()
@@ -576,7 +576,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T148 [US1] Implement `GET /api/runs/{run_id}/summary`:
+- [X] T148 [US1] Implement `GET /api/runs/{run_id}/summary`:
   ```python
   import json as _json
 
@@ -591,7 +591,7 @@ run. Confirm all four sections render.
 
 ### Backend: GET /api/runs/{run_id}/manifest
 
-- [ ] T149 [US1] Test: in `backend/tests/test_static_server.py`:
+- [X] T149 [US1] Test: in `backend/tests/test_static_server.py`:
   ```python
   def test_get_manifest_returns_yaml_as_json(tmp_path, monkeypatch):
       d = tmp_path / "abc"; d.mkdir()
@@ -610,7 +610,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T150 [US1] Implement `GET /api/runs/{run_id}/manifest`:
+- [X] T150 [US1] Implement `GET /api/runs/{run_id}/manifest`:
   ```python
   @app.get("/api/runs/{run_id}/manifest")
   def get_manifest(run_id: str):
@@ -623,7 +623,7 @@ run. Confirm all four sections render.
 
 ### Frontend: HelpTooltip component
 
-- [ ] T151 [P] [US1] Test: in `frontend/src/components/help-tooltip.test.tsx`:
+- [X] T151 [P] [US1] Test: in `frontend/src/components/help-tooltip.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import userEvent from "@testing-library/user-event";
@@ -646,7 +646,7 @@ run. Confirm all four sections render.
   ```
   Run `npm test help-tooltip` — expect failure.
 
-- [ ] T152 [US1] Implement `frontend/src/components/help-tooltip.tsx`:
+- [X] T152 [US1] Implement `frontend/src/components/help-tooltip.tsx`:
   ```tsx
   import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
   import { Button } from "@/components/ui/button";
@@ -680,7 +680,7 @@ run. Confirm all four sections render.
 
 ### Frontend: StatusBadge component
 
-- [ ] T153 [P] [US1] Test: in `frontend/src/components/status-badge.test.tsx`:
+- [X] T153 [P] [US1] Test: in `frontend/src/components/status-badge.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { StatusBadge } from "./status-badge";
@@ -699,7 +699,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T154 [US1] Implement `frontend/src/components/status-badge.tsx`:
+- [X] T154 [US1] Implement `frontend/src/components/status-badge.tsx`:
   ```tsx
   import { Badge } from "@/components/ui/badge";
   import { cn } from "@/lib/utils";
@@ -723,7 +723,7 @@ run. Confirm all four sections render.
 
 ### Frontend: API client
 
-- [ ] T155 [P] [US1] Test: in `frontend/src/api/client.test.ts`:
+- [X] T155 [P] [US1] Test: in `frontend/src/api/client.test.ts`:
   ```ts
   import { fetchRuns, fetchJournal, fetchSummary, fetchManifest } from "./client";
 
@@ -755,7 +755,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T156 [US1] Implement `frontend/src/api/client.ts`:
+- [X] T156 [US1] Implement `frontend/src/api/client.ts`:
   ```ts
   import type { RunSummaryView, JournalRowView, BarView, RunManifestView, SummaryMetricsView } from "./types";
 
@@ -781,7 +781,7 @@ run. Confirm all four sections render.
 
 ### Frontend: RunsSidebar
 
-- [ ] T157 [P] [US1] Test: in `frontend/src/components/runs-sidebar.test.tsx`:
+- [X] T157 [P] [US1] Test: in `frontend/src/components/runs-sidebar.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import userEvent from "@testing-library/user-event";
@@ -806,7 +806,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T158 [US1] Implement `frontend/src/components/runs-sidebar.tsx`:
+- [X] T158 [US1] Implement `frontend/src/components/runs-sidebar.tsx`:
   ```tsx
   import { Link } from "react-router";
   import type { RunSummaryView } from "@/api/types";
@@ -844,7 +844,7 @@ run. Confirm all four sections render.
 
 ### Frontend: RunHeader
 
-- [ ] T159 [P] [US1] Test: in `frontend/src/components/run-header.test.tsx`:
+- [X] T159 [P] [US1] Test: in `frontend/src/components/run-header.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { RunHeader } from "./run-header";
@@ -868,7 +868,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T160 [US1] Implement `frontend/src/components/run-header.tsx`:
+- [X] T160 [US1] Implement `frontend/src/components/run-header.tsx`:
   ```tsx
   import type { RunManifestView } from "@/api/types";
 
@@ -889,7 +889,7 @@ run. Confirm all four sections render.
 
 ### Frontend: SummaryMetricsCard
 
-- [ ] T161 [P] [US1] Test: in `frontend/src/components/summary-metrics-card.test.tsx`:
+- [X] T161 [P] [US1] Test: in `frontend/src/components/summary-metrics-card.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { SummaryMetricsCard } from "./summary-metrics-card";
@@ -919,7 +919,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T162 [US1] Implement `frontend/src/components/summary-metrics-card.tsx`. **M6 fix**: the "Daily DD" tile is removed — there is no separate daily_drawdown metric in the backend; rendering `max_drawdown_r` twice was misleading. 7 metrics now:
+- [X] T162 [US1] Implement `frontend/src/components/summary-metrics-card.tsx`. **M6 fix**: the "Daily DD" tile is removed — there is no separate daily_drawdown metric in the backend; rendering `max_drawdown_r` twice was misleading. 7 metrics now:
   ```tsx
   import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
   import { HelpTooltip } from "./help-tooltip";
@@ -959,7 +959,7 @@ run. Confirm all four sections render.
 
 ### Frontend: RejectionBreakdownCard
 
-- [ ] T163 [P] [US1] Test: in `frontend/src/components/rejection-breakdown-card.test.tsx`:
+- [X] T163 [P] [US1] Test: in `frontend/src/components/rejection-breakdown-card.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { RejectionBreakdownCard } from "./rejection-breakdown-card";
@@ -979,7 +979,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T164 [US1] Implement `frontend/src/components/rejection-breakdown-card.tsx`:
+- [X] T164 [US1] Implement `frontend/src/components/rejection-breakdown-card.tsx`:
   ```tsx
   import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
   import { HelpTooltip } from "./help-tooltip";
@@ -1012,7 +1012,7 @@ run. Confirm all four sections render.
 
 ### Frontend: JournalTable
 
-- [ ] T165 [P] [US1] Test: in `frontend/src/components/journal-table.test.tsx`:
+- [X] T165 [P] [US1] Test: in `frontend/src/components/journal-table.test.tsx`:
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { JournalTable } from "./journal-table";
@@ -1040,7 +1040,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T166 [US1] Implement `frontend/src/components/journal-table.tsx`:
+- [X] T166 [US1] Implement `frontend/src/components/journal-table.tsx`:
   ```tsx
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
   import { StatusBadge } from "./status-badge";
@@ -1092,7 +1092,7 @@ run. Confirm all four sections render.
 
 ### Frontend: routes + App wiring
 
-- [ ] T167 [US1] Test: in `frontend/src/routes/root.test.tsx`:
+- [X] T167 [US1] Test: in `frontend/src/routes/root.test.tsx`:
   ```tsx
   import { render, screen, waitFor } from "@testing-library/react";
   import { MemoryRouter, Routes, Route } from "react-router";
@@ -1125,7 +1125,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T168 [US1] Implement `frontend/src/routes/root.tsx`:
+- [X] T168 [US1] Implement `frontend/src/routes/root.tsx`:
   ```tsx
   import { useEffect, useState } from "react";
   import { Navigate } from "react-router";
@@ -1154,7 +1154,7 @@ run. Confirm all four sections render.
   ```
   Run T167 — expect PASS.
 
-- [ ] T169 [US1] Test: in `frontend/src/routes/run-viewer.test.tsx`:
+- [X] T169 [US1] Test: in `frontend/src/routes/run-viewer.test.tsx`:
   ```tsx
   import { render, screen, waitFor } from "@testing-library/react";
   import { MemoryRouter, Routes, Route } from "react-router";
@@ -1186,7 +1186,7 @@ run. Confirm all four sections render.
   ```
   Run — expect failure.
 
-- [ ] T170 [US1] Implement `frontend/src/routes/run-viewer.tsx` with **per-section error tracking** (M1 fix — each fetch's outcome is tracked independently so a single 404 doesn't silence the whole page):
+- [X] T170 [US1] Implement `frontend/src/routes/run-viewer.tsx` with **per-section error tracking** (M1 fix — each fetch's outcome is tracked independently so a single 404 doesn't silence the whole page):
   ```tsx
   import { useEffect, useState } from "react";
   import { useParams } from "react-router";
@@ -1261,7 +1261,7 @@ run. Confirm all four sections render.
   ```
   Update T169 test to add a case mocking `/journal` → 404 and assert that "Error: ..." text renders in that section while summary still shows. Run — expect PASS.
 
-- [ ] T171 [US1] Create `frontend/src/App.tsx` (TDD-EXEMPT — thin router shell):
+- [X] T171 [US1] Create `frontend/src/App.tsx` (TDD-EXEMPT — thin router shell):
   ```tsx
   import { BrowserRouter, Routes, Route } from "react-router";
   import { Root } from "./routes/root";
@@ -1281,7 +1281,7 @@ run. Confirm all four sections render.
 
 ### Phase 3 verification
 
-- [ ] T172 [US1] Smoke test: `make ui-server &` (terminal A) + `make ui-dev` (terminal B). Open `http://localhost:5173/` in browser. Verify: sidebar populates with at least one run, clicking a run shows header + summary card + rejection breakdown + journal table.
+- [X] T172 [US1] Smoke test: `make ui-server &` (terminal A) + `make ui-dev` (terminal B). Open `http://localhost:5173/` in browser. Verify: sidebar populates with at least one run, clicking a run shows header + summary card + rejection breakdown + journal table.
 
 **Checkpoint (Phase 3 — MVP)**: All Phase 3 tests green; `cd frontend && npm run typecheck` clean; `make ui-dev` smoke test shows the working page. **This is the demo-ready MVP.**
 
