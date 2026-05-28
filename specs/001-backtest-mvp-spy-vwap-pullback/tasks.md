@@ -792,7 +792,7 @@ and prints a SUMMARY block to stdout.
 
 ### Strategy (FR-006)
 
-- [ ] T035 [US1] Test: in `backend/tests/test_vwap_pullback.py`, add tests covering each rule of FR-006:
+- [X] T035 [US1] Test: in `backend/tests/test_vwap_pullback.py`, add tests covering each rule of FR-006:
   ```python
   from datetime import datetime
   from zoneinfo import ZoneInfo
@@ -838,7 +838,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T036 [US1] Implement `backend/src/intraday_trade_spy/strategy/base.py`. Surface area:
+- [X] T036 [US1] Implement `backend/src/intraday_trade_spy/strategy/base.py`. Surface area:
   ```python
   from typing import Protocol
   from intraday_trade_spy.models import Bar, IndicatorSnapshot, Signal
@@ -847,7 +847,7 @@ and prints a SUMMARY block to stdout.
       def evaluate(self, bar: Bar, snapshot: IndicatorSnapshot) -> Signal | None: ...
   ```
 
-- [ ] T037 [US1] Implement `backend/src/intraday_trade_spy/strategy/vwap_pullback.py`. Surface area:
+- [X] T037 [US1] Implement `backend/src/intraday_trade_spy/strategy/vwap_pullback.py`. Surface area:
   ```python
   from intraday_trade_spy.config import VwapPullbackConfig
   from intraday_trade_spy.models import Bar, Direction, IndicatorSnapshot, Signal
@@ -882,7 +882,7 @@ and prints a SUMMARY block to stdout.
 
 ### Risk state + sizing
 
-- [ ] T038 [US1] Test: in `backend/tests/test_sizing.py`:
+- [X] T038 [US1] Test: in `backend/tests/test_sizing.py`:
   ```python
   from intraday_trade_spy.risk.sizing import position_size
 
@@ -898,7 +898,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T039 [US1] Implement `backend/src/intraday_trade_spy/risk/sizing.py`. Surface area:
+- [X] T039 [US1] Implement `backend/src/intraday_trade_spy/risk/sizing.py`. Surface area:
   ```python
   import math
 
@@ -911,7 +911,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run T038 — expect PASS. Commit.
 
-- [ ] T039b [US1] Test: in `backend/tests/test_risk_state.py` (REQUIRED under constitution v1.1.0 principle IV — RiskState is in-scope production code at `backend/src/`):
+- [X] T039b [US1] Test: in `backend/tests/test_risk_state.py` (REQUIRED under constitution v1.1.0 principle IV — RiskState is in-scope production code at `backend/src/`):
   ```python
   from datetime import date, datetime
   from zoneinfo import ZoneInfo
@@ -946,7 +946,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run `pytest backend/tests/test_risk_state.py -v` — expect failure (`ModuleNotFoundError`).
 
-- [ ] T040 [US1] Implement `backend/src/intraday_trade_spy/risk/state.py`. Surface area:
+- [X] T040 [US1] Implement `backend/src/intraday_trade_spy/risk/state.py`. Surface area:
   ```python
   from dataclasses import dataclass, field
   from datetime import date, datetime
@@ -975,7 +975,7 @@ and prints a SUMMARY block to stdout.
 
 ### Risk manager (FR-007, FR-008)
 
-- [ ] T041 [US1] Test: in `backend/tests/test_risk_manager.py`, write at least one test per rejection reason in FR-007. Start with the happy path and the "missing stop" rejection:
+- [X] T041 [US1] Test: in `backend/tests/test_risk_manager.py`, write at least one test per rejection reason in FR-007. Start with the happy path and the "missing stop" rejection:
   ```python
   from datetime import datetime, date
   from zoneinfo import ZoneInfo
@@ -1019,7 +1019,7 @@ and prints a SUMMARY block to stdout.
   ```
   Add tests for each of: `max_trades_per_day_reached`, `consecutive_losses_reached`, `cooldown_active`, `position_already_open`, `no_new_trades_after`, `position_size_zero`, `position_value_exceeds_cap`. Run — expect failures.
 
-- [ ] T042 [US1] Implement `backend/src/intraday_trade_spy/risk/manager.py`. Surface area:
+- [X] T042 [US1] Implement `backend/src/intraday_trade_spy/risk/manager.py`. Surface area:
   ```python
   from intraday_trade_spy.clock import MarketClock
   from intraday_trade_spy.config import Config
@@ -1061,7 +1061,7 @@ and prints a SUMMARY block to stdout.
 
 ### Paper broker (FR-009, FR-010, FR-011)
 
-- [ ] T043 [US1] Test: in `backend/tests/test_paper_broker.py`:
+- [X] T043 [US1] Test: in `backend/tests/test_paper_broker.py`:
   ```python
   from datetime import datetime, date
   from zoneinfo import ZoneInfo
@@ -1094,7 +1094,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T044 [US1] Implement `backend/src/intraday_trade_spy/broker/base.py`. Surface area:
+- [X] T044 [US1] Implement `backend/src/intraday_trade_spy/broker/base.py`. Surface area:
   ```python
   from typing import Protocol
   from intraday_trade_spy.models import Bar, Position, TradePlan
@@ -1104,7 +1104,7 @@ and prints a SUMMARY block to stdout.
       def simulate_bar(self, position: Position, bar: Bar) -> Position: ...
   ```
 
-- [ ] T045 [US1] Implement `backend/src/intraday_trade_spy/broker/paper.py`. Surface area:
+- [X] T045 [US1] Implement `backend/src/intraday_trade_spy/broker/paper.py`. Surface area:
   ```python
   from intraday_trade_spy.models import Bar, Position, TradePlan
 
@@ -1155,7 +1155,7 @@ and prints a SUMMARY block to stdout.
 
 ### Backtest engine
 
-- [ ] T046 [US1] Test: in `backend/tests/test_backtest_engine.py`:
+- [X] T046 [US1] Test: in `backend/tests/test_backtest_engine.py`:
   ```python
   from intraday_trade_spy.backtest.engine import BacktestEngine
   from intraday_trade_spy.config import load_config
@@ -1170,7 +1170,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T047 [US1] Implement `backend/src/intraday_trade_spy/backtest/engine.py`. Surface area:
+- [X] T047 [US1] Implement `backend/src/intraday_trade_spy/backtest/engine.py`. Surface area:
   ```python
   from dataclasses import dataclass
   from pathlib import Path
@@ -1300,7 +1300,7 @@ and prints a SUMMARY block to stdout.
 
 ### Backtest metrics + manifest
 
-- [ ] T048 [US1] Test: in `backend/tests/test_metrics.py`:
+- [X] T048 [US1] Test: in `backend/tests/test_metrics.py`:
   ```python
   from intraday_trade_spy.backtest.metrics import compute_summary
   from intraday_trade_spy.models import JournalEntry, SignalStatus, Direction
@@ -1317,7 +1317,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T049 [US1] Implement `backend/src/intraday_trade_spy/backtest/metrics.py`. Surface area:
+- [X] T049 [US1] Implement `backend/src/intraday_trade_spy/backtest/metrics.py`. Surface area:
   ```python
   from collections import Counter
   from intraday_trade_spy.models import JournalEntry, SignalStatus, SummaryMetrics
@@ -1366,7 +1366,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run T048 — expect PASS. Commit.
 
-- [ ] T050 [US1] Test: in `backend/tests/test_manifest.py`:
+- [X] T050 [US1] Test: in `backend/tests/test_manifest.py`:
   ```python
   from intraday_trade_spy.backtest.manifest import build_run
   from intraday_trade_spy.config import load_config
@@ -1383,7 +1383,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T051 [US1] Implement `backend/src/intraday_trade_spy/backtest/manifest.py`. Surface area:
+- [X] T051 [US1] Implement `backend/src/intraday_trade_spy/backtest/manifest.py`. Surface area:
   ```python
   import subprocess
   from datetime import datetime
@@ -1418,7 +1418,7 @@ and prints a SUMMARY block to stdout.
 
 ### CLI (`run_backtest`)
 
-- [ ] T052 [US1] Test: in `backend/tests/test_cli.py`:
+- [X] T052 [US1] Test: in `backend/tests/test_cli.py`:
   ```python
   import subprocess, sys
   from pathlib import Path
@@ -1437,7 +1437,7 @@ and prints a SUMMARY block to stdout.
   ```
   Run — expect failure.
 
-- [ ] T053 [US1] Implement `backend/src/intraday_trade_spy/cli/run_backtest.py`. Surface area:
+- [X] T053 [US1] Implement `backend/src/intraday_trade_spy/cli/run_backtest.py`. Surface area:
   ```python
   import argparse, json, sys
   from pathlib import Path
@@ -1480,7 +1480,7 @@ and prints a SUMMARY block to stdout.
       raise SystemExit(main())
   ```
 
-- [ ] T054 [US1] Create the thin script wrapper at `backend/scripts/run_backtest.py`:
+- [X] T054 [US1] Create the thin script wrapper at `backend/scripts/run_backtest.py`:
   ```python
   import sys
   from intraday_trade_spy.cli.run_backtest import main
