@@ -42,7 +42,17 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quiet:
         print(f"Loaded {result.run.data_fingerprint.bar_count} bars from {data_path}")
         for r in result.journal_rows:
-            print(f"{r.timestamp.isoformat()} {r.status.value:10} {r.reason}")
+            # For rejections, surface the rejection check; for exits, surface
+            # the exit reason; otherwise the signal's "why" string.
+            if r.status.value == "rejected" and r.rejection_check:
+                detail = r.rejection_check
+            elif r.status.value in ("exited", "force_flat") and r.exit_reason:
+                detail = f"{r.exit_reason} @ {r.actual_exit:.4f} (R={r.realized_r:+.3f})"
+            elif r.status.value == "executed" and r.actual_entry is not None:
+                detail = f"entry @ {r.actual_entry:.4f}, qty={r.quantity}, risk=${r.planned_risk_dollars:.2f}"
+            else:
+                detail = r.reason
+            print(f"{r.timestamp.isoformat()} {r.status.value:10} {detail}")
         s = result.summary.model_dump()
         print()
         print("=== SUMMARY ===")
