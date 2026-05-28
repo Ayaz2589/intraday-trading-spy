@@ -356,3 +356,18 @@ def test_force_overwrites_existing_output(tmp_path, mock_yfinance_download):
     req = DownloadRequest(start=date(2026, 4, 1), end=date(2026, 4, 1), out=out, force=True)
     d.fetch(req)
     assert out.read_text() != "pre-existing"
+
+
+# ---- T104 (Phase 6 / US4): gap_session_dates lists weekend/holiday gaps ----
+
+def test_gap_session_dates_lists_dates_with_zero_bars(tmp_path, mock_yfinance_download):
+    """Request 3 dates; mock returns bars only for the first. The other two
+    appear in gap_session_dates."""
+    mock_fn = mock_yfinance_download(start="2026-04-03", n_bars=78)  # Fri
+    out = tmp_path / "spy.csv"
+    req = DownloadRequest(start=date(2026, 4, 3), end=date(2026, 4, 5), out=out)
+    d = Downloader(download_fn=mock_fn, data_source="mock")
+    m = d.fetch(req)
+    assert date(2026, 4, 4) in m.gap_session_dates  # Sat
+    assert date(2026, 4, 5) in m.gap_session_dates  # Sun
+    assert date(2026, 4, 3) not in m.gap_session_dates  # has bars

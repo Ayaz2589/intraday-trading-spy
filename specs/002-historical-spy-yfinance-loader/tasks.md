@@ -815,7 +815,7 @@ against a mocked yfinance. The output CSV passes Feature 001's
   ```
   Run — expect PASS if T095's CLI threads `--force` through to `DownloadRequest`. Otherwise fix. Commit.
 
-- [ ] T094c [US1] Test: in `backend/tests/test_download_cli.py`, add a `--no-progress` suppression test for a chunked range:
+- [X] T094c [US1] Test: in `backend/tests/test_download_cli.py`, add a `--no-progress` suppression test for a chunked range:
   ```python
   def test_no_progress_suppresses_chunk_lines(capsys, tmp_path, monkeypatch):
       import pandas as pd
@@ -886,7 +886,7 @@ yfinance calls and produce one continuous CSV.
 **Independent Test**: A 120-day mocked request produces a CSV with no
 duplicate timestamps and a manifest claiming bars from both chunks.
 
-- [ ] T097 [US2] Test: in `backend/tests/test_chunker.py`, add:
+- [X] T097 [US2] Test: in `backend/tests/test_chunker.py`, add:
   ```python
   from datetime import date, timedelta
   from intraday_trade_spy.data.downloader import iter_windows
@@ -898,7 +898,7 @@ duplicate timestamps and a manifest claiming bars from both chunks.
   ```
   Run — expect PASS (chunker already correct from T083) OR add coverage if missing. Commit only if any change.
 
-- [ ] T098 [US2] Test: in `backend/tests/test_downloader.py`, add:
+- [X] T098 [US2] Test: in `backend/tests/test_downloader.py`, add:
   ```python
   import pandas as pd
   from datetime import date
@@ -925,7 +925,7 @@ duplicate timestamps and a manifest claiming bars from both chunks.
   ```
   Run — expect PASS if downloader is correct, else fix the concat / dedupe path. Commit.
 
-- [ ] T099 [US2] Test: in `backend/tests/test_download_cli.py`, add:
+- [X] T099 [US2] Test: in `backend/tests/test_download_cli.py`, add:
   ```python
   def test_cli_prints_progress_for_chunked_request(capsys, tmp_path, monkeypatch):
       import pandas as pd
@@ -950,7 +950,7 @@ duplicate timestamps and a manifest claiming bars from both chunks.
   ```
   Run — expect failure (CLI not yet printing per-chunk progress).
 
-- [ ] T100 [US2] Update `Downloader.fetch` and the CLI to emit per-chunk progress when `req.show_progress` is true:
+- [X] T100 [US2] Update `Downloader.fetch` and the CLI to emit per-chunk progress when `req.show_progress` is true:
   ```python
   # In Downloader.fetch (downloader.py), replace the for-loop:
   for i, (ws, we) in enumerate(windows, start=1):
@@ -972,7 +972,7 @@ parameter both enforce SPY-only at every layer.
 
 **Independent Test**: `--help` lists no symbol/ticker/instrument flag.
 
-- [ ] T101 [US3] Test: in `backend/tests/test_download_cli.py`, add:
+- [X] T101 [US3] Test: in `backend/tests/test_download_cli.py`, add:
   ```python
   import subprocess, sys
 
@@ -987,7 +987,7 @@ parameter both enforce SPY-only at every layer.
   ```
   Run — expect PASS (CLI doesn't define those flags). Commit.
 
-- [ ] T102 [US3] Test: in `backend/tests/test_downloader.py`, add a runtime check that the internal call always uses `"SPY"`:
+- [X] T102 [US3] Test: in `backend/tests/test_downloader.py`, add a runtime check that the internal call always uses `"SPY"`:
   ```python
   from intraday_trade_spy.data.downloader import Downloader
   from datetime import date
@@ -1016,7 +1016,7 @@ parameter both enforce SPY-only at every layer.
 **Goal**: The sidecar manifest is complete, the sha256 round-trips,
 and `gap_session_dates` lists weekend / holiday dates correctly.
 
-- [ ] T103 [US4] Test: in `backend/tests/test_fetch_manifest.py`, add a full-contents check on a real (mocked) fetch:
+- [X] T103 [US4] Test: in `backend/tests/test_fetch_manifest.py`, add a full-contents check on a real (mocked) fetch:
   ```python
   import yaml
   import hashlib
@@ -1044,7 +1044,7 @@ and `gap_session_dates` lists weekend / holiday dates correctly.
   ```
   Run — expect PASS (or fix any field-name drift). Commit.
 
-- [ ] T104 [US4] Test: in `backend/tests/test_downloader.py`, add a gap-detection test using a range that spans a weekend:
+- [X] T104 [US4] Test: in `backend/tests/test_downloader.py`, add a gap-detection test using a range that spans a weekend:
   ```python
   from datetime import date
   from intraday_trade_spy.data.downloader import Downloader, DownloadRequest
@@ -1061,7 +1061,7 @@ and `gap_session_dates` lists weekend / holiday dates correctly.
   ```
   Run — expect PASS if `_build_manifest` gap logic is correct; else fix. Commit.
 
-- [ ] T105 [US4] Test: in `backend/tests/test_downloader.py`, add a reproducibility check on the CSV bytes AND the sidecar manifest (FR-015; M4 finding):
+- [X] T105 [US4] Test: in `backend/tests/test_downloader.py`, add a reproducibility check on the CSV bytes AND the sidecar manifest (FR-015; M4 finding):
   ```python
   import yaml
   from datetime import date
@@ -1092,7 +1092,7 @@ and `gap_session_dates` lists weekend / holiday dates correctly.
 socket-blocker fixture enforces it. One `@pytest.mark.slow` test
 hits real yfinance.
 
-- [ ] T106 [US5] Test (validating T072's fixture): in `backend/tests/test_download_cli.py`, add:
+- [X] T106 [US5] Test (validating T072's fixture): in `backend/tests/test_download_cli.py`, add:
   ```python
   import pytest, socket
 
@@ -1107,7 +1107,7 @@ hits real yfinance.
   ```
   Run `pytest backend/tests/test_download_cli.py::test_socket_is_blocked_by_default -v` — expect PASS. Run `pytest -m slow backend/tests/test_download_cli.py::test_socket_allowed_when_marked_slow -v` — expect PASS. Commit.
 
-- [ ] T107 [US5] Test: in `backend/tests/test_yfinance_integration.py` (opt-in, real network). **Parametrized over three independent date ranges per SC-003 (M5 finding):**
+- [X] T107 [US5] Test: in `backend/tests/test_yfinance_integration.py` (opt-in, real network). **Parametrized over three independent date ranges per SC-003 (M5 finding):**
   ```python
   import pytest
   from datetime import date, timedelta
@@ -1147,13 +1147,13 @@ hits real yfinance.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T108 [P] Append a "Downloading historical SPY data" section to `backend/README.md` linking to the Feature 002 quickstart.
+- [X] T108 [P] Append a "Downloading historical SPY data" section to `backend/README.md` linking to the Feature 002 quickstart.
 
-- [ ] T109 [P] Add a note to the root `README.md` mentioning Feature 002 unlocks real-data backtests via `python -m intraday_trade_spy.cli.download_spy_data ...`.
+- [X] T109 [P] Add a note to the root `README.md` mentioning Feature 002 unlocks real-data backtests via `python -m intraday_trade_spy.cli.download_spy_data ...`.
 
-- [ ] T110 Run `ruff check backend/src backend/tests && ruff format --check backend/src backend/tests`. Fix any findings. Re-run until clean.
+- [X] T110 Run `ruff check backend/src backend/tests && ruff format --check backend/src backend/tests`. Fix any findings. Re-run until clean.
 
-- [ ] T111 Run `pytest --cov=intraday_trade_spy.data.downloader --cov=intraday_trade_spy.cli.download_spy_data --cov-report=term-missing backend/tests -m "not slow"`. Confirm 100% line coverage for both modules (SC-002). If any uncovered branch exists, add a test.
+- [X] T111 Run `pytest --cov=intraday_trade_spy.data.downloader --cov=intraday_trade_spy.cli.download_spy_data --cov-report=term-missing backend/tests -m "not slow"`. Confirm 100% line coverage for both modules (SC-002). If any uncovered branch exists, add a test.
 
 - [ ] T112 Run the quickstart end-to-end with a real yfinance fetch (`pytest -m slow`). Confirm the produced CSV runs through Feature 001's `run_backtest` cleanly **AND record the wall-clock duration of the 30-day fetch (SC-001 — M6 finding):**
   ```bash
