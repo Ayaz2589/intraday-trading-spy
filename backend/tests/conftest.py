@@ -27,8 +27,12 @@ def default_config_path() -> Path:
 def _block_network(request, monkeypatch):
     """Constitution v1.1.0 + Feature 002 SC-005: any test not marked `slow`
     MUST NOT touch the network. We patch socket.socket itself; the only
-    way past this fixture is to mark a test with @pytest.mark.slow."""
-    if request.node.get_closest_marker("slow"):
+    way past this fixture is to mark a test with @pytest.mark.slow OR
+    @pytest.mark.api (FastAPI TestClient uses socket.socket() for
+    in-process thread sync, not for actual network calls)."""
+    if request.node.get_closest_marker("slow") or request.node.get_closest_marker(
+        "api"
+    ):
         return
 
     def _blocked(*args, **kwargs):

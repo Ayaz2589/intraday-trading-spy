@@ -25,7 +25,8 @@ END   ?= $(shell date -v-1d +%Y-%m-%d)
 DATA ?=
 
 .PHONY: help install test test-slow backtest backtest-real demo download \
-        download-clean lint clean-runs venv
+        download-clean lint clean-runs venv \
+        ui-install ui-dev ui-build ui-server
 
 help: ## Show this help
 	@echo "intraday-trade-spy task runner"
@@ -90,3 +91,15 @@ lint: ## Run ruff check + format check
 clean-runs: ## Remove all backtest run outputs (keeps .gitkeep)
 	@find backend/data/backtests -mindepth 1 -not -name '.gitkeep' -delete
 	@echo "Cleaned backend/data/backtests/"
+
+ui-install: ## Install frontend dependencies (npm install in frontend/)
+	cd frontend && npm install
+
+ui-dev: ## Start the Vite dev server (http://localhost:5173)
+	cd frontend && npm run dev
+
+ui-build: ## Production build → frontend/dist/
+	cd frontend && npm run build
+
+ui-server: ## Start the FastAPI static server (http://localhost:8000)
+	cd backend && .venv/bin/intraday-trade-spy-server

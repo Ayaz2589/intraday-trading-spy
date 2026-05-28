@@ -65,7 +65,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
 
 ### Backend additions
 
-- [ ] T121 Modify `backend/pyproject.toml`:
+- [X] T121 Modify `backend/pyproject.toml`:
   - Add `fastapi>=0.115` and `uvicorn>=0.32` to `dependencies`.
   - Add `httpx>=0.27` to `[project.optional-dependencies].dev`.
   - Add `intraday-trade-spy-server = "intraday_trade_spy.api.static_server:main"` under `[project.scripts]`.
@@ -83,11 +83,11 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
     ```
   Then `pip install -e ".[dev]"` to register the deps + new console script.
 
-- [ ] T122 [P] Create `backend/src/intraday_trade_spy/api/__init__.py` — empty file (just marks the package).
+- [X] T122 [P] Create `backend/src/intraday_trade_spy/api/__init__.py` — empty file (just marks the package).
 
 ### Frontend scaffold (TDD-exempt — all config/infrastructure)
 
-- [ ] T123 Create `frontend/package.json` with:
+- [X] T123 Create `frontend/package.json` with:
   ```json
   {
     "name": "intraday-trade-spy-frontend",
@@ -140,7 +140,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   }
   ```
 
-- [ ] T124 [P] Create `frontend/tsconfig.json` (project references config):
+- [X] T124 [P] Create `frontend/tsconfig.json` (project references config):
   ```json
   {
     "files": [],
@@ -155,7 +155,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   ```
   Plus `frontend/tsconfig.app.json` with `strict: true`, `target: ES2022`, `jsx: react-jsx`, `moduleResolution: bundler`, `paths: { "@/*": ["./src/*"] }`, includes `src` and `test`. Plus `frontend/tsconfig.node.json` for the Vite/Vitest config files.
 
-- [ ] T125 [P] Create `frontend/vite.config.ts`:
+- [X] T125 [P] Create `frontend/vite.config.ts`:
   ```ts
   import { defineConfig } from "vite";
   import react from "@vitejs/plugin-react";
@@ -182,11 +182,11 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   });
   ```
 
-- [ ] T126 [P] Create `frontend/eslint.config.js` (flat config) — React + TS + hooks + tailwind-friendly. Reasonable default; ESLint 9 flat config style.
+- [X] T126 [P] Create `frontend/eslint.config.js` (flat config) — React + TS + hooks + tailwind-friendly. Reasonable default; ESLint 9 flat config style.
 
-- [ ] T127 [P] Create `frontend/postcss.config.js` (Tailwind v4 just needs the Vite plugin; postcss config may be minimal/empty).
+- [X] T127 [P] Create `frontend/postcss.config.js` (Tailwind v4 just needs the Vite plugin; postcss config may be minimal/empty).
 
-- [ ] T128 [P] Create `frontend/index.html`:
+- [X] T128 [P] Create `frontend/index.html`:
   ```html
   <!doctype html>
   <html lang="en">
@@ -202,7 +202,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   </html>
   ```
 
-- [ ] T129 [P] Create `frontend/src/main.tsx` (TDD-exempt — 5-line bootstrap):
+- [X] T129 [P] Create `frontend/src/main.tsx` (TDD-exempt — 5-line bootstrap):
   ```tsx
   import { createRoot } from "react-dom/client";
   import { App } from "./App";
@@ -211,12 +211,12 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   createRoot(document.getElementById("root")!).render(<App />);
   ```
 
-- [ ] T130 [P] Create `frontend/src/styles/globals.css` (TDD-exempt — CSS only):
+- [X] T130 [P] Create `frontend/src/styles/globals.css` (TDD-exempt — CSS only):
   ```css
   @import "tailwindcss";
   ```
 
-- [ ] T131 [P] Create `frontend/src/lib/utils.ts` (TDD-exempt — 1-line shadcn helper):
+- [X] T131 [P] Create `frontend/src/lib/utils.ts` (TDD-exempt — 1-line shadcn helper):
   ```ts
   import { clsx, type ClassValue } from "clsx";
   import { twMerge } from "tailwind-merge";
@@ -226,14 +226,14 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   }
   ```
 
-- [ ] T132 [P] Create `frontend/test/setup.ts` (TDD-exempt — Vitest infrastructure):
+- [X] T132 [P] Create `frontend/test/setup.ts` (TDD-exempt — Vitest infrastructure):
   ```ts
   import "@testing-library/jest-dom/vitest";
   ```
 
 ### shadcn/ui primitives
 
-- [ ] T133 Initialize shadcn/ui in `frontend/` and add the primitives we need (TDD-exempt — copy-pasted primitives). Run:
+- [X] T133 Initialize shadcn/ui in `frontend/` and add the primitives we need (TDD-exempt — copy-pasted primitives). Run:
   ```bash
   cd frontend
   npx shadcn@latest init   # accept defaults; use TypeScript; use Tailwind
@@ -243,7 +243,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
 
 ### Makefile + .gitignore
 
-- [ ] T134 Modify root `Makefile` — add four new targets:
+- [X] T134 Modify root `Makefile` — add four new targets:
   ```make
   ui-install: ## Install frontend dependencies
   	cd frontend && npm install
@@ -259,7 +259,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
   ```
   Add these targets to the `.PHONY` line and the `make help` listing as well.
 
-- [ ] T135 [P] Modify root `.gitignore` — append:
+- [X] T135 [P] Modify root `.gitignore` — append:
   ```
   frontend/node_modules/
   frontend/dist/
@@ -269,7 +269,7 @@ shadcn/ui primitives, add Makefile targets. No production logic yet.
 
 ### Setup verification
 
-- [ ] T136 Run `make ui-install` from project root. Expect: `npm install` completes, `frontend/node_modules/` populated, no errors. Verify with `ls frontend/node_modules/react`.
+- [X] T136 Run `make ui-install` from project root. Expect: `npm install` completes, `frontend/node_modules/` populated, no errors. Verify with `ls frontend/node_modules/react`.
 
 **Checkpoint (Phase 1)**: `make ui-install` succeeds; `frontend/package.json` + tsconfig + vite + eslint configs exist; shadcn primitives copied; `make help` shows the new ui-* targets.
 
@@ -284,7 +284,7 @@ is complete.**
 
 ### Backend API server skeleton
 
-- [ ] T137 Test: in `backend/tests/test_static_server.py`, add:
+- [X] T137 Test: in `backend/tests/test_static_server.py`, add:
   ```python
   from fastapi.testclient import TestClient
 
@@ -303,7 +303,7 @@ is complete.**
   ```
   Run `pytest backend/tests/test_static_server.py -v` — expect failure (`ModuleNotFoundError`).
 
-- [ ] T138 Implement `backend/src/intraday_trade_spy/api/static_server.py` minimal skeleton. **Includes a custom HTTPException handler so 404 responses return `{"error": ...}` directly (not wrapped under `{"detail": {...}}`)** — this is the H2 fix from analyze:
+- [X] T138 Implement `backend/src/intraday_trade_spy/api/static_server.py` minimal skeleton. **Includes a custom HTTPException handler so 404 responses return `{"error": ...}` directly (not wrapped under `{"detail": {...}}`)** — this is the H2 fix from analyze:
   ```python
   import argparse
   from pathlib import Path
@@ -346,7 +346,7 @@ is complete.**
   ```
   Run T137 — expect PASS. Commit.
 
-- [ ] T138b Test (M3 fix): in `backend/tests/test_static_server.py`, add a CLI smoke test:
+- [X] T138b Test (M3 fix): in `backend/tests/test_static_server.py`, add a CLI smoke test:
   ```python
   import subprocess, sys
 
@@ -362,7 +362,7 @@ is complete.**
 
 ### Frontend TypeScript types
 
-- [ ] T139 Test: in `frontend/src/api/types.test.ts`, add a compile-time-only assertion test:
+- [X] T139 Test: in `frontend/src/api/types.test.ts`, add a compile-time-only assertion test:
   ```ts
   import { expectTypeOf } from "vitest";
   import type {
@@ -385,11 +385,11 @@ is complete.**
   ```
   Run `npm test -- types.test` — expect failure.
 
-- [ ] T140 Implement `frontend/src/api/types.ts` — paste the type definitions verbatim from `data-model.md` (the TypeScript section). Run T139 — expect PASS.
+- [X] T140 Implement `frontend/src/api/types.ts` — paste the type definitions verbatim from `data-model.md` (the TypeScript section). Run T139 — expect PASS.
 
 ### HelpContent dictionary
 
-- [ ] T141 Test: in `frontend/src/components/help-content.test.ts`:
+- [X] T141 Test: in `frontend/src/components/help-content.test.ts`:
   ```ts
   import { HELP_CONTENT, type HelpContentKey } from "./help-content";
 
@@ -412,7 +412,7 @@ is complete.**
   ```
   Run — expect failure.
 
-- [ ] T142 Implement `frontend/src/components/help-content.ts` — paste verbatim from `data-model.md`. Run T141 — expect PASS. Commit.
+- [X] T142 Implement `frontend/src/components/help-content.ts` — paste verbatim from `data-model.md`. Run T141 — expect PASS. Commit.
 
 **Checkpoint (Phase 2)**: `pytest backend/tests/test_static_server.py -v` green; `cd frontend && npm test` green; `cd frontend && npm run typecheck` clean.
 
