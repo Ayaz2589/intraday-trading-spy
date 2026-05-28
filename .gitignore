@@ -9,3 +9,8 @@ htmlcov/
 *.egg-info/
 backend/data/backtests/*
 !backend/data/backtests/.gitkeep
+
+# Downloaded SPY data — keep only the bundled fixture in git.
+backend/data/raw/*.csv
+backend/data/raw/*.fetch.yaml
+!backend/data/raw/spy_5m_sample.csv
