@@ -64,13 +64,20 @@ class BacktestEngine:
                     state.open_position = None
 
             # 2) Force-flat if cutoff reached and position still open.
+            # Constitution: no overnight positions. If the next bar is in a
+            # different session (or there is no next bar), exit at the current
+            # bar's close. Otherwise honor FR-011 and exit at next bar's open.
             if (
                 self.clock.is_force_flat(bar.timestamp)
                 and state.open_position is not None
-                and idx + 1 < len(bars)
             ):
-                next_bar = bars[idx + 1]
-                state.open_position = self.broker.force_flat(state.open_position, next_bar)
+                next_bar = bars[idx + 1] if idx + 1 < len(bars) else None
+                if next_bar is None or next_bar.session_date != bar.session_date:
+                    # Synthesize a same-session exit at this bar's close.
+                    exit_bar = bar.model_copy(update={"open": bar.close})
+                else:
+                    exit_bar = next_bar
+                state.open_position = self.broker.force_flat(state.open_position, exit_bar)
                 self._log_exit(log, state.open_position, snap)
                 self._apply_exit_to_state(state, state.open_position)
                 state.open_position = None

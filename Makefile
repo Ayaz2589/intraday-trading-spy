@@ -70,11 +70,11 @@ backtest-real: ## Run a backtest against a downloaded CSV (set DATA=<filename>)
 	    --data data/raw/$(DATA)
 
 demo: ## Backtest the fixture with a permissive cap so trades execute
-	@sed 's/max_position_value_pct: 25.0/max_position_value_pct: 600.0/' \
-	    backend/config/config.yaml > /tmp/itspy-permissive.yaml
-	cd backend && .venv/bin/intraday-trade-spy-backtest \
-	    --config /tmp/itspy-permissive.yaml
-	@rm -f /tmp/itspy-permissive.yaml
+	@tmpcfg=$$(mktemp -t itspy-permissive.XXXXXX.yaml) && \
+	  sed 's/max_position_value_pct: 25.0/max_position_value_pct: 1500.0/' \
+	      backend/config/config.yaml > $$tmpcfg && \
+	  ( cd backend && .venv/bin/intraday-trade-spy-backtest --config $$tmpcfg ) ; \
+	  rm -f $$tmpcfg
 
 download: ## Download real SPY 5m bars from yfinance (override with START=/END=)
 	cd backend && .venv/bin/intraday-trade-spy-download \

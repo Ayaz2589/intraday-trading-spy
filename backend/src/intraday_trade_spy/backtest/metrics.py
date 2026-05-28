@@ -6,6 +6,11 @@ from intraday_trade_spy.models import JournalEntry, SignalStatus, SummaryMetrics
 def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
     executed = [r for r in rows if r.status == SignalStatus.EXECUTED]
     exited = [r for r in rows if r.status == SignalStatus.EXITED]
+    force_flatted = [r for r in rows if r.status == SignalStatus.FORCE_FLAT]
+    # All completed trades (decisive + force-flat) contribute to total_r,
+    # avg_r, drawdown, best/worst. wins/losses are decisive outcomes only;
+    # force-flat is neither a win nor a loss for those buckets.
+    completed = exited + force_flatted
     wins = [r for r in exited if r.exit_reason == "target"]
     losses = [r for r in exited if r.exit_reason == "stop"]
     rejections = [r for r in rows if r.status == SignalStatus.REJECTED]
@@ -14,7 +19,7 @@ def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
     win_rate = (len(wins) / total_trades) if total_trades else 0.0
     avg_win_r = sum(r.realized_r for r in wins) / len(wins) if wins else 0.0
     avg_loss_r = sum(r.realized_r for r in losses) / len(losses) if losses else 0.0
-    all_r = [r.realized_r for r in exited if r.realized_r is not None]
+    all_r = [r.realized_r for r in completed if r.realized_r is not None]
     avg_r = sum(all_r) / len(all_r) if all_r else 0.0
     total_r = sum(all_r)
 
@@ -36,7 +41,7 @@ def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
     worst = min(all_r) if all_r else None
 
     streak = cur = 0
-    for r in exited:
+    for r in completed:
         if r.exit_reason == "stop":
             cur += 1
             streak = max(streak, cur)
