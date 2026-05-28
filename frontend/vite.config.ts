@@ -12,7 +12,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:8000",
+      // Override with: VITE_API_PORT=9000 npm run dev (or make ui-dev PORT=9000)
+      "/api": `http://localhost:${process.env.VITE_API_PORT || 8000}`,
     },
   },
   test: {

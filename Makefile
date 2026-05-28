@@ -24,6 +24,9 @@ END   ?= $(shell date -v-1d +%Y-%m-%d)
 # If unset, the backtester uses the synthetic fixture in config.yaml.
 DATA ?=
 
+# Port for the FastAPI static server (override with: make ui-server PORT=9000).
+PORT ?= 8000
+
 .PHONY: help install test test-slow backtest backtest-real demo download \
         download-clean lint clean-runs venv \
         ui-install ui-dev ui-build ui-server
@@ -101,5 +104,5 @@ ui-dev: ## Start the Vite dev server (http://localhost:5173)
 ui-build: ## Production build → frontend/dist/
 	cd frontend && npm run build
 
-ui-server: ## Start the FastAPI static server (http://localhost:8000)
-	cd backend && .venv/bin/intraday-trade-spy-server
+ui-server: ## Start the FastAPI static server (override PORT=9000)
+	cd backend && .venv/bin/intraday-trade-spy-server --port $(PORT)
