@@ -6,5 +6,6 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+*.egg-info/
 backend/data/backtests/*
 !backend/data/backtests/.gitkeep

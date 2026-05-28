@@ -58,9 +58,9 @@ tests in Phase 2).
 the fixture file, and the shared pytest configuration. Nothing here
 depends on anything else in the feature.
 
-- [ ] T001 Create the top-level monorepo skeleton — `backend/`, `frontend/`, `docs/`, `backend/{config,data,scripts,src,tests}`, `backend/data/{raw,backtests}`, `backend/src/intraday_trade_spy/{data,strategy,risk,broker,journal,backtest,cli}`, `backend/tests/fixtures`. Add `.gitkeep` in `backend/data/backtests/`. Use `mkdir -p` and verify with `ls -R backend frontend docs | head -50`.
+- [X] T001 Create the top-level monorepo skeleton — `backend/`, `frontend/`, `docs/`, `backend/{config,data,scripts,src,tests}`, `backend/data/{raw,backtests}`, `backend/src/intraday_trade_spy/{data,strategy,risk,broker,journal,backtest,cli}`, `backend/tests/fixtures`. Add `.gitkeep` in `backend/data/backtests/`. Use `mkdir -p` and verify with `ls -R backend frontend docs | head -50`.
 
-- [ ] T002 [P] Create the root `.gitignore` at `/Users/ayazuddin/Development/personal/Trading/intraday-trading-SPY/.gitignore` with at minimum:
+- [X] T002 [P] Create the root `.gitignore` at `/Users/ayazuddin/Development/personal/Trading/intraday-trading-SPY/.gitignore` with at minimum:
   ```
   __pycache__/
   *.pyc
@@ -74,13 +74,13 @@ depends on anything else in the feature.
   !backend/data/backtests/.gitkeep
   ```
 
-- [ ] T003 [P] Create `/Users/ayazuddin/Development/personal/Trading/intraday-trading-SPY/.python-version` containing the single line `3.11`.
+- [X] T003 [P] Create `/Users/ayazuddin/Development/personal/Trading/intraday-trading-SPY/.python-version` containing the single line `3.11`.
 
-- [ ] T004 [P] Create the frontend placeholder at `frontend/README.md` containing only the text `Implemented by Feature 003 (Static React Learning UI).`
+- [X] T004 [P] Create the frontend placeholder at `frontend/README.md` containing only the text `Implemented by Feature 003 (Static React Learning UI).`
 
-- [ ] T005 [P] Create the docs placeholder at `docs/README.md` containing only the text `Product, strategy, risk, frontend, backtesting, and paper-trading docs will be added by later features.`
+- [X] T005 [P] Create the docs placeholder at `docs/README.md` containing only the text `Product, strategy, risk, frontend, backtesting, and paper-trading docs will be added by later features.`
 
-- [ ] T006 [P] Create the root README stub at `README.md`. Use this exact content:
+- [X] T006 [P] Create the root README stub at `README.md`. Use this exact content:
   ```markdown
   # intraday-trade-spy
 
@@ -97,7 +97,7 @@ depends on anything else in the feature.
   See `.specify/memory/constitution.md`.
   ```
 
-- [ ] T007 Create `backend/pyproject.toml` with the project metadata and dependencies. Surface area:
+- [X] T007 Create `backend/pyproject.toml` with the project metadata and dependencies. Surface area:
   ```toml
   [project]
   name = "intraday-trade-spy"
@@ -142,7 +142,7 @@ depends on anything else in the feature.
   testpaths = ["tests"]
   ```
 
-- [ ] T008 [P] Create the backend README at `backend/README.md`. Use this content:
+- [X] T008 [P] Create the backend README at `backend/README.md`. Use this content:
   ```markdown
   # backend — intraday-trade-spy
 
@@ -150,11 +150,11 @@ depends on anything else in the feature.
   setup + run instructions.
   ```
 
-- [ ] T009 [P] Create the bundled fixture at `backend/data/raw/spy_5m_sample.csv`. Author a small synthetic SPY 5-minute dataset covering three regular sessions (2026-05-26, 2026-05-27, 2026-05-28). Column order: `symbol,timestamp,open,high,low,close,volume`. Timestamps in ISO 8601 with `-04:00` offset, every 5 minutes from 09:30 to 16:00 ET inclusive of 09:30, exclusive of 16:00 (78 bars per session × 3 = 234 rows). Make at least one session produce a viable VWAP pullback (price above VWAP after OR, dips to within 0.25% of VWAP, then a confirmation candle closes above the prior bar's high and above VWAP). Make at least one session trigger a daily-loss-limit rejection by including a setup that risks and loses twice. Save the same file (or a symlink) at `backend/tests/fixtures/spy_5m_sample.csv`.
+- [X] T009 [P] Create the bundled fixture at `backend/data/raw/spy_5m_sample.csv`. Author a small synthetic SPY 5-minute dataset covering three regular sessions (2026-05-26, 2026-05-27, 2026-05-28). Column order: `symbol,timestamp,open,high,low,close,volume`. Timestamps in ISO 8601 with `-04:00` offset, every 5 minutes from 09:30 to 16:00 ET inclusive of 09:30, exclusive of 16:00 (78 bars per session × 3 = 234 rows). Make at least one session produce a viable VWAP pullback (price above VWAP after OR, dips to within 0.25% of VWAP, then a confirmation candle closes above the prior bar's high and above VWAP). Make at least one session trigger a daily-loss-limit rejection by including a setup that risks and loses twice. Save the same file (or a symlink) at `backend/tests/fixtures/spy_5m_sample.csv`.
 
-- [ ] T010 Create `backend/config/config.yaml` with the exact default tree from `contracts/run-yaml-schema.md`'s `resolved_config` section. Pay special attention to `market.symbol: SPY`, `app.mode: backtest`, `broker.live_auto_enabled: false`, `data.csv_path: data/raw/spy_5m_sample.csv`, and `data.output_dir: data/backtests`.
+- [X] T010 Create `backend/config/config.yaml` with the exact default tree from `contracts/run-yaml-schema.md`'s `resolved_config` section. Pay special attention to `market.symbol: SPY`, `app.mode: backtest`, `broker.live_auto_enabled: false`, `data.csv_path: data/raw/spy_5m_sample.csv`, and `data.output_dir: data/backtests`.
 
-- [ ] T011 [P] Create `backend/config/logging.yaml` as a minimal Python `logging.dictConfig`-compatible YAML. Surface area:
+- [X] T011 [P] Create `backend/config/logging.yaml` as a minimal Python `logging.dictConfig`-compatible YAML. Surface area:
   ```yaml
   version: 1
   disable_existing_loggers: false
@@ -171,7 +171,7 @@ depends on anything else in the feature.
     handlers: [console]
   ```
 
-- [ ] T012 [P] Create `backend/tests/conftest.py` with shared fixtures. Surface area:
+- [X] T012 [P] Create `backend/tests/conftest.py` with shared fixtures. Surface area:
   ```python
   from pathlib import Path
   import pytest
@@ -191,9 +191,9 @@ depends on anything else in the feature.
       return Path(__file__).parent.parent / "config" / "config.yaml"
   ```
 
-- [ ] T013 [P] Create empty `__init__.py` files under every package directory: `backend/src/intraday_trade_spy/__init__.py`, `backend/src/intraday_trade_spy/data/__init__.py`, `backend/src/intraday_trade_spy/strategy/__init__.py`, `backend/src/intraday_trade_spy/risk/__init__.py`, `backend/src/intraday_trade_spy/broker/__init__.py`, `backend/src/intraday_trade_spy/journal/__init__.py`, `backend/src/intraday_trade_spy/backtest/__init__.py`, `backend/src/intraday_trade_spy/cli/__init__.py`. Each file is empty.
+- [X] T013 [P] Create empty `__init__.py` files under every package directory: `backend/src/intraday_trade_spy/__init__.py`, `backend/src/intraday_trade_spy/data/__init__.py`, `backend/src/intraday_trade_spy/strategy/__init__.py`, `backend/src/intraday_trade_spy/risk/__init__.py`, `backend/src/intraday_trade_spy/broker/__init__.py`, `backend/src/intraday_trade_spy/journal/__init__.py`, `backend/src/intraday_trade_spy/backtest/__init__.py`, `backend/src/intraday_trade_spy/cli/__init__.py`. Each file is empty.
 
-- [ ] T014 Install the package in editable mode. Run:
+- [X] T014 Install the package in editable mode. Run:
   ```bash
   cd backend && python -m venv .venv && source .venv/bin/activate && pip install --upgrade pip && pip install -e ".[dev]"
   ```
