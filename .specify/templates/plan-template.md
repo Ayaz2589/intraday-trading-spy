@@ -40,7 +40,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Source of truth: `.specify/memory/constitution.md` (v1.0.0). For each
+Source of truth: `.specify/memory/constitution.md` (v1.1.0). For each
 principle below, state which parts of this feature touch it and prove
 non-violation. If a tension exists, defer the justification to the
 **Complexity Tracking** table at the bottom of this plan.
@@ -50,7 +50,7 @@ non-violation. If a tension exists, defer the justification to the
 | I | SPY-Only Instrument (NON-NEGOTIABLE) | [yes / no] | [e.g., config pins `market.symbol: SPY`; bar/signal/order validation rejects others] |
 | II | Long-Only, Rule-Based v1 (NON-NEGOTIABLE) | [yes / no] | [e.g., `Direction` enum exposes only LONG; no ML/HMM modules introduced] |
 | III | Risk Manager Has Absolute Veto (NON-NEGOTIABLE) | [yes / no] | [e.g., broker call site checks `RiskDecision.approved`; stop+target required; limits in config] |
-| IV | Test-First for Strategy & Risk (NON-NEGOTIABLE) | [yes / no] | [e.g., failing tests written before code for VWAP / OR / risk rejections; CI gates coverage] |
+| IV | Test-First Everywhere (NON-NEGOTIABLE) | [yes / no] | [e.g., every implementation task is preceded by a failing-test task; all new code lives in `backend/src/` / `frontend/src/` / non-trivial `backend/scripts/`; exempt items are ≤5-line wrappers, config, READMEs] |
 | V | Paper-First, Live Trading Disabled by Default (NON-NEGOTIABLE) | [yes / no] | [e.g., mode defaults to backtest/paper; `live_auto_enabled: false`; no live code path enabled] |
 | VI | Educational UI: Every Concept Is Explained | [yes / no] | [e.g., every new UI label paired with `HelpTooltip`; rejected signals shown with reason] |
 | VII | Journal Everything | [yes / no] | [e.g., executed trades, rejections, force-flat exits all routed through `journal/logger.py`] |

@@ -1,39 +1,46 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: TEMPLATE (unfilled placeholders) → 1.0.0
-Rationale: Initial ratification of the project constitution. Template
-placeholders replaced with substantive principles derived from the
-master build plan at ~/Desktop/intraday-trade-spy-master-plan.md.
 
-Principles added (no renames; prior state was the placeholder template):
-  - I.   SPY-Only Instrument (NON-NEGOTIABLE)
-  - II.  Long-Only, Rule-Based v1 (NON-NEGOTIABLE)
-  - III. Risk Manager Has Absolute Veto (NON-NEGOTIABLE)
-  - IV.  Test-First for Strategy & Risk (NON-NEGOTIABLE)
-  - V.   Paper-First, Live Trading Disabled by Default (NON-NEGOTIABLE)
-  - VI.  Educational UI: Every Concept Is Explained
-  - VII. Journal Everything
+Version 1.0.0 → 1.1.0
+Bump rationale: MINOR — material expansion of principle IV. The prior
+text scoped TDD to strategy / risk / broker / backtest / journal /
+data/indicators. It now applies to ALL production code in
+backend/src/, frontend/src/, and non-trivial backend/scripts/. Closes
+the leak the user identified ("we should always write tests first").
 
-Sections added (replacing placeholder sections):
-  - Engineering Standards
-  - Development Workflow
-  - Governance
+Principle modified:
+  - IV. Test-First for Strategy & Risk (NON-NEGOTIABLE)
+      → IV. Test-First Everywhere (NON-NEGOTIABLE)
+    Material expansion: in-scope set widened; exempt list added; the
+    specific "required test gates" preserved verbatim.
+
+Sections modified:
+  - Development Workflow → PR gate clause now requires tests for any
+    in-scope file (not the prior allow-list of five module paths).
+
+Sections added: none.
+Sections removed: none.
 
 Templates / dependent artifacts updated:
-  ✅ .specify/templates/plan-template.md  — Constitution Check now lists
-     the seven principles as concrete gates; structure decision references
-     the master plan's monorepo layout.
-  ✅ .specify/templates/tasks-template.md — Added a TDD-mandatory note for
-     strategy/risk/broker/backtest task categories overriding the
-     "tests optional" default.
-  ✅ CLAUDE.md — Runtime guidance now references the constitution and
-     restates the hard constraints for in-editor assistance.
-  ⚠ .specify/templates/spec-template.md — No structural change required;
-     principles are enforced at the plan stage, not the spec stage.
-     Reviewed.
+  ✅ .specify/templates/plan-template.md   — Constitution Check row IV
+     hint widened to reference production code at large.
+  ✅ .specify/templates/tasks-template.md   — TDD-mandatory note widened
+     to backend/src/, frontend/src/, non-trivial backend/scripts/, with
+     the constitution's exempt list cited.
+  ✅ CLAUDE.md                              — Hard constraints item 4
+     widened to match.
+  ✅ specs/001-backtest-mvp-spy-vwap-pullback/plan.md — Constitution
+     Check row IV updated to cite v1.1.0 scope.
+  ✅ specs/001-backtest-mvp-spy-vwap-pullback/tasks.md — T040 split into
+     a failing test + impl pair so RiskState complies with the wider
+     rule (this also closes analyze finding M1).
 
-Follow-up TODOs: None.
+Follow-up TODOs: none.
+
+History:
+  - 1.0.0 (2026-05-28) — Initial ratification.
+  - 1.1.0 (2026-05-28) — Principle IV widened to repository-wide TDD.
 
 Ratified: 2026-05-28
 -->
@@ -98,13 +105,30 @@ in `backend/config/config.yaml`. Hardcoded limits in source are forbidden.
 Broker MUST refuse to place an order whose `RiskDecision` is not
 `approved`. Tests cover every rejection reason.
 
-### IV. Test-First for Strategy & Risk (NON-NEGOTIABLE)
+### IV. Test-First Everywhere (NON-NEGOTIABLE)
 
-TDD is mandatory for: indicator math, strategy logic, risk-manager checks,
-broker simulation, and the backtest engine. Red → Green → Refactor
-strictly enforced for these modules.
+TDD applies to ALL production code in this repository. Every behavior
+change MUST start with a failing test. Red → Green → Refactor is
+strictly enforced.
 
-Required test gates include (non-exhaustive):
+**In-scope (TDD-mandatory):**
+
+- `backend/src/**/*.py` — all backend source
+- `frontend/src/**/*.{ts,tsx}` — all frontend source
+- `backend/scripts/**/*.py` when the script contains logic (not just a
+  ≤5-line wrapper)
+- Every new package or module added under those roots
+
+**Exempt (tests welcome but not gated):**
+
+- Config files (YAML, TOML, INI, JSON, dotenv)
+- Documentation (`*.md`), READMEs, placeholder files
+- `.gitignore`, `.python-version`, `pyproject.toml` metadata
+- ≤5-line entry-point wrappers that only call a `main()` defined
+  elsewhere
+- Type stubs (`*.pyi`) and generated code
+
+**Required test gates (NON-NEGOTIABLE for these specific behaviors):**
 
 - VWAP resets daily and computes correctly across known fixtures
 - Opening range high/low are correct for the first N minutes
@@ -116,12 +140,15 @@ Required test gates include (non-exhaustive):
 - The paper broker's bracket exits are mutually exclusive (one fill
   cancels the other)
 
-**Why:** These modules are where bugs become losses. Tests are the only
-durable specification of what "safe" means.
+**Why:** Tests are the only durable specification of what "safe" means,
+and they make every later refactor cheap. The v1.0.0 carve-out for
+"strategy and risk only" leaked TDD discipline into the rest of the
+codebase; v1.1.0 closes that hole.
 
-**Enforcement:** PRs touching `strategy/`, `risk/`, `broker/`, or
-`backtest/` MUST add or modify tests covering the changed behavior. CI
-fails without coverage of the changed paths.
+**Enforcement:** PRs touching ANY in-scope file MUST include tests
+covering the changed behavior. CI fails without coverage of changed
+paths. Every implementation task in a Spec Kit `tasks.md` for in-scope
+code MUST be preceded by a failing-test task.
 
 ### V. Paper-First, Live Trading Disabled by Default (NON-NEGOTIABLE)
 
@@ -224,9 +251,11 @@ simpler-alternative-rejected reason. Plans that violate a
 NON-NEGOTIABLE principle without a constitution amendment cannot pass
 the gate.
 
-**PR gate:** PRs touching `strategy/`, `risk/`, `broker/`, `backtest/`,
-or `journal/` MUST include tests covering the changed behavior. PRs
-adding frontend concept labels MUST include the matching `HelpTooltip`.
+**PR gate:** PRs touching ANY in-scope file under principle IV (any
+production code in `backend/src/`, `frontend/src/`, or non-trivial
+`backend/scripts/`) MUST include tests covering the changed behavior.
+PRs adding frontend concept labels MUST include the matching
+`HelpTooltip`.
 
 **Review gate:** `speckit-analyze` MUST be run before `speckit-implement`
 for any feature that materially touches the strategy / risk / broker
@@ -256,4 +285,4 @@ Check is the gate. During every PR review, the seven principles are the
 checklist. `CLAUDE.md` is the runtime guidance file that mirrors these
 constraints for in-editor assistance.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-28 | **Last Amended**: 2026-05-28
+**Version**: 1.1.0 | **Ratified**: 2026-05-28 | **Last Amended**: 2026-05-28

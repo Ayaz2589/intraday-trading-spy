@@ -1,11 +1,13 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/001-backtest-mvp-spy-vwap-pullback/plan.md](specs/001-backtest-mvp-spy-vwap-pullback/plan.md)
+**Active plan**: [specs/002-historical-spy-yfinance-loader/plan.md](specs/002-historical-spy-yfinance-loader/plan.md)
 
-**Active spec**: [specs/001-backtest-mvp-spy-vwap-pullback/spec.md](specs/001-backtest-mvp-spy-vwap-pullback/spec.md)
+**Active spec**: [specs/002-historical-spy-yfinance-loader/spec.md](specs/002-historical-spy-yfinance-loader/spec.md)
 
-Source of truth for governance: `.specify/memory/constitution.md` (v1.0.0).
+**Prior plan (Feature 001, in flight)**: [specs/001-backtest-mvp-spy-vwap-pullback/plan.md](specs/001-backtest-mvp-spy-vwap-pullback/plan.md)
+
+Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
 or implementing any change.
 
@@ -22,8 +24,10 @@ engineering defaults.
 2. **Long-only, rule-based v1.** No shorting, no HMM, no ML.
 3. **Risk manager has absolute veto.** Every trade has a stop-loss AND a
    take-profit. No stop-loss = no trade.
-4. **TDD is mandatory** for `strategy/`, `risk/`, `broker/`, `backtest/`,
-   and `data/indicators.py`. Failing test first; then implementation.
+4. **TDD is mandatory for every change to production code** in
+   `backend/src/`, `frontend/src/`, and non-trivial `backend/scripts/`.
+   Tests first; then implementation. Exempt: config, docs, READMEs,
+   `.gitignore`, ≤5-line wrappers, type stubs, generated code.
 5. **Paper-first.** `mode: backtest` or `mode: paper` only. Live
    auto-trading is disabled by default and gated behind a documented
    readiness review.

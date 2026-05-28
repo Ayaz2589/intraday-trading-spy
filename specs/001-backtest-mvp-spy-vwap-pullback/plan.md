@@ -68,7 +68,7 @@ memory comfortably. Feature scope: ~12 modules under
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Source of truth: `.specify/memory/constitution.md` (v1.0.0). For each
+Source of truth: `.specify/memory/constitution.md` (v1.1.0). For each
 principle below, state which parts of this feature touch it and prove
 non-violation. If a tension exists, defer the justification to the
 **Complexity Tracking** table at the bottom of this plan.
@@ -78,7 +78,7 @@ non-violation. If a tension exists, defer the justification to the
 | I | SPY-Only Instrument (NON-NEGOTIABLE) | yes | Config schema pins `market.symbol` to the literal `"SPY"` via a Pydantic `Literal`. Bar loader rejects any row whose symbol column differs. FR-002 + acceptance scenario US3-2 are covered by a startup test. |
 | II | Long-Only, Rule-Based v1 (NON-NEGOTIABLE) | yes | `Direction` enum exposes only `LONG`. The VWAP-pullback strategy is a deterministic rule set with no ML/HMM dependencies. Strategy module has no broker or sizing imports — verified by an architecture test (`test_module_boundaries.py`). |
 | III | Risk Manager Has Absolute Veto (NON-NEGOTIABLE) | yes | Paper broker's `simulate_entry` accepts only `RiskDecision(approved=True)` `TradePlan` inputs; the call site has an `assert`. Risk manager implements every check listed in spec FR-007. All numeric limits live in `backend/config/config.yaml`. Each rejection reason has its own test. |
-| IV | Test-First for Strategy & Risk (NON-NEGOTIABLE) | yes | Tasks file (Phase 2) will sequence every implementation task after a failing test task. The future-leak test fixture (US4) is built before the backtest engine. Architecture-test enforces module boundaries. |
+| IV | Test-First Everywhere (NON-NEGOTIABLE, v1.1.0) | yes | Every implementation task in `tasks.md` for in-scope code (`backend/src/**`, non-trivial `backend/scripts/**`) is preceded by a failing-test task. T040 (RiskState) was retro-fitted with T039b after the v1.1.0 amendment. `backend/scripts/run_backtest.py` (T054) is a 3-line wrapper around `main()` and is exempt per the principle. |
 | V | Paper-First, Live Trading Disabled by Default (NON-NEGOTIABLE) | yes | Default config sets `app.mode: backtest` and `broker.live_auto_enabled: false`. No live-broker code exists in this feature. FR-017 is tested by `test_default_config_blocks_live`. |
 | VI | Educational UI: Every Concept Is Explained | not touched | No UI is shipped in this feature; principle VI applies to UI-shipping features. Documented as out-of-scope in spec assumptions; enforcement deferred to Feature 003 (frontend). |
 | VII | Journal Everything | yes | Every state transition (emitted, approved, rejected, executed, exited, force_flat, lockout) flows through `journal/logger.py`. Spec FR-012 lists every event class; tests assert each class produces a journal row with the indicator snapshot at decision time. |

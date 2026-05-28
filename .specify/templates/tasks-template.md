@@ -9,13 +9,22 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are OPTIONAL in general, BUT per constitution principle IV
-(Test-First for Strategy & Risk, NON-NEGOTIABLE), tests are MANDATORY for
-any task that touches `backend/src/intraday_trade_spy/strategy/`,
-`backend/src/intraday_trade_spy/risk/`, `backend/src/intraday_trade_spy/broker/`,
-`backend/src/intraday_trade_spy/backtest/`, or `backend/src/intraday_trade_spy/data/indicators.py`.
-For those tasks, the failing test MUST be authored before implementation and
-listed as a preceding task in this file.
+**Tests**: Per constitution principle IV (Test-First Everywhere,
+NON-NEGOTIABLE, v1.1.0), tests are MANDATORY for any task that touches:
+
+- `backend/src/**/*.py` (all backend source)
+- `frontend/src/**/*.{ts,tsx}` (all frontend source)
+- `backend/scripts/**/*.py` when the script contains logic (not a
+  ≤5-line wrapper)
+
+For those tasks, the failing-test task MUST be authored before the
+implementation task and listed as the preceding task in this file.
+
+Tests are OPTIONAL (welcome but not gated) for: config files
+(YAML/TOML/INI/JSON), READMEs and other `*.md` files, `.gitignore` /
+`.python-version` / placeholder files, ≤5-line entry-point wrappers
+that only call a `main()` defined elsewhere, type stubs, and generated
+code.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
