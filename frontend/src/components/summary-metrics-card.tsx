@@ -34,7 +34,7 @@ export function SummaryMetricsCard({
       <CardHeader>
         <CardTitle>Summary</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-4 gap-4">
+      <CardContent className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-7 gap-4">
         <Metric
           label="Total Trades"
           value={String(summary.total_trades)}

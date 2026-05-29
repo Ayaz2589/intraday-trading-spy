@@ -45,7 +45,7 @@ export function StrategyConfigCard({
       <CardHeader>
         <CardTitle>Strategy & Risk Config</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-x-6 gap-y-3 text-sm">
+      <CardContent className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9 gap-x-6 gap-y-3 text-sm">
         <Field
           label="Setup"
           value={

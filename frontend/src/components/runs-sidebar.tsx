@@ -11,7 +11,7 @@ export function RunsSidebar({
 }) {
   if (runs.length === 0) {
     return (
-      <aside className="w-64 border-r border-gray-200 dark:border-slate-700 p-4 shrink-0">
+      <aside className="w-64 2xl:w-72 border-r border-gray-200 dark:border-slate-700 p-4 shrink-0">
         <h2 className="font-semibold mb-2">No runs yet</h2>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">
           Run a backtest to populate this viewer.
@@ -21,7 +21,7 @@ export function RunsSidebar({
     );
   }
   return (
-    <aside className="w-64 border-r border-gray-200 dark:border-slate-700 overflow-y-auto shrink-0">
+    <aside className="w-64 2xl:w-72 border-r border-gray-200 dark:border-slate-700 overflow-y-auto shrink-0">
       <h2 className="font-semibold p-4 border-b border-gray-200 dark:border-slate-700">
         Runs ({runs.length})
       </h2>

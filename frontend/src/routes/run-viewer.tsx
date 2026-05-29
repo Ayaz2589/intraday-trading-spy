@@ -252,25 +252,30 @@ export function RunViewer() {
         <Section state={manifest}>
           {(m) => <RunHeader manifest={m} />}
         </Section>
-        <div className="p-4 pb-0">
-          <Section state={manifest}>
-            {(m) => <StrategyConfigCard manifest={m} />}
-          </Section>
-        </div>
-        <div className="p-4 grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+        <div className="p-4 grid grid-cols-3 2xl:grid-cols-12 gap-4">
+          {/* Strategy: full-width row on standard screens, 5/12 on ultra-wide */}
+          <div className="col-span-3 2xl:col-span-5">
+            <Section state={manifest}>
+              {(m) => <StrategyConfigCard manifest={m} />}
+            </Section>
+          </div>
+          {/* Summary: 2/3 of row 2 on standard, 5/12 row 1 on ultra-wide */}
+          <div className="col-span-2 2xl:col-span-5">
             <Section state={summary}>
               {(s) => <SummaryMetricsCard summary={s} />}
             </Section>
           </div>
-          <Section state={summary}>
-            {(s) => (
-              <RejectionBreakdownCard
-                breakdown={s.rejection_breakdown}
-                total={s.rejected_signal_count}
-              />
-            )}
-          </Section>
+          {/* Rejections: 1/3 of row 2 on standard, 2/12 row 1 on ultra-wide */}
+          <div className="col-span-1 2xl:col-span-2">
+            <Section state={summary}>
+              {(s) => (
+                <RejectionBreakdownCard
+                  breakdown={s.rejection_breakdown}
+                  total={s.rejected_signal_count}
+                />
+              )}
+            </Section>
+          </div>
         </div>
         <div className="p-4">{renderChart()}</div>
         <div className="p-4">
