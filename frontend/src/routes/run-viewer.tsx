@@ -250,7 +250,6 @@ export function RunViewer() {
             {(m) => <StrategyConfigCard manifest={m} />}
           </Section>
         </div>
-        <div className="p-4">{renderChart()}</div>
         <div className="p-4 grid grid-cols-3 gap-4">
           <div className="col-span-2">
             <Section state={summary}>
@@ -266,6 +265,7 @@ export function RunViewer() {
             )}
           </Section>
         </div>
+        <div className="p-4">{renderChart()}</div>
         <div className="p-4">
           <Section state={journal}>
             {(j) => (
