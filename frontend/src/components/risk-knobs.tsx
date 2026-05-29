@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Sliders } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sliders, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -55,18 +55,34 @@ export function RiskKnobs({
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Form | null>(null);
+  const [original, setOriginal] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     fetchConfig()
-      .then((cfg) => setForm(extractForm(cfg)))
+      .then((cfg) => {
+        const extracted = extractForm(cfg);
+        setForm(extracted);
+        setOriginal(extracted);
+      })
       .catch((e: Error) => setError(e.message));
   }, [open]);
 
   const update = (k: keyof Form, v: number) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
+
+  const isDirty = useMemo(() => {
+    if (!form || !original) return false;
+    return (Object.keys(form) as (keyof Form)[]).some(
+      (k) => form[k] !== original[k],
+    );
+  }, [form, original]);
+
+  const handleRevert = () => {
+    if (original) setForm({ ...original });
+  };
 
   const handleRun = async () => {
     if (!form) return;
@@ -137,14 +153,26 @@ export function RiskKnobs({
               step={0.5}
               onChange={(v) => update("risk_reward", v)}
             />
-            <Button
-              size="sm"
-              className="w-full mt-2"
-              disabled={busy}
-              onClick={handleRun}
-            >
-              {busy ? "Running…" : "Run with these settings"}
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRevert}
+                disabled={!isDirty || busy}
+                aria-label="Revert"
+              >
+                <Undo2 className="h-4 w-4 mr-1" />
+                Revert
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                disabled={busy}
+                onClick={handleRun}
+              >
+                {busy ? "Running…" : "Run with these settings"}
+              </Button>
+            </div>
             {error && (
               <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
             )}

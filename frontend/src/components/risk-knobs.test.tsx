@@ -71,4 +71,34 @@ describe("RiskKnobs", () => {
     // backend snapshots the full picture of what the user ran.
     expect(body.overrides.risk.account_value).toBe(25000);
   });
+
+  it("Revert restores the originally-fetched values and disables itself when clean", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      if (String(url) === "/api/config")
+        return Promise.resolve(new Response(JSON.stringify(baseConfig)));
+      return Promise.resolve(new Response("{}"));
+    });
+    render(<RiskKnobs onNewRun={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /customize/i }));
+    await waitFor(() =>
+      expect(screen.getByLabelText(/risk per trade/i)).toHaveValue(0.1),
+    );
+    const revert = screen.getByRole("button", { name: /revert/i });
+    expect(revert).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/risk per trade/i), {
+      target: { value: "0.5" },
+    });
+    fireEvent.change(screen.getByLabelText(/account value/i), {
+      target: { value: "100000" },
+    });
+    expect(revert).not.toBeDisabled();
+    expect(screen.getByLabelText(/risk per trade/i)).toHaveValue(0.5);
+    expect(screen.getByLabelText(/account value/i)).toHaveValue(100000);
+
+    await userEvent.click(revert);
+    expect(screen.getByLabelText(/risk per trade/i)).toHaveValue(0.1);
+    expect(screen.getByLabelText(/account value/i)).toHaveValue(25000);
+    expect(revert).toBeDisabled();
+  });
 });
