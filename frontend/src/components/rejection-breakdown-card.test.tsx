@@ -10,8 +10,8 @@ describe("RejectionBreakdownCard", () => {
     };
     render(<RejectionBreakdownCard breakdown={breakdown} total={105} />);
     const items = screen.getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("position_value_exceeds_cap");
-    expect(items[1]).toHaveTextContent("no_new_trades_after");
+    expect(items[0]).toHaveTextContent("Position Value Exceeds Cap");
+    expect(items[1]).toHaveTextContent("No New Trades After");
   });
 
   it("renders HelpTooltip on the heading and on known rejection types", () => {

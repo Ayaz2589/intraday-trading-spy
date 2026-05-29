@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./status-badge";
 import { HelpTooltip } from "./help-tooltip";
+import { humanize, truncate } from "@/lib/format";
 import type { JournalFilter, JournalRowView } from "@/api/types";
 
 const FILTERS: JournalFilter[] = [
@@ -46,7 +47,7 @@ export function JournalTable({
               variant={f === filter ? "default" : "outline"}
               onClick={() => onFilterChange(f)}
             >
-              {f}
+              {humanize(f)}
             </Button>
           ))}
         </div>
@@ -81,8 +82,8 @@ export function JournalTable({
             <TableCell>
               <StatusBadge status={r.status} />
             </TableCell>
-            <TableCell className="font-mono text-xs">
-              {r.setup ?? "—"}
+            <TableCell className="text-xs">
+              {humanize(r.setup) || "—"}
             </TableCell>
             <TableCell className="font-mono">{f(r.planned_entry, 2)}</TableCell>
             <TableCell className="font-mono">{f(r.stop_loss, 2)}</TableCell>
@@ -92,8 +93,10 @@ export function JournalTable({
               {f(r.planned_risk_dollars, 2)}
             </TableCell>
             <TableCell className="font-mono">{f(r.realized_r, 3)}</TableCell>
-            <TableCell className="text-xs">
-              {r.rejection_check ?? r.reason}
+            <TableCell className="text-xs" title={r.rejection_check ?? r.reason}>
+              {r.rejection_check
+                ? humanize(r.rejection_check)
+                : truncate(r.reason, 40)}
             </TableCell>
           </TableRow>
         ))}

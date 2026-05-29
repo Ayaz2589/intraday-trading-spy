@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { humanize } from "@/lib/format";
 import type { JournalRowView } from "@/api/types";
 
 const COLORS: Record<JournalRowView["status"], string> = {
@@ -13,5 +14,5 @@ const COLORS: Record<JournalRowView["status"], string> = {
 };
 
 export function StatusBadge({ status }: { status: JournalRowView["status"] }) {
-  return <Badge className={cn(COLORS[status])}>{status}</Badge>;
+  return <Badge className={cn(COLORS[status])}>{humanize(status)}</Badge>;
 }

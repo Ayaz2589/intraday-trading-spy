@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTooltip } from "./help-tooltip";
+import { humanize } from "@/lib/format";
 import type { HelpContentKey } from "./help-content";
 
 const HELP_BY_REASON: Partial<Record<string, HelpContentKey>> = {
@@ -33,8 +34,8 @@ export function RejectionBreakdownCard({
               const helpKey = HELP_BY_REASON[reason];
               return (
                 <li key={reason} className="flex justify-between text-sm py-1">
-                  <span className="font-mono flex items-center">
-                    {reason}
+                  <span className="flex items-center" title={reason}>
+                    {humanize(reason)}
                     {helpKey && <HelpTooltip helpKey={helpKey} />}
                   </span>
                   <span>{count}</span>

@@ -37,7 +37,8 @@ describe("JournalTable", () => {
     render(<JournalTable rows={rows} />);
     expect(screen.getByText("525.10")).toBeInTheDocument();
     expect(screen.getByText("19")).toBeInTheDocument();
-    expect(screen.getByText("executed")).toBeInTheDocument();
+    expect(screen.getByText("Executed")).toBeInTheDocument();
+    expect(screen.getByText("VWAP Pullback Long")).toBeInTheDocument();
   });
 
   it("renders HelpTooltips on relevant column headers", () => {
@@ -60,10 +61,10 @@ describe("JournalTable", () => {
       },
     ];
     render(<JournalTable rows={both} filter="executed" />);
-    // No chips rendered (onFilterChange omitted), so any "rejected" text would
+    // No chips rendered (onFilterChange omitted), so any "Rejected" text would
     // come from a row badge — there should be none.
-    expect(screen.queryByText("rejected")).toBeNull();
-    expect(screen.getByText("executed")).toBeInTheDocument();
+    expect(screen.queryByText("Rejected")).toBeNull();
+    expect(screen.getByText("Executed")).toBeInTheDocument();
   });
 
   it("clicking a filter chip fires onFilterChange", async () => {
