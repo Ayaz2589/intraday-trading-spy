@@ -7,6 +7,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { StatusBadge } from "./status-badge";
 import { HelpTooltip } from "./help-tooltip";
 import { humanize, truncate } from "@/lib/format";
@@ -37,6 +43,7 @@ export function JournalTable({
   const visible =
     filter === "all" ? rows : rows.filter((r) => r.status === filter);
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="space-y-2">
       {onFilterChange && (
         <div className="flex gap-1 flex-wrap">
@@ -93,15 +100,25 @@ export function JournalTable({
               {f(r.planned_risk_dollars, 2)}
             </TableCell>
             <TableCell className="font-mono">{f(r.realized_r, 3)}</TableCell>
-            <TableCell className="text-xs" title={r.rejection_check ?? r.reason}>
-              {r.rejection_check
-                ? humanize(r.rejection_check)
-                : truncate(r.reason, 40)}
+            <TableCell className="text-xs">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help underline decoration-dotted decoration-gray-400 underline-offset-2">
+                    {r.rejection_check
+                      ? humanize(r.rejection_check)
+                      : truncate(r.reason, 40)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {r.rejection_check ?? r.reason}
+                </TooltipContent>
+              </Tooltip>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
     </div>
+    </TooltipProvider>
   );
 }
