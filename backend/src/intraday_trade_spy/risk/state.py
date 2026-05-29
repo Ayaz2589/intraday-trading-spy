@@ -22,3 +22,11 @@ class RiskState:
             self.daily_realized_pnl = 0.0
             self.daily_lockout_active = False
             self.cooldown_until = None
+            # Reset consecutive_losses per session. Originally this was
+            # intentionally NOT reset (so the lockout was "trailing"
+            # across sessions), but that created a catch-22 — once the
+            # lockout fired, every signal was rejected, so no winning
+            # trade could ever happen to reset the counter, so the
+            # lockout was permanent. Discovered during the real-data
+            # preset sweep (see EXPERIMENTS.md Experiment 004).
+            self.consecutive_losses = 0

@@ -27,8 +27,14 @@ def test_roll_to_session_is_noop_for_same_date():
     assert st.trades_taken_today == 1
 
 
-def test_roll_to_session_does_not_clear_consecutive_losses():
+def test_roll_to_session_clears_consecutive_losses():
+    """The consecutive-loss lockout must reset per session. The previous
+    behavior (NOT resetting) created a catch-22: once the lockout fired,
+    every signal was rejected, so no winning trade could ever happen to
+    reset the counter — the lockout was permanent across the rest of
+    the backtest. Discovered during a real-data preset sweep.
+    See EXPERIMENTS.md Experiment 004."""
     st = RiskState(session_date=date(2026, 5, 27), account_value=1000.0)
     st.consecutive_losses = 2
     st.roll_to_session(date(2026, 5, 28))
-    assert st.consecutive_losses == 2
+    assert st.consecutive_losses == 0

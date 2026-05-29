@@ -274,6 +274,138 @@ blocking but worth fixing.
 
 ---
 
+## Experiment 004 — 2026-05-29 — Real-data preset sweep + lockout bug
+
+### Hypothesis
+
+Casual observation across the synthetic-fixture runs: win rate
+never goes above 33.3%. Predicted: this is small-sample noise
+(3-7 trades per run is too few to mean anything). On real data
+with the cap relaxed, expect 30+ trades, a stable win rate ~30-40%
+(consistent with 2:1 R/R breakeven), and one of the four presets
+should produce a measurable edge if any does.
+
+### Knobs changed
+
+A four-preset sweep over a single real-data file
+(`spy_5m_2026-04-29_2026-05-28.csv`, 1,634 bars, ~21 sessions).
+
+| Preset | Differs from default at |
+|---|---|
+| `default` | (baseline, no changes) |
+| `low-risk` | `risk.max_risk_per_trade_pct: 0.1 → 0.05` |
+| `demo` | `risk.max_position_value_pct: 100 → 1500` |
+| `aggressive` | `risk.max_risk_per_trade_pct: 0.1 → 1.0`; `max_consecutive_losses: 2 → 4`; `risk_reward: 2.0 → 3.0` |
+
+### Run IDs
+
+Pre-fix (lockout permanent — see "Engine bug" below):
+
+- default: `20260529-133508-421a5b44`
+- low-risk: `20260529-133510-421a5b44`
+- demo: `20260529-133512-421a5b44`
+- aggressive: `20260529-133515-421a5b44`
+
+Post-fix (consecutive_losses now resets per session):
+
+- default: `20260529-133808-421a5b44`
+- low-risk: `20260529-133812-421a5b44`
+- demo: `20260529-133815-421a5b44`
+- aggressive: `20260529-133819-421a5b44`
+
+All ran against `data/raw/spy_5m_2026-04-29_2026-05-28.csv`
+(fingerprint `421a5b44`, distinct from the synthetic fixture's
+`7697908e`).
+
+### Engine bug discovered mid-experiment
+
+Initial sweep produced suspiciously uniform results: three of four
+presets all returned **2 trades, 0/2 W/L, -2.000R, 402 rejections,
+100% of them `consecutive_losses_reached`**.
+
+Investigation revealed the consecutive-loss lockout was a
+**permanent catch-22** on real data:
+
+1. After 2 losses, `state.consecutive_losses >= max_consecutive_losses`
+   so the risk manager rejects every subsequent signal.
+2. `consecutive_losses` was only reset on a winning trade
+   (`engine.py:_apply_exit_to_state`).
+3. With every signal rejected, no winning trade can ever happen
+   to reset the counter.
+4. `RiskState.roll_to_session` reset `trades_taken_today`,
+   `daily_realized_pnl`, `daily_lockout_active`, and `cooldown_until`
+   — but NOT `consecutive_losses`. An explicit pre-existing test
+   (`test_roll_to_session_does_not_clear_consecutive_losses`)
+   asserted this behavior.
+
+On the synthetic fixture this never showed up because the strategy
+happened to win Trade 3, resetting the counter before the catch-22
+locked in. On the real 21-session fixture, the first 2 trades both
+lost — and the lockout fired for the remaining 400+ signals.
+
+**Fix:** added `self.consecutive_losses = 0` to `roll_to_session`,
+matching every other "daily" counter. Flipped the test to assert
+the new behavior with a comment explaining the catch-22.
+
+### Outcome (post-fix)
+
+| Metric | default | low-risk | demo | aggressive |
+|---|---|---|---|---|
+| Total trades | 37 | **44** | **44** | 0 |
+| Wins / Losses | 11 / 23 | 15 / 27 | 15 / 27 | — |
+| Win rate | 29.7% | **34.1%** | **34.1%** | — |
+| Total R | +0.739 | **+3.453** | **+3.453** | 0 |
+| Max drawdown | -12.000R | -7.131R | -7.131R | 0 |
+| Profit factor | 0.950 | **1.105** | **1.105** | — |
+| Total rejections | 122 | 144 | 144 | 411 |
+
+(Pre-fix outcomes deliberately not included — they reflect the bug,
+not the strategy.)
+
+### Lesson
+
+**Three findings, in order of importance:**
+
+1. **The consecutive-loss lockout was a permanent catch-22 on real
+   data.** Fixed by resetting `consecutive_losses` per session. This
+   bug was undetectable on the synthetic fixture by luck (Trade 3
+   happened to be a winner) and only surfaced because we ran the
+   four-preset sweep on real data and noticed three of four configs
+   produced byte-identical losing outcomes. **Real-data backtests
+   catch bugs synthetic data hides.** Lesson for future: always
+   validate findings on real data before drawing strategic
+   conclusions.
+
+2. **Win-rate observation was correct but small-sample.** The user's
+   sense that "we never go above 33.3%" was real: across 44 trades
+   on the real-data sample, win rate stabilizes at 34.1%. That's
+   *just barely above* the 33.3% breakeven for 2:1 R/R. The strategy
+   has marginal edge, not meaningful edge. Profit factor 1.105 says
+   the same thing.
+
+3. **`low-risk` and `demo` continue to produce identical R-outcomes.**
+   On synthetic and on real data alike, both presets fully relax the
+   cap, so both take the same trades. R-multiples are
+   capital-invariant — the only difference between the two runs is
+   the dollar P&L per trade (demo's would be 2× low-risk's), which
+   the R-based summary metrics hide.
+
+**Next-experiment suggestions:**
+
+- **Test R:R sensitivity.** Drop `risk_reward` from 2.0 → 1.5 on the
+  low-risk preset. Expect higher win rate (~45%), lower R per win,
+  similar or better Total R. Tests whether 2:1 is fighting against
+  the data.
+- **Test a longer window.** `make download START=2026-02-28
+  END=2026-05-28` for 90 days → ~63 sessions. Re-sweep. See if
+  PF 1.1 holds at a bigger sample.
+- **Audit `aggressive` preset.** It's been confirmed unrunnable on
+  both synthetic and real data (411 rejections, 0 trades).
+  Either remove it or pair it with a strategy code change that
+  produces wider stops.
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical
