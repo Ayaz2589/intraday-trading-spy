@@ -96,8 +96,10 @@ export function PriceChart({
     );
     if (showVwap && vwap.length) {
       const line = chart.addSeries(LineSeries, {
-        color: "#3b82f6",
-        lineWidth: 1,
+        color: "#f59e0b",
+        lineWidth: 2,
+        lastValueVisible: true,
+        priceLineVisible: false,
       });
       line.setData(
         ascendingByTime(
@@ -153,7 +155,7 @@ export function PriceChart({
             !showVwap && "opacity-40 line-through",
           )}
         >
-          <span className="w-3 h-0.5 bg-blue-500 mr-1" />
+          <span className="inline-block w-4 h-[3px] bg-amber-500 mr-1.5" />
           VWAP
           <HelpTooltip helpKey="vwap" />
         </button>
