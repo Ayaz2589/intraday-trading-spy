@@ -1582,17 +1582,17 @@ renders with all overlays.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T191 [P] Run `cd backend && .venv/bin/pytest --cov=intraday_trade_spy.api --cov-report=term-missing tests/test_static_server.py`. Verify 100% coverage on `api/static_server.py`.
+- [X] T191 [P] Run `cd backend && .venv/bin/pytest --cov=intraday_trade_spy.api --cov-report=term-missing tests/test_static_server.py`. Verify 100% coverage on `api/static_server.py`.
 
-- [ ] T192 [P] Run `cd frontend && npm test -- --coverage`. Verify component coverage ≥90%.
+- [X] T192 [P] Run `cd frontend && npm test -- --coverage`. Verify component coverage ≥90%.
 
-- [ ] T193 [P] Run `cd backend && .venv/bin/ruff check src tests`. Fix any findings.
+- [X] T193 [P] Run `cd backend && .venv/bin/ruff check src tests`. Fix any findings.
 
-- [ ] T194 [P] Run `cd frontend && npm run lint && npm run typecheck`. Fix any findings.
+- [X] T194 [P] Run `cd frontend && npm run lint && npm run typecheck`. Fix any findings.
 
-- [ ] T194b [P] **M4 fix**: Run `cd frontend && npm run build` and verify `frontend/dist/index.html` exists plus the build emits no errors. This catches misconfigured Vite + TypeScript build settings that the dev server wouldn't catch.
+- [X] T194b [P] **M4 fix**: Run `cd frontend && npm run build` and verify `frontend/dist/index.html` exists plus the build emits no errors. This catches misconfigured Vite + TypeScript build settings that the dev server wouldn't catch.
 
-- [ ] T195 Run the full quickstart end-to-end (Phase 1 install → Phase 7 polish):
+- [X] T195 Run the full quickstart end-to-end (Phase 1 install → Phase 7 polish):
   ```bash
   make ui-install
   make ui-server &
@@ -1606,11 +1606,11 @@ renders with all overlays.
   # - Filter chips work
   ```
 
-- [ ] T196 [P] Update root `README.md` to add Feature 003 status (implemented), the `make ui-*` targets, and a note that the UI lives at http://localhost:5173/.
+- [X] T196 [P] Update root `README.md` to add Feature 003 status (implemented), the `make ui-*` targets, and a note that the UI lives at http://localhost:5173/.
 
-- [ ] T197 [P] Update `backend/README.md` to include the `make ui-server` workflow.
+- [X] T197 [P] Update `backend/README.md` to include the `make ui-server` workflow.
 
-- [ ] T198 Commit final polish + cleanup.
+- [X] T198 Commit final polish + cleanup.
 
 **Checkpoint (Phase 8)**: Coverage met, lints clean, quickstart confirmed end-to-end.
 

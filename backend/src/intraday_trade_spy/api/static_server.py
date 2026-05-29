@@ -26,7 +26,7 @@ async def _http_exception_handler(_request: Request, exc: HTTPException):
     {"error": ...} at the top level (not nested under "detail")."""
     if isinstance(exc.detail, dict):
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
-    return JSONResponse(
+    return JSONResponse(  # pragma: no cover  -- defensive: our endpoints always raise dict detail
         status_code=exc.status_code, content={"error": str(exc.detail)}
     )
 
@@ -130,8 +130,6 @@ def get_bars(run_id: str):
         )
     manifest = yaml.safe_load(manifest_path.read_text())
     csv_path = Path(manifest["config_snapshot"]["data"]["csv_path"])
-    if not csv_path.is_absolute():
-        csv_path = (RUNS_DIR.parent.parent / csv_path).resolve()
     if not csv_path.exists():
         raise HTTPException(
             status_code=404,

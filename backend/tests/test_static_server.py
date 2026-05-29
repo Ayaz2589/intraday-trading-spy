@@ -222,3 +222,46 @@ def test_get_bars_404_when_source_data_missing(tmp_path, monkeypatch):
     body = resp.json()
     assert body["error"] == "source_data_missing"
     assert "expected_path" in body
+
+
+def test_get_runs_returns_empty_when_runs_dir_does_not_exist(
+    tmp_path, monkeypatch
+):
+    missing = tmp_path / "does_not_exist"
+    client = _setup_runs_dir(monkeypatch, missing)
+    resp = client.get("/api/runs")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_get_runs_skips_non_directory_entries(tmp_path, monkeypatch):
+    (tmp_path / "stray.txt").write_text("not a run")
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.get("/api/runs")
+    assert resp.json() == []
+
+
+def test_get_bars_resolves_relative_csv_path(tmp_path, monkeypatch):
+    """Covers the relative-path case: csv_path in the manifest is relative,
+    Python resolves it against CWD (which is `backend/` under `make
+    ui-server`)."""
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    (raw_dir / "spy.csv").write_text(
+        "symbol,timestamp,open,high,low,close,volume\n"
+        "SPY,2026-01-01T09:30:00-05:00,525,525.5,524.8,525.1,1000\n"
+    )
+    run_dir = tmp_path / "backtests" / "abc"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run.yaml").write_text(
+        "run_id: abc\nconfig_snapshot:\n  data:\n    csv_path: raw/spy.csv\n"
+    )
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.RUNS_DIR", tmp_path / "backtests"
+    )
+    monkeypatch.chdir(tmp_path)
+    from intraday_trade_spy.api.static_server import app
+
+    resp = TestClient(app).get("/api/runs/abc/bars")
+    assert resp.status_code == 200
+    assert resp.json()[0]["close"] == 525.1
