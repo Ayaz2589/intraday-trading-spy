@@ -245,6 +245,11 @@ export function RunViewer() {
         <Section state={manifest}>
           {(m) => <RunHeader manifest={m} />}
         </Section>
+        <div className="p-4 pb-0">
+          <Section state={manifest}>
+            {(m) => <StrategyConfigCard manifest={m} />}
+          </Section>
+        </div>
         <div className="p-4">{renderChart()}</div>
         <div className="p-4 grid grid-cols-3 gap-4">
           <div className="col-span-2">
@@ -259,11 +264,6 @@ export function RunViewer() {
                 total={s.rejected_signal_count}
               />
             )}
-          </Section>
-        </div>
-        <div className="p-4 pt-0">
-          <Section state={manifest}>
-            {(m) => <StrategyConfigCard manifest={m} />}
           </Section>
         </div>
         <div className="p-4">
