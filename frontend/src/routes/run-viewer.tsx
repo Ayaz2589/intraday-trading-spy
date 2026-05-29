@@ -138,9 +138,16 @@ export function RunViewer() {
       filter === "all"
         ? sessionJournal
         : sessionJournal.filter((r) => r.status === filter);
-    const vwap = sessionJournal
-      .filter((r) => r.vwap != null)
-      .map((r) => ({ time: r.timestamp, value: r.vwap as number }));
+    // A bar produces multiple journal rows (emitted + decision) carrying
+    // the same vwap value. Dedupe by timestamp, otherwise lightweight-charts
+    // rejects the series with "data must be asc ordered by time".
+    const vwapByTime = new Map<string, number>();
+    for (const r of sessionJournal) {
+      if (r.vwap != null && !vwapByTime.has(r.timestamp))
+        vwapByTime.set(r.timestamp, r.vwap);
+    }
+    const vwap = Array.from(vwapByTime, ([time, value]) => ({ time, value }))
+      .sort((a, b) => a.time.localeCompare(b.time));
     const orRow = sessionJournal.find(
       (r) => r.or_high != null && r.or_low != null,
     );

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   createChart,
+  createSeriesMarkers,
   CandlestickSeries,
   LineSeries,
   type UTCTimestamp,
@@ -10,6 +11,15 @@ import type { BarView } from "@/api/types";
 
 const toUtc = (iso: string): UTCTimestamp =>
   Math.floor(new Date(iso).getTime() / 1000) as UTCTimestamp;
+
+function ascendingByTime<T extends { time: UTCTimestamp }>(rows: T[]): T[] {
+  const sorted = [...rows].sort((a, b) => a.time - b.time);
+  const out: T[] = [];
+  for (const r of sorted) {
+    if (out.length === 0 || out[out.length - 1].time !== r.time) out.push(r);
+  }
+  return out;
+}
 
 export type ChartMarker = {
   time: string;
@@ -55,20 +65,26 @@ export function PriceChart({
       wickDownColor: "#ef4444",
     });
     candles.setData(
-      bars.map((b) => ({
-        time: toUtc(b.timestamp),
-        open: b.open,
-        high: b.high,
-        low: b.low,
-        close: b.close,
-      })),
+      ascendingByTime(
+        bars.map((b) => ({
+          time: toUtc(b.timestamp),
+          open: b.open,
+          high: b.high,
+          low: b.low,
+          close: b.close,
+        })),
+      ),
     );
     if (vwap.length) {
       const line = chart.addSeries(LineSeries, {
         color: "#3b82f6",
         lineWidth: 1,
       });
-      line.setData(vwap.map((p) => ({ time: toUtc(p.time), value: p.value })));
+      line.setData(
+        ascendingByTime(
+          vwap.map((p) => ({ time: toUtc(p.time), value: p.value })),
+        ),
+      );
     }
     if (or) {
       candles.createPriceLine({
@@ -89,15 +105,17 @@ export function PriceChart({
       });
     }
     if (markers.length) {
-      candles.setMarkers(
-        markers.map((m) => ({
-          time: toUtc(m.time),
-          position: m.position,
-          color: m.color,
-          shape: m.shape,
-          text: m.text,
-        })),
-      );
+      const mapped = markers.map((m) => ({
+        time: toUtc(m.time),
+        position: m.position,
+        color: m.color,
+        shape: m.shape,
+        text: m.text,
+      }));
+      // Markers must be sorted by time too. Unlike candles/lines, duplicate
+      // timestamps ARE allowed (entry + rejected on the same bar), so only sort.
+      mapped.sort((a, b) => a.time - b.time);
+      createSeriesMarkers(candles, mapped);
     }
     chart.timeScale().fitContent();
     return () => chart.remove();

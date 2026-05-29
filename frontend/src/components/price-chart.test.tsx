@@ -5,7 +5,6 @@ import type { BarView } from "@/api/types";
 vi.mock("lightweight-charts", () => {
   const series = {
     setData: vi.fn(),
-    setMarkers: vi.fn(),
     createPriceLine: vi.fn(),
   };
   const chart = {
@@ -15,6 +14,7 @@ vi.mock("lightweight-charts", () => {
   };
   return {
     createChart: vi.fn(() => chart),
+    createSeriesMarkers: vi.fn(),
     CandlestickSeries: "Candlestick",
     LineSeries: "Line",
   };
