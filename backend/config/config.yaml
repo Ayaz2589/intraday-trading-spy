@@ -36,13 +36,13 @@ strategy:
       risk_reward: 2.0
 
 risk:
-  account_value: 1000.0
-  max_risk_per_trade_pct: 1.0
+  account_value: 25000.0
+  max_risk_per_trade_pct: 0.1
   max_daily_loss_pct: 2.0
   max_trades_per_day: 3
   max_consecutive_losses: 2
   cooldown_after_loss_minutes: 30
-  max_position_value_pct: 25.0
+  max_position_value_pct: 100.0
   require_stop_loss: true
   require_take_profit: true
   allow_overnight_positions: false

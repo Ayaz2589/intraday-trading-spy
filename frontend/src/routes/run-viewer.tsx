@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import {
   fetchRuns,
   fetchJournal,
@@ -14,6 +14,7 @@ import { RejectionBreakdownCard } from "@/components/rejection-breakdown-card";
 import { JournalTable } from "@/components/journal-table";
 import { PriceChart } from "@/components/price-chart";
 import { SessionPicker } from "@/components/session-picker";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { buildMarkers } from "@/components/journal-markers";
 import { Button } from "@/components/ui/button";
 import type {
@@ -69,6 +70,7 @@ function loadSection<T>(
 
 export function RunViewer() {
   const { run_id } = useParams<{ run_id: string }>();
+  const navigate = useNavigate();
   const [runs, setRuns] = useState<RunSummaryView[]>([]);
   const [manifest, setManifest] = useState<SectionState<RunManifestView>>({
     loading: true,
@@ -91,6 +93,14 @@ export function RunViewer() {
       .catch(() => {});
     return () => ctrl.abort();
   }, []);
+
+  // If the URL points at a run that no longer exists (e.g. after
+  // `make prune-runs`), redirect to root which picks the newest.
+  useEffect(() => {
+    if ("error" in manifest && manifest.error === "run_not_found") {
+      navigate("/", { replace: true });
+    }
+  }, [manifest, navigate]);
 
   useEffect(() => {
     if (!run_id) return;
@@ -197,6 +207,9 @@ export function RunViewer() {
     <div className="flex h-screen">
       <RunsSidebar runs={runs} selectedRunId={run_id ?? null} />
       <main className="flex-1 overflow-y-auto">
+        <div className="flex justify-end p-2 border-b border-gray-200 dark:border-slate-700">
+          <ThemeToggle />
+        </div>
         <Section state={manifest}>
           {(m) => <RunHeader manifest={m} />}
         </Section>
