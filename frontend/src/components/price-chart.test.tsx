@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import type { BarView } from "@/api/types";
 
@@ -53,6 +54,26 @@ describe("PriceChart", () => {
     );
     expect(container.querySelector('[data-help-key="vwap"]')).toBeTruthy();
     expect(container.querySelector('[data-help-key="opening_range"]')).toBeTruthy();
+  });
+
+  it("VWAP and OR legend items are toggle buttons (pressed by default)", () => {
+    render(<PriceChart bars={bars} vwap={[]} or={null} markers={[]} />);
+    expect(
+      screen.getByRole("button", { name: /toggle vwap/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /toggle or/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("clicking the VWAP toggle flips aria-pressed", async () => {
+    const user = userEvent.setup();
+    render(<PriceChart bars={bars} vwap={[]} or={null} markers={[]} />);
+    const vwapToggle = screen.getByRole("button", { name: /toggle vwap/i });
+    await user.click(vwapToggle);
+    expect(vwapToggle).toHaveAttribute("aria-pressed", "false");
+    await user.click(vwapToggle);
+    expect(vwapToggle).toHaveAttribute("aria-pressed", "true");
   });
 
   it("accepts a markers array without crashing", () => {

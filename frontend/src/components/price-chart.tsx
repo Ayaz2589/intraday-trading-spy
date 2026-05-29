@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   createSeriesMarkers,
@@ -6,6 +6,7 @@ import {
   LineSeries,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { cn } from "@/lib/utils";
 import { HelpTooltip } from "./help-tooltip";
 import { useTheme } from "@/lib/theme";
 import type { BarView } from "@/api/types";
@@ -57,6 +58,8 @@ export function PriceChart({
   const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const colors = CHART_THEME[theme];
+  const [showVwap, setShowVwap] = useState(true);
+  const [showOR, setShowOR] = useState(true);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -91,7 +94,7 @@ export function PriceChart({
         })),
       ),
     );
-    if (vwap.length) {
+    if (showVwap && vwap.length) {
       const line = chart.addSeries(LineSeries, {
         color: "#3b82f6",
         lineWidth: 1,
@@ -102,7 +105,7 @@ export function PriceChart({
         ),
       );
     }
-    if (or) {
+    if (showOR && or) {
       candles.createPriceLine({
         price: or.high,
         color: "#22c55e",
@@ -135,21 +138,39 @@ export function PriceChart({
     }
     chart.timeScale().fitContent();
     return () => chart.remove();
-  }, [bars, vwap, or, markers, colors]);
+  }, [bars, vwap, or, markers, colors, showVwap, showOR]);
 
   return (
     <div className="border rounded border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div className="flex gap-4 p-2 text-xs items-center border-b border-gray-200 dark:border-slate-700">
-        <span className="flex items-center">
+        <button
+          type="button"
+          aria-pressed={showVwap}
+          aria-label="Toggle VWAP"
+          onClick={() => setShowVwap((v) => !v)}
+          className={cn(
+            "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
+            !showVwap && "opacity-40 line-through",
+          )}
+        >
           <span className="w-3 h-0.5 bg-blue-500 mr-1" />
           VWAP
           <HelpTooltip helpKey="vwap" />
-        </span>
-        <span className="flex items-center">
+        </button>
+        <button
+          type="button"
+          aria-pressed={showOR}
+          aria-label="Toggle OR"
+          onClick={() => setShowOR((v) => !v)}
+          className={cn(
+            "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
+            !showOR && "opacity-40 line-through",
+          )}
+        >
           <span className="w-3 h-0.5 bg-green-500 mr-1" />
           OR high / low
           <HelpTooltip helpKey="opening_range" />
-        </span>
+        </button>
         <span className="flex items-center">
           <span className="inline-block w-2 h-2 bg-gray-400 mr-1" />
           Force-flat exit
