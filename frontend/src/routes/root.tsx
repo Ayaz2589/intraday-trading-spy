@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { fetchRuns } from "@/api/client";
 import { RunActions } from "@/components/run-actions";
+import { RiskKnobs } from "@/components/risk-knobs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { RunSummaryView } from "@/api/types";
 
@@ -21,11 +22,14 @@ export function Root() {
     return (
       <div>
         <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-slate-700">
-          <RunActions
-            currentRunId={null}
-            onNewRun={(id) => navigate(`/runs/${id}`)}
-            onCleared={() => setRuns([])}
-          />
+          <div className="flex items-center gap-2">
+            <RunActions
+              currentRunId={null}
+              onNewRun={(id) => navigate(`/runs/${id}`)}
+              onCleared={() => setRuns([])}
+            />
+            <RiskKnobs onNewRun={(id) => navigate(`/runs/${id}`)} />
+          </div>
           <ThemeToggle />
         </div>
         <div className="p-8">

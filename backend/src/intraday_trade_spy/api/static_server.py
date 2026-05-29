@@ -4,7 +4,9 @@ import json as _json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 import yaml
@@ -13,6 +15,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 RUNS_DIR = Path("data/backtests")
+CONFIG_PATH = Path("config/config.yaml")
+
+
+def _deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    out = dict(base)
+    for k, v in overrides.items():
+        if isinstance(out.get(k), dict) and isinstance(v, dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
 
 app = FastAPI(title="intraday-trade-spy static server", version="0.1.0")
 app.add_middleware(
@@ -157,27 +170,64 @@ def get_bars(run_id: str):
     return out
 
 
+@app.get("/api/config")
+def get_config():
+    if not CONFIG_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "config_not_found", "path": str(CONFIG_PATH)},
+        )
+    return yaml.safe_load(CONFIG_PATH.read_text())
+
+
 @app.post("/api/backtests/run")
-def run_backtest():
-    """Invoke the backtest CLI in-process via `python -m`. Returns the
-    newly-created run id once the subprocess completes successfully."""
+async def run_backtest(request: Request):
+    """Invoke the backtest CLI as a subprocess. Optional JSON body
+    {"overrides": {...}} deep-merges into config.yaml and runs against
+    a temp file. Returns the newly-created run id."""
+    overrides: dict[str, Any] = {}
+    try:
+        body = await request.json()
+        overrides = body.get("overrides", {}) if isinstance(body, dict) else {}
+    except Exception:  # pragma: no cover  -- empty body / non-json
+        pass
+
+    tmp_path: Path | None = None
+    if overrides:
+        base = yaml.safe_load(CONFIG_PATH.read_text())
+        merged = _deep_merge(base, overrides)
+        fd = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+        )
+        fd.write(yaml.safe_dump(merged))
+        fd.close()
+        tmp_path = Path(fd.name)
+        config_arg = str(tmp_path)
+    else:
+        config_arg = str(CONFIG_PATH)
+
     before = (
         {d.name for d in RUNS_DIR.iterdir() if d.is_dir()}
         if RUNS_DIR.exists()
         else set()
     )
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "intraday_trade_spy.cli.run_backtest",
-            "--config",
-            "config/config.yaml",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "intraday_trade_spy.cli.run_backtest",
+                "--config",
+                config_arg,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+
     if result.returncode != 0:
         raise HTTPException(
             status_code=500,

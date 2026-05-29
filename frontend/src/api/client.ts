@@ -40,25 +40,46 @@ export const fetchBars = (id: string, opts?: FetchOpts) =>
 async function send<T>(
   method: "POST" | "DELETE",
   path: string,
+  body?: unknown,
   opts?: FetchOpts,
 ): Promise<T> {
-  const res = await fetch(path, { method, signal: opts?.signal });
+  const init: RequestInit = { method, signal: opts?.signal };
+  if (body !== undefined) {
+    init.headers = { "Content-Type": "application/json" };
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, init);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: `http_${res.status}` }));
+    const respBody = await res
+      .json()
+      .catch(() => ({ error: `http_${res.status}` }));
     const err: Error & { code?: string } = new Error(
-      body?.error ?? `http_${res.status}`,
+      respBody?.error ?? `http_${res.status}`,
     );
-    err.code = body?.error ?? `http_${res.status}`;
+    err.code = respBody?.error ?? `http_${res.status}`;
     throw err;
   }
   return (await res.json()) as T;
 }
 
-export const runBacktest = (opts?: FetchOpts) =>
-  send<{ run_id: string }>("POST", "/api/backtests/run", opts);
+export type ConfigOverrides = Record<string, Record<string, unknown>>;
+
+export const fetchConfig = (opts?: FetchOpts) =>
+  get<Record<string, unknown>>("/api/config", opts);
+
+export const runBacktest = (
+  overrides?: ConfigOverrides,
+  opts?: FetchOpts,
+) =>
+  send<{ run_id: string }>(
+    "POST",
+    "/api/backtests/run",
+    overrides ? { overrides } : {},
+    opts,
+  );
 
 export const deleteRun = (id: string, opts?: FetchOpts) =>
-  send<{ deleted: string }>("DELETE", `/api/runs/${id}`, opts);
+  send<{ deleted: string }>("DELETE", `/api/runs/${id}`, undefined, opts);
 
 export const deleteAllRuns = (opts?: FetchOpts) =>
-  send<{ deleted_count: number }>("DELETE", "/api/runs", opts);
+  send<{ deleted_count: number }>("DELETE", "/api/runs", undefined, opts);

@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 import yaml
@@ -342,3 +343,81 @@ def test_delete_all_runs_zero_when_empty(tmp_path, monkeypatch):
     resp = client.delete("/api/runs")
     assert resp.status_code == 200
     assert resp.json()["deleted_count"] == 0
+
+
+def test_get_config_returns_yaml_as_json(tmp_path, monkeypatch):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        "risk:\n  account_value: 25000.0\n  max_risk_per_trade_pct: 0.1\n"
+    )
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.CONFIG_PATH", cfg
+    )
+    from intraday_trade_spy.api.static_server import app
+
+    resp = TestClient(app).get("/api/config")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["risk"]["account_value"] == 25000.0
+    assert body["risk"]["max_risk_per_trade_pct"] == 0.1
+
+
+def test_post_run_backtest_with_overrides_writes_temp_config(
+    tmp_path, monkeypatch
+):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        "risk:\n  account_value: 25000.0\n  max_risk_per_trade_pct: 0.1\n"
+        "  max_position_value_pct: 100.0\n"
+    )
+    new_run = tmp_path / "20260529-100000-abcdef"
+    captured: dict = {}
+
+    def fake_run(args, **kwargs):
+        # Capture the --config path so we can verify the overrides.
+        cfg_path = args[args.index("--config") + 1]
+        captured["config_yaml"] = Path(cfg_path).read_text()
+        new_run.mkdir()
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.CONFIG_PATH", cfg
+    )
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post(
+        "/api/backtests/run",
+        json={
+            "overrides": {
+                "risk": {"max_risk_per_trade_pct": 0.5},
+            }
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["run_id"] == "20260529-100000-abcdef"
+    # The temp config should have the override applied AND the un-overridden
+    # values preserved.
+    merged = yaml.safe_load(captured["config_yaml"])
+    assert merged["risk"]["max_risk_per_trade_pct"] == 0.5
+    assert merged["risk"]["account_value"] == 25000.0
+    assert merged["risk"]["max_position_value_pct"] == 100.0
+
+
+def test_post_run_backtest_without_overrides_uses_default_config(
+    tmp_path, monkeypatch
+):
+    new_run = tmp_path / "20260529-110000-abcdef"
+    captured: dict = {}
+
+    def fake_run(args, **kwargs):
+        captured["args"] = list(args)
+        new_run.mkdir()
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post("/api/backtests/run", json={})
+    assert resp.status_code == 200
+    # Default invocation uses the on-disk config/config.yaml directly,
+    # not a temp file.
+    assert "config/config.yaml" in captured["args"]

@@ -22,6 +22,7 @@ import { PriceChart } from "@/components/price-chart";
 import { SessionPicker } from "@/components/session-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RunActions } from "@/components/run-actions";
+import { RiskKnobs } from "@/components/risk-knobs";
 import { buildMarkers } from "@/components/journal-markers";
 import { Button } from "@/components/ui/button";
 import type {
@@ -219,17 +220,25 @@ export function RunViewer() {
       <RunsSidebar runs={runs} selectedRunId={run_id ?? null} />
       <main className="flex-1 overflow-y-auto">
         <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-slate-700">
-          <RunActions
-            currentRunId={run_id ?? null}
-            onNewRun={(id) => {
-              refreshRuns();
-              navigate(`/runs/${id}`);
-            }}
-            onCleared={() => {
-              refreshRuns();
-              navigate("/", { replace: true });
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <RunActions
+              currentRunId={run_id ?? null}
+              onNewRun={(id) => {
+                refreshRuns();
+                navigate(`/runs/${id}`);
+              }}
+              onCleared={() => {
+                refreshRuns();
+                navigate("/", { replace: true });
+              }}
+            />
+            <RiskKnobs
+              onNewRun={(id) => {
+                refreshRuns();
+                navigate(`/runs/${id}`);
+              }}
+            />
+          </div>
           <ThemeToggle />
         </div>
         <Section state={manifest}>
