@@ -12,7 +12,10 @@ const baseConfig = {
   },
   strategy: {
     opening_range: { minutes: 15 },
-    vwap_pullback: { target: { risk_reward: 2.0 } },
+    vwap_pullback: {
+      max_distance_from_vwap_pct: 0.25,
+      target: { risk_reward: 2.0 },
+    },
   },
 };
 
@@ -37,6 +40,42 @@ describe("RiskKnobs", () => {
     expect(screen.getByLabelText(/consecutive losses/i)).toHaveValue(2);
     expect(screen.getByLabelText(/opening range/i)).toHaveValue(15);
     expect(screen.getByLabelText(/risk:reward/i)).toHaveValue(2);
+    expect(screen.getByLabelText(/max distance from vwap/i)).toHaveValue(0.25);
+  });
+
+  it("includes max_distance_from_vwap_pct in the overrides payload", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      if (String(url) === "/api/config")
+        return Promise.resolve(new Response(JSON.stringify(baseConfig)));
+      if (String(url) === "/api/backtests/run")
+        return Promise.resolve(
+          new Response(JSON.stringify({ run_id: "x" })),
+        );
+      return Promise.resolve(new Response("{}"));
+    });
+    render(<RiskKnobs onNewRun={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /customize/i }));
+    await waitFor(() =>
+      expect(screen.getByLabelText(/max distance from vwap/i)).toHaveValue(
+        0.25,
+      ),
+    );
+    fireEvent.change(screen.getByLabelText(/max distance from vwap/i), {
+      target: { value: "1.0" },
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: /run with these/i }),
+    );
+    await waitFor(() => {
+      const runCall = fetchSpy.mock.calls.find(
+        ([url]) => String(url) === "/api/backtests/run",
+      );
+      expect(runCall).toBeDefined();
+      const body = JSON.parse((runCall![1] as RequestInit).body as string);
+      expect(
+        body.overrides.strategy.vwap_pullback.max_distance_from_vwap_pct,
+      ).toBe(1.0);
+    });
   });
 
   it("posts edited values as overrides and reports new run id", async () => {

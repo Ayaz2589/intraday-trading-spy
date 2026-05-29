@@ -15,12 +15,19 @@ type Form = {
   max_consecutive_losses: number;
   opening_range_minutes: number;
   risk_reward: number;
+  max_distance_from_vwap_pct: number;
 };
 
 function extractForm(cfg: Record<string, unknown>): Form | null {
   const risk = cfg.risk as Record<string, number> | undefined;
   const strategy = cfg.strategy as
-    | { opening_range?: { minutes?: number }; vwap_pullback?: { target?: { risk_reward?: number } } }
+    | {
+        opening_range?: { minutes?: number };
+        vwap_pullback?: {
+          max_distance_from_vwap_pct?: number;
+          target?: { risk_reward?: number };
+        };
+      }
     | undefined;
   if (!risk || !strategy) return null;
   return {
@@ -30,6 +37,8 @@ function extractForm(cfg: Record<string, unknown>): Form | null {
     max_consecutive_losses: risk.max_consecutive_losses,
     opening_range_minutes: strategy.opening_range?.minutes ?? 15,
     risk_reward: strategy.vwap_pullback?.target?.risk_reward ?? 2.0,
+    max_distance_from_vwap_pct:
+      strategy.vwap_pullback?.max_distance_from_vwap_pct ?? 0.25,
   };
 }
 
@@ -43,7 +52,10 @@ function buildOverrides(form: Form): ConfigOverrides {
     },
     strategy: {
       opening_range: { minutes: form.opening_range_minutes },
-      vwap_pullback: { target: { risk_reward: form.risk_reward } },
+      vwap_pullback: {
+        max_distance_from_vwap_pct: form.max_distance_from_vwap_pct,
+        target: { risk_reward: form.risk_reward },
+      },
     },
   };
 }
@@ -152,6 +164,12 @@ export function RiskKnobs({
               value={form.risk_reward}
               step={0.5}
               onChange={(v) => update("risk_reward", v)}
+            />
+            <NumberField
+              label="Max distance from VWAP (%)"
+              value={form.max_distance_from_vwap_pct}
+              step={0.05}
+              onChange={(v) => update("max_distance_from_vwap_pct", v)}
             />
             <div className="flex gap-2 mt-2">
               <Button
