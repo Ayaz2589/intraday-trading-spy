@@ -66,11 +66,23 @@ export type ConfigOverrides = Record<string, Record<string, unknown>>;
 
 export type ConfigSummary = { name: string; path: string };
 
+export type DatasetSummary = {
+  path: string;
+  name: string;
+  start: string | null;
+  end: string | null;
+  bar_count: number | null;
+  session_count: number | null;
+};
+
 export const fetchConfig = (opts?: FetchOpts) =>
   get<Record<string, unknown>>("/api/config", opts);
 
 export const fetchConfigs = (opts?: FetchOpts) =>
   get<ConfigSummary[]>("/api/configs", opts);
+
+export const fetchDatasets = (opts?: FetchOpts) =>
+  get<DatasetSummary[]>("/api/datasets", opts);
 
 export const runBacktest = (
   overrides?: ConfigOverrides,

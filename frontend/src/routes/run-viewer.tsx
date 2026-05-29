@@ -174,16 +174,48 @@ export function RunViewer() {
       filter === "all"
         ? sessionJournal
         : sessionJournal.filter((r) => r.status === filter);
-    // A bar produces multiple journal rows (emitted + decision) carrying
-    // the same vwap value. Dedupe by timestamp, otherwise lightweight-charts
-    // rejects the series with "data must be asc ordered by time".
+    // The journal only writes a row when the strategy emits/rejects a
+    // signal, so vwap is sparse — most bars (no signal) have no row at
+    // all. Linearly interpolate across all session bars so the chart
+    // renders one continuous VWAP line instead of disconnected segments.
     const vwapByTime = new Map<string, number>();
     for (const r of sessionJournal) {
       if (r.vwap != null && !vwapByTime.has(r.timestamp))
         vwapByTime.set(r.timestamp, r.vwap);
     }
-    const vwap = Array.from(vwapByTime, ([time, value]) => ({ time, value }))
-      .sort((a, b) => a.time.localeCompare(b.time));
+    const knownIdx: number[] = [];
+    sessionBars.forEach((b, i) => {
+      if (vwapByTime.has(b.timestamp)) knownIdx.push(i);
+    });
+    const vwap: { time: string; value: number }[] = [];
+    if (knownIdx.length > 0) {
+      const ts = (s: string) => new Date(s).getTime();
+      let cursor = 0; // index into knownIdx — first entry with knownIdx[cursor] >= i
+      for (let i = 0; i < sessionBars.length; i++) {
+        while (cursor < knownIdx.length && knownIdx[cursor] < i) cursor++;
+        const exact = vwapByTime.get(sessionBars[i].timestamp);
+        if (exact != null) {
+          vwap.push({ time: sessionBars[i].timestamp, value: exact });
+          continue;
+        }
+        const prevI = cursor > 0 ? knownIdx[cursor - 1] : -1;
+        const nextI = cursor < knownIdx.length ? knownIdx[cursor] : -1;
+        const prev =
+          prevI >= 0 ? vwapByTime.get(sessionBars[prevI].timestamp)! : null;
+        const next =
+          nextI >= 0 ? vwapByTime.get(sessionBars[nextI].timestamp)! : null;
+        let v: number | null = null;
+        if (prev != null && next != null) {
+          const t = ts(sessionBars[i].timestamp);
+          const t0 = ts(sessionBars[prevI].timestamp);
+          const t1 = ts(sessionBars[nextI].timestamp);
+          const frac = t1 === t0 ? 0 : (t - t0) / (t1 - t0);
+          v = prev + frac * (next - prev);
+        } else if (prev != null) v = prev;
+        else if (next != null) v = next;
+        if (v != null) vwap.push({ time: sessionBars[i].timestamp, value: v });
+      }
+    }
     const orRow = sessionJournal.find(
       (r) => r.or_high != null && r.or_low != null,
     );
@@ -212,7 +244,13 @@ export function RunViewer() {
             {showRejections ? "Hide rejections" : "Show rejections"}
           </Button>
         </div>
-        <PriceChart bars={sessionBars} vwap={vwap} or={or} markers={markers} />
+        <PriceChart
+          bars={sessionBars}
+          vwap={vwap}
+          or={or}
+          markers={markers}
+          journal={sessionJournal}
+        />
       </div>
     );
   };

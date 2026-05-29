@@ -6,9 +6,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchConfig, runBacktest, type ConfigOverrides } from "@/api/client";
+import {
+  fetchConfig,
+  fetchDatasets,
+  runBacktest,
+  type ConfigOverrides,
+  type DatasetSummary,
+} from "@/api/client";
 
 type Form = {
+  csv_path: string;
   account_value: number;
   max_risk_per_trade_pct: number;
   max_position_value_pct: number;
@@ -29,8 +36,10 @@ function extractForm(cfg: Record<string, unknown>): Form | null {
         };
       }
     | undefined;
+  const data = cfg.data as { csv_path?: string } | undefined;
   if (!risk || !strategy) return null;
   return {
+    csv_path: data?.csv_path ?? "",
     account_value: risk.account_value,
     max_risk_per_trade_pct: risk.max_risk_per_trade_pct,
     max_position_value_pct: risk.max_position_value_pct,
@@ -44,6 +53,7 @@ function extractForm(cfg: Record<string, unknown>): Form | null {
 
 function buildOverrides(form: Form): ConfigOverrides {
   return {
+    data: { csv_path: form.csv_path },
     risk: {
       account_value: form.account_value,
       max_risk_per_trade_pct: form.max_risk_per_trade_pct,
@@ -60,6 +70,16 @@ function buildOverrides(form: Form): ConfigOverrides {
   };
 }
 
+function datasetLabel(d: DatasetSummary): string {
+  if (d.start && d.end) {
+    const sessions = d.session_count
+      ? ` · ${d.session_count} session${d.session_count === 1 ? "" : "s"}`
+      : "";
+    return `${d.start} → ${d.end}${sessions}`;
+  }
+  return d.name;
+}
+
 export function RiskKnobs({
   onNewRun,
 }: {
@@ -68,21 +88,23 @@ export function RiskKnobs({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Form | null>(null);
   const [original, setOriginal] = useState<Form | null>(null);
+  const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    fetchConfig()
-      .then((cfg) => {
+    Promise.all([fetchConfig(), fetchDatasets()])
+      .then(([cfg, ds]) => {
         const extracted = extractForm(cfg);
         setForm(extracted);
         setOriginal(extracted);
+        setDatasets(ds);
       })
       .catch((e: Error) => setError(e.message));
   }, [open]);
 
-  const update = (k: keyof Form, v: number) =>
+  const update = <K extends keyof Form>(k: K, v: Form[K]) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
 
   const isDirty = useMemo(() => {
@@ -127,6 +149,12 @@ export function RiskKnobs({
           </p>
         ) : (
           <div className="space-y-3 text-sm">
+            <DatasetField
+              label="Data window"
+              value={form.csv_path}
+              datasets={datasets}
+              onChange={(v) => update("csv_path", v)}
+            />
             <NumberField
               label="Account value ($)"
               value={form.account_value}
@@ -198,6 +226,51 @@ export function RiskKnobs({
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function DatasetField({
+  label,
+  value,
+  datasets,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  datasets: DatasetSummary[];
+  onChange: (v: string) => void;
+}) {
+  const id = label.replace(/\s+/g, "-").toLowerCase();
+  // If the config's csv_path isn't in the listed datasets (e.g. user
+  // pointed at a moved file), keep it as a stale option so the select
+  // doesn't silently rewrite the path.
+  const inList = datasets.some((d) => d.path === value);
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <label htmlFor={id} className="text-gray-700 dark:text-slate-300 flex-1">
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-56 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 font-mono text-right"
+      >
+        {!inList && value && (
+          <option value={value}>{value} (current)</option>
+        )}
+        {datasets.length === 0 && (
+          <option value="" disabled>
+            No CSVs in data/raw/
+          </option>
+        )}
+        {datasets.map((d) => (
+          <option key={d.path} value={d.path}>
+            {datasetLabel(d)}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 

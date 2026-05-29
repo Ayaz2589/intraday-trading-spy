@@ -1,6 +1,7 @@
 import argparse
 import csv as _csv
 import json as _json
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,14 @@ from fastapi.responses import JSONResponse
 RUNS_DIR = Path("data/backtests")
 CONFIG_PATH = Path("config/config.yaml")
 PRESETS_DIR = Path("config/presets")
+DATA_DIR = Path("data/raw")
+
+# Downloaded yfinance CSVs follow `spy_5m_<START>_<END>.csv`. The bundled
+# sample CSV (`spy_5m_sample.csv`) doesn't — it has no dates and is the
+# fallback used by tests/the default config.
+_DATASET_NAME_RE = re.compile(
+    r"^spy_5m_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})\.csv$"
+)
 
 
 def _deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
@@ -179,6 +188,40 @@ def get_config():
             detail={"error": "config_not_found", "path": str(CONFIG_PATH)},
         )
     return yaml.safe_load(CONFIG_PATH.read_text())
+
+
+@app.get("/api/datasets")
+def list_datasets():
+    """List the SPY CSVs in `data/raw/`. Each entry carries the inferred
+    start/end dates (parsed from the filename) and bar/session counts
+    when a sidecar `<csv>.fetch.yaml` is present. Date-ranged datasets
+    are sorted newest-end-first; the bundled sample CSV (no dates) goes
+    last so the UI can still surface it for first-time users."""
+    out: list[dict[str, Any]] = []
+    if not DATA_DIR.exists():
+        return out
+    for csv in sorted(DATA_DIR.glob("*.csv")):
+        entry: dict[str, Any] = {
+            "path": str(csv),
+            "name": csv.stem,
+            "start": None,
+            "end": None,
+            "bar_count": None,
+            "session_count": None,
+        }
+        m = _DATASET_NAME_RE.match(csv.name)
+        if m:
+            entry["start"], entry["end"] = m.group(1), m.group(2)
+        sidecar = csv.parent / f"{csv.name}.fetch.yaml"
+        if sidecar.exists():
+            meta = yaml.safe_load(sidecar.read_text()) or {}
+            entry["bar_count"] = meta.get("bar_count")
+            entry["session_count"] = meta.get("session_count")
+        out.append(entry)
+    dated = [d for d in out if d["end"]]
+    undated = [d for d in out if not d["end"]]
+    dated.sort(key=lambda d: d["end"], reverse=True)
+    return dated + undated
 
 
 @app.get("/api/configs")

@@ -489,3 +489,49 @@ def test_post_run_backtest_rejects_config_path_traversal(tmp_path, monkeypatch):
     )
     assert resp.status_code == 400
     assert resp.json()["error"] == "invalid_config_path"
+
+
+def test_get_datasets_returns_empty_when_dir_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.DATA_DIR",
+        tmp_path / "does-not-exist",
+    )
+    from intraday_trade_spy.api.static_server import app
+
+    resp = TestClient(app).get("/api/datasets")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_get_datasets_parses_dates_and_sidecar(tmp_path, monkeypatch):
+    data = tmp_path / "raw"
+    data.mkdir()
+    (data / "spy_5m_2026-04-01_2026-04-15.csv").write_text("symbol\n")
+    (data / "spy_5m_2026-04-29_2026-05-28.csv").write_text("symbol\n")
+    (data / "spy_5m_2026-04-29_2026-05-28.csv.fetch.yaml").write_text(
+        "bar_count: 1634\nsession_count: 21\n"
+    )
+    (data / "spy_5m_sample.csv").write_text("symbol\n")
+    (data / "README.md").write_text("# ignore me")  # not a csv
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.DATA_DIR", data
+    )
+    from intraday_trade_spy.api.static_server import app
+
+    resp = TestClient(app).get("/api/datasets")
+    assert resp.status_code == 200
+    body = resp.json()
+    names = [d["name"] for d in body]
+    # newest end date first, sample last.
+    assert names == [
+        "spy_5m_2026-04-29_2026-05-28",
+        "spy_5m_2026-04-01_2026-04-15",
+        "spy_5m_sample",
+    ]
+    assert body[0]["start"] == "2026-04-29"
+    assert body[0]["end"] == "2026-05-28"
+    assert body[0]["bar_count"] == 1634
+    assert body[0]["session_count"] == 21
+    # Sample has no parseable dates, no sidecar.
+    assert body[2]["start"] is None
+    assert body[2]["bar_count"] is None
