@@ -1,0 +1,65 @@
+# PRESET: low-risk — risk per trade halved from default 0.1% to 0.05%.
+#
+# Hypothesis (Experiment 003 in EXPERIMENTS.md): the position cap
+# acts as a minimum-stop-distance filter. Lowering risk per trade
+# drops the required stop distance threshold from $0.53 to $0.26 on
+# SPY @ $525, which should let almost every signal fit. Expect many
+# more trades, with small absolute P&L per trade ($12.50 risk each).
+#
+# Differs from config/config.yaml only at:
+#   - risk.max_risk_per_trade_pct: 0.1 -> 0.05
+
+app:
+  name: intraday-trade-spy
+  timezone: America/New_York
+  mode: backtest
+
+market:
+  symbol: SPY
+  session_start: "09:30:00"
+  session_end: "16:00:00"
+  no_new_trades_after: "15:30:00"
+  force_flat_time: "15:55:00"
+
+data:
+  timeframe: 5m
+  csv_path: data/raw/spy_5m_sample.csv
+  output_dir: data/backtests
+  require_regular_session_only: true
+
+strategy:
+  enabled: true
+  allowed_directions:
+    - long
+  enabled_setup: vwap_pullback_long
+  opening_range:
+    minutes: 15
+  vwap_pullback:
+    min_minutes_after_open: 15
+    max_distance_from_vwap_pct: 0.25
+    confirmation:
+      require_close_above_prior_bar_high: true
+      require_close_above_vwap: true
+    stop:
+      type: below_pullback_low
+      buffer_pct: 0.05
+    target:
+      risk_reward: 2.0
+
+risk:
+  account_value: 25000.0
+  max_risk_per_trade_pct: 0.05        # <-- preset override (was 0.1)
+  max_daily_loss_pct: 2.0
+  max_trades_per_day: 3
+  max_consecutive_losses: 2
+  cooldown_after_loss_minutes: 30
+  max_position_value_pct: 100.0
+  require_stop_loss: true
+  require_take_profit: true
+  allow_overnight_positions: false
+
+broker:
+  provider: paper
+  live_auto_enabled: false
+  fees_per_share: 0.0
+  slippage_per_share: 0.0

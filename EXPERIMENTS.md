@@ -169,6 +169,111 @@ filter* in disguise.
 
 ---
 
+## Experiment 003 — 2026-05-29 — Lower risk per trade unlocks the cap
+
+### Hypothesis
+
+Direct test of Experiment 002's lesson: the position cap acts as a
+*minimum-stop-distance filter in disguise*. Lowering risk per trade
+should drop the required stop-distance threshold from $0.53 to
+$0.26 on SPY @ $525, which should let almost every signal fit
+under the cap.
+
+Predicted directional effects:
+- Trades executed ↑ a lot (3 → 10-20+)
+- Position cap rejections ↓ a lot (was 84)
+- Absolute $ P&L per trade ↓ (only $12.50 risk each)
+- Total R direction: uncertain — more trades means more samples
+  of whatever edge (or lack thereof) the strategy has.
+
+### Knobs changed
+
+| Field | Baseline | Experiment |
+|---|---|---|
+| `risk.max_risk_per_trade_pct` | 0.1% | **0.05%** |
+
+(All other knobs identical: account $25,000, cap 100%,
+`max_consecutive_losses` 2, OR 15 min, R:R 2.0, stop buffer 0.05%,
+`max_distance_from_vwap_pct` 0.25%.)
+
+Saved as `backend/config/presets/low-risk.yaml` so this experiment
+is rerunnable: `make backtest CONFIG=config/presets/low-risk.yaml`.
+
+### Run IDs
+
+- **Baseline**: `20260529-053746-7697908e`
+- **Experiment**: `20260529-053723-7697908e`
+
+Both ran against `data/raw/spy_5m_sample.csv` (fingerprint
+`7697908e`).
+
+### Outcome
+
+| Metric | Baseline | Experiment | Δ |
+|---|---|---|---|
+| Total trades | 3 | **7** | +4 |
+| W / L | 1 / 2 | 2 / 2 | — |
+| Win rate | 33.3% | 28.6% | -4.7 pp |
+| Total R | +0.000 | **+5.203** | +5.2R |
+| Avg R / trade | 0.000 | +0.743 | +0.74R |
+| Max drawdown | -2.000R | -2.000R | 0 |
+| Profit factor | 1.000 | **2.000** | 2× |
+| **Total rejections** | **117** | **3** | **-114** |
+| – Position Value Exceeds Cap | 84 | 0 | -84 |
+| – Consecutive Losses Reached | 21 | 0 | -21 |
+| – No New Trades After | 12 | 2 | -10 |
+| – Max Trades Per Day Reached | 0 | **1** | +1 |
+
+### Lesson
+
+**Hypothesis confirmed in direction, partially wrong in magnitude.**
+The cap-as-stop-distance-filter model is correct: dropping the
+required stop from $0.53 to $0.26 freed almost all signals from
+the cap (84 → 0 rejections). Total trades went 3 → 7 (predicted
+10-20+; actual was lower because a different constraint stepped
+in — see below).
+
+**New finding from the experiment:** with the cap relaxed, the
+binding constraint shifted to `max_trades_per_day: 3`. The
+experiment had 1 `max_trades_per_day_reached` rejection (baseline
+had 0). That's the chain of binding constraints visible in the
+data:
+
+```
+Default config: position cap binds → very few trades.
+Low-risk config: cap relaxes → max-trades-per-day starts to bind.
+```
+
+The strategy *can* find more than 3 setups per session — the rule
+is just capping it at 3.
+
+**Two more bits worth recording:**
+
+1. Win rate dropped (33.3% → 28.6%) but Total R went up dramatically
+   (+0 → +5.2R) and profit factor doubled (1.0 → 2.0). Win rate is
+   a misleading headline metric — Total R and profit factor are
+   more honest. The extra trades the strategy got to take were
+   slightly worse on average than the few it took at higher risk,
+   but the math still favors the bigger sample.
+2. **Sample size warning:** 7 trades is still tiny. The +5.2R could
+   be noise. Before drawing strategic conclusions, this experiment
+   should be replicated on 2+ weeks of real yfinance data
+   (`make backtest-real DATA=spy_5m_2026-04-01_2026-04-15.csv
+   CONFIG=config/presets/low-risk.yaml`).
+
+### Engineering note
+
+Initial run produced a run-id collision: both backtests completed
+within the same second, both got `run_id` `20260529-053723-...`
+(the engine's run-id format is `YYYYMMDD-HHMMSS-<fingerprint>`).
+The second backtest's output silently overwrote the first. Reran
+the baseline 23 seconds later to get a distinct run id. **TODO:**
+the run-id generator should append milliseconds (or a monotonic
+counter) to guarantee uniqueness when runs happen rapidly. Not
+blocking but worth fixing.
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical
