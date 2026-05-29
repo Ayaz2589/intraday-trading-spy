@@ -75,4 +75,23 @@ describe("JournalTable", () => {
     await userEvent.click(screen.getByRole("button", { name: /^rejected$/i }));
     expect(onFilterChange).toHaveBeenCalledWith("rejected");
   });
+
+  it("clicking an expand button reveals the indicator snapshot", async () => {
+    render(<JournalTable rows={rows} />);
+    // Before expansion: VWAP value is not in the DOM.
+    expect(screen.queryByText(/524\.88/)).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: /expand row 0/i }),
+    );
+    // After expansion: indicator labels + values render.
+    expect(screen.getByText(/^VWAP$/)).toBeInTheDocument();
+    expect(screen.getByText("524.88")).toBeInTheDocument();
+    expect(screen.getByText("525.00")).toBeInTheDocument(); // or_high
+    expect(screen.getByText("525.05")).toBeInTheDocument(); // prior_bar_close
+    // Click again collapses.
+    await userEvent.click(
+      screen.getByRole("button", { name: /collapse row 0/i }),
+    );
+    expect(screen.queryByText(/^VWAP$/)).toBeNull();
+  });
 });
