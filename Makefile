@@ -27,8 +27,11 @@ DATA ?=
 # Port for the FastAPI static server (override with: make ui-server PORT=9000).
 PORT ?= 8000
 
+# How many most-recent backtest runs to keep with `make prune-runs`.
+KEEP ?= 5
+
 .PHONY: help install test test-slow backtest backtest-real demo download \
-        download-clean lint clean-runs venv \
+        download-clean lint clean-runs prune-runs venv \
         ui-install ui-dev ui-build ui-server
 
 help: ## Show this help
@@ -42,6 +45,7 @@ help: ## Show this help
 	@echo "  START=YYYY-MM-DD   download / fetch start date (default: 30d ago)"
 	@echo "  END=YYYY-MM-DD     download / fetch end date   (default: yesterday)"
 	@echo "  DATA=<csv-name>    backtest input CSV under backend/data/raw/"
+	@echo "  KEEP=N             prune-runs keeps N most-recent runs (default: 5)"
 
 venv: backend/.venv/bin/python ## Create the venv if it doesn't exist
 backend/.venv/bin/python:
@@ -94,6 +98,17 @@ lint: ## Run ruff check + format check
 clean-runs: ## Remove all backtest run outputs (keeps .gitkeep)
 	@find backend/data/backtests -mindepth 1 -not -name '.gitkeep' -delete
 	@echo "Cleaned backend/data/backtests/"
+
+prune-runs: ## Keep only the KEEP most-recent backtest runs (default KEEP=5)
+	@to_remove=$$(ls -1d backend/data/backtests/*/ 2>/dev/null | sort -r | tail -n +$$(($(KEEP) + 1))); \
+	  if [ -z "$$to_remove" ]; then \
+	    n=$$(ls -1d backend/data/backtests/*/ 2>/dev/null | wc -l | tr -d ' '); \
+	    echo "Have $$n run(s), keeping $(KEEP) — nothing to prune."; \
+	  else \
+	    echo "$$to_remove" | xargs rm -rf; \
+	    n=$$(ls -1d backend/data/backtests/*/ 2>/dev/null | wc -l | tr -d ' '); \
+	    echo "Pruned. $$n run(s) remain (target KEEP=$(KEEP))."; \
+	  fi
 
 ui-install: ## Install frontend dependencies (npm install in frontend/)
 	cd frontend && npm install
