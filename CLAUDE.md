@@ -13,6 +13,12 @@ Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
 or implementing any change.
 
+**Research notebook**: every deliberate backtest experiment goes in
+[`EXPERIMENTS.md`](./EXPERIMENTS.md) via the `/experiment` skill
+(`.claude/skills/experiment/SKILL.md`). The skill diffs the configs +
+summaries of two runs and appends a new entry with hypothesis +
+lesson — durable record of "I changed X, here's what happened."
+
 ## What this project is
 
 A standalone, SPY-only intraday trading research, paper-trading, and

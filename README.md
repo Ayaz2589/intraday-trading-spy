@@ -42,6 +42,15 @@ make ui-dev                                     # Terminal B: Vite dev on :5173
 For the viewer, open http://localhost:5173/ — it lands on the most
 recent run with chart, journal, summary, and HelpTooltips.
 
+## Experiments log
+
+Every deliberate config change should be recorded in
+[`EXPERIMENTS.md`](./EXPERIMENTS.md) so the research history is
+durable. Invoke `/experiment` (see
+`.claude/skills/experiment/SKILL.md`) after running a baseline +
+experiment pair — it diffs the configs + summaries and appends a
+new entry with hypothesis + lesson.
+
 All targets `cd` into `backend/` internally, so the relative paths
 in `config.yaml` (`data/raw/…`, `data/backtests/…`) resolve correctly
 no matter where you invoke `make` from.
