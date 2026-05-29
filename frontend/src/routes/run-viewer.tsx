@@ -16,6 +16,7 @@ import {
 import { RunsSidebar } from "@/components/runs-sidebar";
 import { RunHeader } from "@/components/run-header";
 import { SummaryMetricsCard } from "@/components/summary-metrics-card";
+import { StrategyConfigCard } from "@/components/strategy-config-card";
 import { RejectionBreakdownCard } from "@/components/rejection-breakdown-card";
 import { JournalTable } from "@/components/journal-table";
 import { PriceChart } from "@/components/price-chart";
@@ -258,6 +259,11 @@ export function RunViewer() {
                 total={s.rejected_signal_count}
               />
             )}
+          </Section>
+        </div>
+        <div className="p-4 pt-0">
+          <Section state={manifest}>
+            {(m) => <StrategyConfigCard manifest={m} />}
           </Section>
         </div>
         <div className="p-4">
