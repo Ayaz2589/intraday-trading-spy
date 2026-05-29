@@ -1,40 +1,83 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  createChart,
-  createSeriesMarkers,
-  CandlestickSeries,
-  LineSeries,
-  type UTCTimestamp,
-} from "lightweight-charts";
+  init,
+  dispose,
+  registerIndicator,
+  type Chart,
+  type KLineData,
+} from "klinecharts";
 import { cn } from "@/lib/utils";
 import { HelpTooltip } from "./help-tooltip";
 import { useTheme } from "@/lib/theme";
 import type { BarView } from "@/api/types";
 
-const CHART_THEME = {
+// ── Custom VWAP indicator ──────────────────────────────────────────
+//
+// klinecharts ships an AVP (Anchored VWAP) indicator that recomputes
+// from the bar data, but the journal carries pre-computed VWAP values
+// that match the backend exactly. We register a custom indicator that
+// just looks up each bar's timestamp in a module-level Map. The
+// component updates the map on every vwap-prop change.
+
+const vwapByTimestamp = new Map<number, number>();
+
+registerIndicator({
+  name: "JournalVWAP",
+  shortName: "VWAP",
+  series: "price",
+  precision: 2,
+  figures: [{ key: "vwap", title: "VWAP: ", type: "line" }],
+  styles: {
+    lines: [{ color: "#f59e0b", size: 2 }],
+  },
+  calc: (data: KLineData[]) =>
+    data.map((d) => ({ vwap: vwapByTimestamp.get(d.timestamp) ?? null })),
+});
+
+// ── Theme styles ───────────────────────────────────────────────────
+
+const CHART_STYLES = {
   light: {
-    background: "#ffffff",
-    text: "#333333",
-    grid: "#f3f4f6",
+    grid: { horizontal: { color: "#f3f4f6" }, vertical: { color: "#f3f4f6" } },
+    candle: {
+      bar: {
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        upBorderColor: "#10b981",
+        downBorderColor: "#ef4444",
+        upWickColor: "#10b981",
+        downWickColor: "#ef4444",
+      },
+    },
+    crosshair: {
+      horizontal: { line: { color: "#9ca3af" }, text: { backgroundColor: "#374151" } },
+      vertical: { line: { color: "#9ca3af" }, text: { backgroundColor: "#374151" } },
+    },
+    xAxis: { axisLine: { color: "#e5e7eb" }, tickText: { color: "#6b7280" } },
+    yAxis: { axisLine: { color: "#e5e7eb" }, tickText: { color: "#6b7280" } },
   },
   dark: {
-    background: "#0f172a",
-    text: "#cbd5e1",
-    grid: "#1e293b",
+    grid: { horizontal: { color: "#1e293b" }, vertical: { color: "#1e293b" } },
+    candle: {
+      bar: {
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        upBorderColor: "#10b981",
+        downBorderColor: "#ef4444",
+        upWickColor: "#10b981",
+        downWickColor: "#ef4444",
+      },
+    },
+    crosshair: {
+      horizontal: { line: { color: "#64748b" }, text: { backgroundColor: "#1e293b" } },
+      vertical: { line: { color: "#64748b" }, text: { backgroundColor: "#1e293b" } },
+    },
+    xAxis: { axisLine: { color: "#334155" }, tickText: { color: "#94a3b8" } },
+    yAxis: { axisLine: { color: "#334155" }, tickText: { color: "#94a3b8" } },
   },
 } as const;
 
-const toUtc = (iso: string): UTCTimestamp =>
-  Math.floor(new Date(iso).getTime() / 1000) as UTCTimestamp;
-
-function ascendingByTime<T extends { time: UTCTimestamp }>(rows: T[]): T[] {
-  const sorted = [...rows].sort((a, b) => a.time - b.time);
-  const out: T[] = [];
-  for (const r of sorted) {
-    if (out.length === 0 || out[out.length - 1].time !== r.time) out.push(r);
-  }
-  return out;
-}
+// ── Types ──────────────────────────────────────────────────────────
 
 export type ChartMarker = {
   time: string;
@@ -43,6 +86,8 @@ export type ChartMarker = {
   shape: "arrowUp" | "arrowDown" | "circle" | "square";
   text: string;
 };
+
+// ── Component ──────────────────────────────────────────────────────
 
 export function PriceChart({
   bars,
@@ -55,113 +100,117 @@ export function PriceChart({
   or: { high: number; low: number; from: string; to: string } | null;
   markers: ChartMarker[];
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<Chart | null>(null);
   const { theme } = useTheme();
-  const colors = CHART_THEME[theme];
   const [showVwap, setShowVwap] = useState(true);
   const [showOR, setShowOR] = useState(true);
 
+  // Init/dispose the chart once per mount.
   useEffect(() => {
-    if (!ref.current) return;
-    const chart = createChart(ref.current, {
-      height: 500,
-      layout: {
-        background: { color: colors.background },
-        textColor: colors.text,
-        attributionLogo: false,
-      },
-      grid: {
-        vertLines: { color: colors.grid },
-        horzLines: { color: colors.grid },
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        rightOffset: 2,
-        barSpacing: 8,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-      },
-      crosshair: { mode: 0 }, // Normal crosshair (free-move)
+    const container = containerRef.current;
+    if (!container) return;
+    const chart = init(container, { styles: CHART_STYLES[theme] });
+    if (!chart) return;
+    chartRef.current = chart;
+    chart.setSymbol({ ticker: "SPY", pricePrecision: 2, volumePrecision: 0 });
+    chart.setPeriod({ type: "minute", span: 5 });
+    chart.setOffsetRightDistance(20);
+    chart.setBarSpace(8);
+    chart.createIndicator("VOL");
+    return () => {
+      dispose(container);
+      chartRef.current = null;
+    };
+    // We deliberately only init once. Theme changes apply via the
+    // separate setStyles effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Bars data — refresh whenever the bar set changes.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const klineData: KLineData[] = bars.map((b) => ({
+      timestamp: new Date(b.timestamp).getTime(),
+      open: b.open,
+      high: b.high,
+      low: b.low,
+      close: b.close,
+      volume: b.volume,
+    }));
+    chart.setDataLoader({
+      getBars: ({ callback }) => callback(klineData, false),
     });
-    const candles = chart.addSeries(CandlestickSeries, {
-      upColor: "#10b981",
-      downColor: "#ef4444",
-      borderVisible: false,
-      wickUpColor: "#10b981",
-      wickDownColor: "#ef4444",
-    });
-    candles.setData(
-      ascendingByTime(
-        bars.map((b) => ({
-          time: toUtc(b.timestamp),
-          open: b.open,
-          high: b.high,
-          low: b.low,
-          close: b.close,
-        })),
-      ),
-    );
-    if (showVwap && vwap.length && bars.length) {
-      const firstBarTime = toUtc(bars[0].timestamp);
-      const lastBarTime = toUtc(bars[bars.length - 1].timestamp);
-      const line = chart.addSeries(LineSeries, {
-        color: "#f59e0b",
-        lineWidth: 2,
-        lastValueVisible: true,
-        priceLineVisible: false,
-      });
-      line.setData(
-        ascendingByTime(
-          vwap
-            .map((p) => ({ time: toUtc(p.time), value: p.value }))
-            // Clamp the VWAP series to the bar data range so the line
-            // doesn't extend into empty time slots when the journal
-            // contains rows past the last available bar.
-            .filter((p) => p.time >= firstBarTime && p.time <= lastBarTime),
-        ),
+  }, [bars]);
+
+  // Theme — re-apply styles whenever theme changes.
+  useEffect(() => {
+    chartRef.current?.setStyles(CHART_STYLES[theme]);
+  }, [theme]);
+
+  // VWAP indicator — show/hide + refresh the lookup map.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.removeIndicator({ name: "JournalVWAP" });
+    vwapByTimestamp.clear();
+    if (showVwap && vwap.length) {
+      vwap.forEach((p) =>
+        vwapByTimestamp.set(new Date(p.time).getTime(), p.value),
       );
+      chart.createIndicator("JournalVWAP");
     }
+  }, [vwap, showVwap]);
+
+  // OR high/low — horizontal dashed lines.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.removeOverlay({ name: "horizontalStraightLine" });
     if (showOR && or) {
-      candles.createPriceLine({
-        price: or.high,
-        color: "#22c55e",
-        lineStyle: 2,
-        title: "OR high",
-        lineWidth: 1,
-        axisLabelVisible: true,
+      chart.createOverlay({
+        name: "horizontalStraightLine",
+        points: [{ value: or.high }],
+        styles: {
+          line: { color: "#22c55e", style: "dashed", size: 1 },
+        },
       });
-      candles.createPriceLine({
-        price: or.low,
-        color: "#ef4444",
-        lineStyle: 2,
-        title: "OR low",
-        lineWidth: 1,
-        axisLabelVisible: true,
+      chart.createOverlay({
+        name: "horizontalStraightLine",
+        points: [{ value: or.low }],
+        styles: {
+          line: { color: "#ef4444", style: "dashed", size: 1 },
+        },
       });
     }
-    if (markers.length && bars.length) {
-      const firstBarTime = toUtc(bars[0].timestamp);
-      const lastBarTime = toUtc(bars[bars.length - 1].timestamp);
-      const mapped = markers
-        .map((m) => ({
-          time: toUtc(m.time),
-          position: m.position,
-          color: m.color,
-          shape: m.shape,
-          text: m.text,
-        }))
-        // Clamp to the visible bar range so markers don't render at empty
-        // time slots past the last bar.
-        .filter((m) => m.time >= firstBarTime && m.time <= lastBarTime);
-      // Markers must be sorted by time. Duplicate timestamps ARE allowed
-      // (entry + rejected on the same bar), so only sort.
-      mapped.sort((a, b) => a.time - b.time);
-      if (mapped.length) createSeriesMarkers(candles, mapped);
-    }
-    chart.timeScale().fitContent();
-    return () => chart.remove();
-  }, [bars, vwap, or, markers, colors, showVwap, showOR]);
+  }, [or, showOR]);
+
+  // Markers — entry/exit/rejection annotations at specific bars.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.removeOverlay({ name: "simpleAnnotation" });
+    if (!markers.length || !bars.length) return;
+    const barByTs = new Map<number, BarView>();
+    bars.forEach((b) =>
+      barByTs.set(new Date(b.timestamp).getTime(), b),
+    );
+    markers.forEach((m) => {
+      const ts = new Date(m.time).getTime();
+      const bar = barByTs.get(ts);
+      if (!bar) return;
+      const value = m.position === "belowBar" ? bar.low : bar.high;
+      chart.createOverlay({
+        name: "simpleAnnotation",
+        points: [{ timestamp: ts, value }],
+        extendData: m.text,
+        styles: {
+          line: { color: m.color },
+        },
+      });
+    });
+  }, [markers, bars]);
 
   return (
     <div className="border rounded border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -200,7 +249,12 @@ export function PriceChart({
           <HelpTooltip helpKey="force_flat_exit" />
         </span>
       </div>
-      <div ref={ref} data-chart-root />
+      <div
+        ref={containerRef}
+        data-chart-root
+        className="w-full"
+        style={{ height: 500 }}
+      />
     </div>
   );
 }

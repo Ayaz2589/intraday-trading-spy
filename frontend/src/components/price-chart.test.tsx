@@ -3,21 +3,23 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import type { BarView } from "@/api/types";
 
-vi.mock("lightweight-charts", () => {
-  const series = {
-    setData: vi.fn(),
-    createPriceLine: vi.fn(),
-  };
+vi.mock("klinecharts", () => {
   const chart = {
-    addSeries: vi.fn(() => series),
-    timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
-    remove: vi.fn(),
+    setSymbol: vi.fn(),
+    setPeriod: vi.fn(),
+    setDataLoader: vi.fn(),
+    setStyles: vi.fn(),
+    setOffsetRightDistance: vi.fn(),
+    setBarSpace: vi.fn(),
+    createIndicator: vi.fn(),
+    createOverlay: vi.fn(),
+    removeIndicator: vi.fn(),
+    removeOverlay: vi.fn(),
   };
   return {
-    createChart: vi.fn(() => chart),
-    createSeriesMarkers: vi.fn(),
-    CandlestickSeries: "Candlestick",
-    LineSeries: "Line",
+    init: vi.fn(() => chart),
+    dispose: vi.fn(),
+    registerIndicator: vi.fn(),
   };
 });
 
