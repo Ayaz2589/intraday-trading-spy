@@ -34,6 +34,7 @@ make backtest                                   # backtest the bundled synthetic
 make demo                                       # backtest with a permissive cap → real trades visible
 make download START=2026-04-01 END=2026-04-15   # fetch real SPY data
 make backtest-real DATA=spy_5m_2026-04-01_2026-04-15.csv   # backtest the downloaded data
+make backtest CONFIG=config/presets/aggressive.yaml        # backtest a preset config
 make ui-install                                 # one-time: npm install in frontend/
 make ui-server                                  # Terminal A: FastAPI on :8000 (PORT=9000 to change)
 make ui-dev                                     # Terminal B: Vite dev on :5173

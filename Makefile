@@ -24,6 +24,11 @@ END   ?= $(shell date -v-1d +%Y-%m-%d)
 # If unset, the backtester uses the synthetic fixture in config.yaml.
 DATA ?=
 
+# Config file used by `make backtest` / `make backtest-real` (relative to
+# backend/). Override with: make backtest CONFIG=config/presets/aggressive.yaml
+# Drop preset YAMLs under backend/config/presets/ so they're easy to find.
+CONFIG ?= config/config.yaml
+
 # Port for the FastAPI static server (override with: make ui-server PORT=9000).
 PORT ?= 8000
 
@@ -45,6 +50,7 @@ help: ## Show this help
 	@echo "  START=YYYY-MM-DD   download / fetch start date (default: 30d ago)"
 	@echo "  END=YYYY-MM-DD     download / fetch end date   (default: yesterday)"
 	@echo "  DATA=<csv-name>    backtest input CSV under backend/data/raw/"
+	@echo "  CONFIG=<path>      config file relative to backend/ (default: config/config.yaml)"
 	@echo "  KEEP=N             prune-runs keeps N most-recent runs (default: 5)"
 
 venv: backend/.venv/bin/python ## Create the venv if it doesn't exist
@@ -65,8 +71,8 @@ test: ## Run the offline test suite (default)
 test-slow: ## Run only the slow tests (real yfinance — needs internet)
 	cd backend && .venv/bin/pytest -q -m slow
 
-backtest: ## Run a backtest against the bundled synthetic fixture
-	cd backend && .venv/bin/intraday-trade-spy-backtest --config config/config.yaml
+backtest: ## Run a backtest (override CONFIG=<path> for preset configs)
+	cd backend && .venv/bin/intraday-trade-spy-backtest --config $(CONFIG)
 
 backtest-real: ## Run a backtest against a downloaded CSV (set DATA=<filename>)
 	@if [ -z "$(DATA)" ]; then \
@@ -74,15 +80,12 @@ backtest-real: ## Run a backtest against a downloaded CSV (set DATA=<filename>)
 	  exit 1; \
 	fi
 	cd backend && .venv/bin/intraday-trade-spy-backtest \
-	    --config config/config.yaml \
+	    --config $(CONFIG) \
 	    --data data/raw/$(DATA)
 
-demo: ## Backtest the fixture with a permissive cap so trades execute
-	@tmpcfg=$$(mktemp -t itspy-permissive.XXXXXX.yaml) && \
-	  sed 's/max_position_value_pct: 25.0/max_position_value_pct: 1500.0/' \
-	      backend/config/config.yaml > $$tmpcfg && \
-	  ( cd backend && .venv/bin/intraday-trade-spy-backtest --config $$tmpcfg ) ; \
-	  rm -f $$tmpcfg
+demo: ## Backtest with the permissive demo preset (cap=1500%, trades execute)
+	cd backend && .venv/bin/intraday-trade-spy-backtest \
+	    --config config/presets/demo.yaml
 
 download: ## Download real SPY 5m bars from yfinance (override with START=/END=)
 	cd backend && .venv/bin/intraday-trade-spy-download \
