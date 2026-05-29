@@ -36,3 +36,29 @@ export const fetchManifest = (id: string, opts?: FetchOpts) =>
 
 export const fetchBars = (id: string, opts?: FetchOpts) =>
   get<BarView[]>(`/api/runs/${id}/bars`, opts);
+
+async function send<T>(
+  method: "POST" | "DELETE",
+  path: string,
+  opts?: FetchOpts,
+): Promise<T> {
+  const res = await fetch(path, { method, signal: opts?.signal });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: `http_${res.status}` }));
+    const err: Error & { code?: string } = new Error(
+      body?.error ?? `http_${res.status}`,
+    );
+    err.code = body?.error ?? `http_${res.status}`;
+    throw err;
+  }
+  return (await res.json()) as T;
+}
+
+export const runBacktest = (opts?: FetchOpts) =>
+  send<{ run_id: string }>("POST", "/api/backtests/run", opts);
+
+export const deleteRun = (id: string, opts?: FetchOpts) =>
+  send<{ deleted: string }>("DELETE", `/api/runs/${id}`, opts);
+
+export const deleteAllRuns = (opts?: FetchOpts) =>
+  send<{ deleted_count: number }>("DELETE", "/api/runs", opts);

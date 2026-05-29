@@ -15,6 +15,7 @@ import { JournalTable } from "@/components/journal-table";
 import { PriceChart } from "@/components/price-chart";
 import { SessionPicker } from "@/components/session-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { RunActions } from "@/components/run-actions";
 import { buildMarkers } from "@/components/journal-markers";
 import { Button } from "@/components/ui/button";
 import type {
@@ -207,7 +208,12 @@ export function RunViewer() {
     <div className="flex h-screen">
       <RunsSidebar runs={runs} selectedRunId={run_id ?? null} />
       <main className="flex-1 overflow-y-auto">
-        <div className="flex justify-end p-2 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-slate-700">
+          <RunActions
+            currentRunId={run_id ?? null}
+            onNewRun={(id) => navigate(`/runs/${id}`)}
+            onCleared={() => navigate("/", { replace: true })}
+          />
           <ThemeToggle />
         </div>
         <Section state={manifest}>

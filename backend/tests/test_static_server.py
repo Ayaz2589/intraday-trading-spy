@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 import yaml
@@ -265,3 +266,79 @@ def test_get_bars_resolves_relative_csv_path(tmp_path, monkeypatch):
     resp = TestClient(app).get("/api/runs/abc/bars")
     assert resp.status_code == 200
     assert resp.json()[0]["close"] == 525.1
+
+
+def test_post_run_backtest_returns_new_run_id(tmp_path, monkeypatch):
+    new_run = tmp_path / "20260529-090000-deadbeef"
+
+    def fake_run(args, **kwargs):
+        new_run.mkdir()
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post("/api/backtests/run")
+    assert resp.status_code == 200
+    assert resp.json()["run_id"] == "20260529-090000-deadbeef"
+
+
+def test_post_run_backtest_500_on_subprocess_failure(tmp_path, monkeypatch):
+    def fake_run(args, **kwargs):
+        return subprocess.CompletedProcess(args, 1, "", "config invalid")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post("/api/backtests/run")
+    assert resp.status_code == 500
+    body = resp.json()
+    assert body["error"] == "backtest_failed"
+    assert "config invalid" in body["stderr"]
+
+
+def test_post_run_backtest_500_when_no_new_run_directory(
+    tmp_path, monkeypatch
+):
+    def fake_run(args, **kwargs):
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post("/api/backtests/run")
+    assert resp.status_code == 500
+    assert resp.json()["error"] == "no_run_created"
+
+
+def test_delete_run_removes_directory(tmp_path, monkeypatch):
+    run_dir = tmp_path / "20260101-100000-abcdef00"
+    run_dir.mkdir()
+    (run_dir / "summary.json").write_text("{}")
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.delete("/api/runs/20260101-100000-abcdef00")
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == "20260101-100000-abcdef00"
+    assert not run_dir.exists()
+
+
+def test_delete_run_404_when_missing(tmp_path, monkeypatch):
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.delete("/api/runs/never-existed")
+    assert resp.status_code == 404
+    assert resp.json()["error"] == "run_not_found"
+
+
+def test_delete_all_runs_removes_every_directory(tmp_path, monkeypatch):
+    for name in ["20260101-100000-aaaa", "20260102-100000-bbbb"]:
+        (tmp_path / name).mkdir()
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.delete("/api/runs")
+    assert resp.status_code == 200
+    assert resp.json()["deleted_count"] == 2
+    remaining = [d for d in tmp_path.iterdir() if d.is_dir()]
+    assert remaining == []
+
+
+def test_delete_all_runs_zero_when_empty(tmp_path, monkeypatch):
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.delete("/api/runs")
+    assert resp.status_code == 200
+    assert resp.json()["deleted_count"] == 0

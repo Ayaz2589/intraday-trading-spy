@@ -1,6 +1,9 @@
 import argparse
 import csv as _csv
 import json as _json
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -15,7 +18,7 @@ app = FastAPI(title="intraday-trade-spy static server", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -152,6 +155,73 @@ def get_bars(run_id: str):
                 "volume": int(r["volume"]),
             })
     return out
+
+
+@app.post("/api/backtests/run")
+def run_backtest():
+    """Invoke the backtest CLI in-process via `python -m`. Returns the
+    newly-created run id once the subprocess completes successfully."""
+    before = (
+        {d.name for d in RUNS_DIR.iterdir() if d.is_dir()}
+        if RUNS_DIR.exists()
+        else set()
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "intraday_trade_spy.cli.run_backtest",
+            "--config",
+            "config/config.yaml",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "backtest_failed",
+                "stderr": result.stderr[-500:],
+            },
+        )
+    after = (
+        {d.name for d in RUNS_DIR.iterdir() if d.is_dir()}
+        if RUNS_DIR.exists()
+        else set()
+    )
+    new_runs = after - before
+    if not new_runs:
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "no_run_created"},
+        )
+    return {"run_id": max(new_runs)}
+
+
+@app.delete("/api/runs/{run_id}")
+def delete_run(run_id: str):
+    run_dir = RUNS_DIR / run_id
+    if not run_dir.exists() or not run_dir.is_dir():
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "run_not_found", "run_id": run_id},
+        )
+    shutil.rmtree(run_dir)
+    return {"deleted": run_id}
+
+
+@app.delete("/api/runs")
+def delete_all_runs():
+    if not RUNS_DIR.exists():
+        return {"deleted_count": 0}
+    count = 0
+    for d in RUNS_DIR.iterdir():
+        if d.is_dir():
+            shutil.rmtree(d)
+            count += 1
+    return {"deleted_count": count}
 
 
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover
