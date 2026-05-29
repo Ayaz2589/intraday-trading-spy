@@ -421,3 +421,71 @@ def test_post_run_backtest_without_overrides_uses_default_config(
     # Default invocation uses the on-disk config/config.yaml directly,
     # not a temp file.
     assert "config/config.yaml" in captured["args"]
+
+
+def test_get_configs_lists_default_plus_presets(tmp_path, monkeypatch):
+    cfg_dir = tmp_path / "config"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.yaml").write_text("risk: {}\n")
+    presets = cfg_dir / "presets"
+    presets.mkdir()
+    (presets / "low-risk.yaml").write_text("# low risk")
+    (presets / "vwap50.yaml").write_text("# wider vwap")
+    (presets / "README.md").write_text("# ignore me")  # not a yaml
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.CONFIG_PATH",
+        cfg_dir / "config.yaml",
+    )
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.PRESETS_DIR", presets
+    )
+    from intraday_trade_spy.api.static_server import app
+
+    resp = TestClient(app).get("/api/configs")
+    assert resp.status_code == 200
+    body = resp.json()
+    names = [c["name"] for c in body]
+    assert "default" in names
+    assert "low-risk" in names
+    assert "vwap50" in names
+    assert "README" not in names
+    # default appears first.
+    assert body[0]["name"] == "default"
+
+
+def test_post_run_backtest_with_config_path(tmp_path, monkeypatch):
+    presets = tmp_path / "presets"
+    presets.mkdir()
+    (presets / "low-risk.yaml").write_text("# any yaml is fine for this test")
+    new_run = tmp_path / "20260529-120000-abcdef"
+    captured: dict = {}
+
+    def fake_run(args, **kwargs):
+        captured["config_arg"] = args[args.index("--config") + 1]
+        new_run.mkdir()
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.static_server.PRESETS_DIR", presets
+    )
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post(
+        "/api/backtests/run",
+        json={"config_path": "config/presets/low-risk.yaml"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["run_id"] == "20260529-120000-abcdef"
+    assert captured["config_arg"] == "config/presets/low-risk.yaml"
+
+
+def test_post_run_backtest_rejects_config_path_traversal(tmp_path, monkeypatch):
+    """The config_path must point inside config/ — block traversal so the
+    endpoint can't be tricked into reading arbitrary files."""
+    client = _setup_runs_dir(monkeypatch, tmp_path)
+    resp = client.post(
+        "/api/backtests/run",
+        json={"config_path": "../../../etc/passwd"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_config_path"

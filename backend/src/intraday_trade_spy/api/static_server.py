@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 RUNS_DIR = Path("data/backtests")
 CONFIG_PATH = Path("config/config.yaml")
+PRESETS_DIR = Path("config/presets")
 
 
 def _deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
@@ -180,15 +181,51 @@ def get_config():
     return yaml.safe_load(CONFIG_PATH.read_text())
 
 
+@app.get("/api/configs")
+def list_configs():
+    """List the default config + every YAML under config/presets/.
+    Default is always first. Presets are sorted alphabetically."""
+    out: list[dict[str, str]] = [
+        {"name": "default", "path": str(CONFIG_PATH)},
+    ]
+    if PRESETS_DIR.exists():
+        for p in sorted(PRESETS_DIR.glob("*.yaml")):
+            out.append({"name": p.stem, "path": str(p)})
+    return out
+
+
+def _validate_config_path(raw: str) -> str:
+    """Resolve `raw` against CONFIG_PATH.parent and ensure the result
+    sits inside config/. Returns the safe path string; raises 400 on
+    traversal or other invalid input."""
+    config_root = CONFIG_PATH.parent.resolve()
+    try:
+        resolved = (Path.cwd() / raw).resolve()
+    except (OSError, ValueError) as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_config_path", "reason": str(e)},
+        )
+    if not resolved.is_relative_to(config_root):
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_config_path", "reason": "outside_config_dir"},
+        )
+    return raw
+
+
 @app.post("/api/backtests/run")
 async def run_backtest(request: Request):
     """Invoke the backtest CLI as a subprocess. Optional JSON body
     {"overrides": {...}} deep-merges into config.yaml and runs against
     a temp file. Returns the newly-created run id."""
     overrides: dict[str, Any] = {}
+    config_path: str | None = None
     try:
         body = await request.json()
-        overrides = body.get("overrides", {}) if isinstance(body, dict) else {}
+        if isinstance(body, dict):
+            overrides = body.get("overrides", {})
+            config_path = body.get("config_path")
     except Exception:  # pragma: no cover  -- empty body / non-json
         pass
 
@@ -203,6 +240,8 @@ async def run_backtest(request: Request):
         fd.close()
         tmp_path = Path(fd.name)
         config_arg = str(tmp_path)
+    elif config_path:
+        config_arg = _validate_config_path(config_path)
     else:
         config_arg = str(CONFIG_PATH)
 

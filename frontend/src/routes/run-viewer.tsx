@@ -24,6 +24,7 @@ import { SessionPicker } from "@/components/session-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RunActions } from "@/components/run-actions";
 import { RiskKnobs } from "@/components/risk-knobs";
+import { PresetPicker } from "@/components/preset-picker";
 import { buildMarkers } from "@/components/journal-markers";
 import { Button } from "@/components/ui/button";
 import type {
@@ -231,6 +232,12 @@ export function RunViewer() {
               onCleared={() => {
                 refreshRuns();
                 navigate("/", { replace: true });
+              }}
+            />
+            <PresetPicker
+              onNewRun={(id) => {
+                refreshRuns();
+                navigate(`/runs/${id}`);
               }}
             />
             <RiskKnobs

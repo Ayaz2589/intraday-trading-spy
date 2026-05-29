@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router";
 import { fetchRuns } from "@/api/client";
 import { RunActions } from "@/components/run-actions";
 import { RiskKnobs } from "@/components/risk-knobs";
+import { PresetPicker } from "@/components/preset-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { RunSummaryView } from "@/api/types";
 
@@ -28,6 +29,7 @@ export function Root() {
               onNewRun={(id) => navigate(`/runs/${id}`)}
               onCleared={() => setRuns([])}
             />
+            <PresetPicker onNewRun={(id) => navigate(`/runs/${id}`)} />
             <RiskKnobs onNewRun={(id) => navigate(`/runs/${id}`)} />
           </div>
           <ThemeToggle />

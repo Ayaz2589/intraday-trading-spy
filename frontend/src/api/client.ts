@@ -64,8 +64,13 @@ async function send<T>(
 
 export type ConfigOverrides = Record<string, Record<string, unknown>>;
 
+export type ConfigSummary = { name: string; path: string };
+
 export const fetchConfig = (opts?: FetchOpts) =>
   get<Record<string, unknown>>("/api/config", opts);
+
+export const fetchConfigs = (opts?: FetchOpts) =>
+  get<ConfigSummary[]>("/api/configs", opts);
 
 export const runBacktest = (
   overrides?: ConfigOverrides,
@@ -75,6 +80,14 @@ export const runBacktest = (
     "POST",
     "/api/backtests/run",
     overrides ? { overrides } : {},
+    opts,
+  );
+
+export const runBacktestWithConfig = (configPath: string, opts?: FetchOpts) =>
+  send<{ run_id: string }>(
+    "POST",
+    "/api/backtests/run",
+    { config_path: configPath },
     opts,
   );
 
