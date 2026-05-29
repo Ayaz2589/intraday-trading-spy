@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   fetchRuns,
@@ -86,6 +92,10 @@ export function RunViewer() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [showRejections, setShowRejections] = useState(false);
   const [filter, setFilter] = useState<JournalFilter>("all");
+
+  const refreshRuns = useCallback(() => {
+    fetchRuns().then(setRuns).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -211,8 +221,14 @@ export function RunViewer() {
         <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-slate-700">
           <RunActions
             currentRunId={run_id ?? null}
-            onNewRun={(id) => navigate(`/runs/${id}`)}
-            onCleared={() => navigate("/", { replace: true })}
+            onNewRun={(id) => {
+              refreshRuns();
+              navigate(`/runs/${id}`);
+            }}
+            onCleared={() => {
+              refreshRuns();
+              navigate("/", { replace: true });
+            }}
           />
           <ThemeToggle />
         </div>
