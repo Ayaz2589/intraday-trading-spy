@@ -31,3 +31,12 @@ suitable for.
   aggressive risk profile?" — the cap will mostly still bind (see
   [EXPERIMENTS.md Experiment 002](../../../EXPERIMENTS.md)), so most
   signals will get rejected.
+- [`low-risk.yaml`](./low-risk.yaml) — `risk_per_trade=0.05%` so the
+  cap stops binding. The previous "best" baseline before Experiment
+  005. PF 1.105 over 44 trades on the 30-day real data.
+- [`vwap50.yaml`](./vwap50.yaml) — **current best.** `low-risk` plus
+  `max_distance_from_vwap_pct=0.50` (from Experiment 005). PF 1.357
+  over 46 trades on the same 30-day data. **Subject to longer-window
+  validation** before promoting to default. See EXPERIMENTS.md
+  Experiment 005's "next experiments" for what to test before
+  trusting this further.
