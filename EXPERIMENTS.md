@@ -406,6 +406,155 @@ not the strategy.)
 
 ---
 
+## Experiment 005 — 2026-05-29 — Five-knob sensitivity sweep
+
+### Hypothesis
+
+With the consecutive-loss bug fixed and a clean real-data baseline
+(low-risk preset, PF 1.105), sweep five single-knob tweaks
+independently to find which dial moves the strategy's edge. A
+controlled comparison — same data, same code, one knob at a time.
+The "trend" is whatever direction PF and Total R consistently move
+as the knob varies.
+
+Going in, I expected:
+- R:R sensitivity: monotonic — lower R:R higher WR, higher R:R
+  higher per-win. Direction of PF unclear.
+- VWAP distance: stricter (smaller) = higher quality = better PF.
+- max_trades_per_day: not binding in baseline (was 3 in the
+  rejection breakdown); should not move much.
+
+### Knobs changed
+
+All five tweaks are single-knob deltas from the `low-risk` preset
+(`backend/config/presets/low-risk.yaml`):
+
+| Tweak ID | Field | Baseline | Variant |
+|---|---|---|---|
+| A | `strategy.vwap_pullback.target.risk_reward` | 2.0 | **1.5** |
+| B | `strategy.vwap_pullback.target.risk_reward` | 2.0 | **2.5** |
+| C | `strategy.vwap_pullback.max_distance_from_vwap_pct` | 0.25 | **0.10** |
+| D | `strategy.vwap_pullback.max_distance_from_vwap_pct` | 0.25 | **0.50** |
+| E | `risk.max_trades_per_day` | 3 | **5** |
+
+Temp configs in `backend/config/_sweep/`; not committed — the
+sweep is reproducible by running the same five seds against
+`low-risk.yaml`.
+
+### Run IDs
+
+All ran against `data/raw/spy_5m_2026-04-29_2026-05-28.csv`
+(fingerprint `421a5b44`, 1,634 bars over ~21 sessions).
+
+- baseline (low-risk): `20260529-134337-421a5b44`
+- A (R:R 1.5): `20260529-134418-421a5b44`
+- B (R:R 2.5): `20260529-134421-421a5b44`
+- C (VWAP 0.10): `20260529-134424-421a5b44`
+- D (VWAP 0.50): `20260529-134428-421a5b44`
+- E (mtpd 5): `20260529-134431-421a5b44`
+
+### Outcome
+
+| Run | Trades | W/L | Win % | Total R | Max DD | PF |
+|---|---|---|---|---|---|---|
+| baseline | 44 | 15/27 | 34.1% | +3.45 | -7.13R | 1.105 |
+| A (R:R 1.5) | 54 | 24/30 | **44.4%** | +5.62 | -10.07R | 1.187 |
+| B (R:R 2.5) | 42 | 12/27 | 28.6% | +6.62 | **-5.65R** | 1.159 |
+| C (VWAP 0.10) | 37 | 13/23 | 35.1% | +2.10 | -6.06R | 1.121 |
+| D (VWAP 0.50) | 46 | 17/25 | 37.0% | **+10.47** | -8.06R | **1.357** |
+| E (mtpd 5) | 48 | 16/29 | 33.3% | +3.44 | -8.13R | 1.097 |
+
+### Lesson — three trends
+
+**Trend 1: R:R is U-shaped, not monotonic.**
+
+Both 1.5 (PF 1.187) and 2.5 (PF 1.159) outperform the 2.0 baseline
+(PF 1.105). They get there via different shapes:
+
+- 1.5: 44.4% WR with smaller per-win → many small winners
+- 2.5: 28.6% WR with bigger per-win → fewer big winners
+
+The 2.0:1 setting sits in a *trough* between two better
+strategies. Conventional wisdom says "2:1 R/R is the sweet spot
+for intraday." That's not what this data says. The implication: the
+"right" R:R depends on the strategy's natural win-rate distribution
+— and 2.0 happens to be where neither the wins-many-small nor
+wins-few-big strategy fully kicks in.
+
+**Trend 2: Looser VWAP distance dominates — counterintuitively.**
+
+| VWAP distance | Total R | PF |
+|---|---|---|
+| 0.10 | +2.10 | 1.121 |
+| 0.25 (baseline) | +3.45 | 1.105 |
+| 0.50 | +10.47 | 1.357 |
+
+Monotonically better as the threshold loosens. This is **opposite**
+the usual "tighter filter = higher quality" intuition.
+
+Possible mechanism: when SPY pulls back so close to VWAP (≤0.10%)
+that the close practically *touches* the line, the next move is
+usually continuation *through* VWAP (failure). At 0.50%, the
+strategy is catching pullbacks that bounced off some independent
+support level (prior bar high) *before* touching VWAP — these are
+stronger setups. The threshold isn't a quality filter; it's a
+"how-much-strength-required" filter, and more strength is better.
+
+**Worth testing:** push the threshold further (0.75%, 1.0%, 1.5%).
+If the trend keeps going, there's a real signal. If it reverses,
+we've found the optimum.
+
+**Trend 3: `max_trades_per_day` is not binding here.**
+
+Raising 3 → 5 produced essentially identical results (+3.44 vs
++3.45 Total R). The cap wasn't doing real work in the baseline.
+Slack constraint — drop the knob from active research.
+
+### Tentative new "best config" (subject to longer-data confirmation)
+
+```yaml
+# low-risk + tweak D (VWAP distance 0.50)
+risk:
+  account_value: 25000.0
+  max_risk_per_trade_pct: 0.05
+  max_position_value_pct: 100.0
+  max_consecutive_losses: 2
+strategy:
+  vwap_pullback:
+    max_distance_from_vwap_pct: 0.50    # <-- the winning change
+    target:
+      risk_reward: 2.0
+```
+
+PF 1.357, Total R +10.47 over 46 trades. Drawdown only marginally
+worse than baseline (-8.06 vs -7.13). This is the highest-edge
+result we've recorded.
+
+### Cautions
+
+- **Sample sizes are 37-54 trades.** Real but not large. Each
+  result has roughly ±10% noise on PF.
+- **One month of one market regime.** May 2026 may be a quiet
+  regime; June could behave differently. Replicate on a longer
+  window (60-day yfinance limit) before treating "D" as the new
+  default.
+- **The R:R U-shape could be artifact.** Two data points on either
+  side of the trough is thin evidence. Test R:R 1.25 and 3.0 to see
+  if the U holds.
+
+### Next experiments (in order of expected information yield)
+
+1. **Push VWAP distance higher (0.75, 1.0, 1.5).** If Trend 2 holds,
+   we may not have found the optimum yet.
+2. **Combine D + A or D + B** — does looser VWAP × tighter or wider
+   R:R compound, or do they interact?
+3. **Re-run sweep on a 60-day window.** Same five tweaks. If the
+   trends survive a 2× larger sample, they're real signals.
+4. **Promote D config to a named preset** (`backend/config/presets/<name>.yaml`)
+   if it survives (3).
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical
