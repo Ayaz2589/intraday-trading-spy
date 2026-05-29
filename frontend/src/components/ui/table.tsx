@@ -26,7 +26,7 @@ TableBody.displayName = "TableBody";
 
 export const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
   ({ className, ...props }, ref) => (
-    <tr ref={ref} className={cn("border-b transition-colors hover:bg-gray-50", className)} {...props} />
+    <tr ref={ref} className={cn("border-b border-gray-200 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800", className)} {...props} />
   )
 );
 TableRow.displayName = "TableRow";
@@ -35,7 +35,7 @@ export const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttr
   ({ className, ...props }, ref) => (
     <th
       ref={ref}
-      className={cn("h-10 px-2 text-left align-middle font-medium text-gray-500", className)}
+      className={cn("h-10 px-2 text-left align-middle font-medium text-gray-500 dark:text-slate-400", className)}
       {...props}
     />
   )

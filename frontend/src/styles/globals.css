@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: 0 0% 100%;
@@ -19,4 +20,11 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
 }

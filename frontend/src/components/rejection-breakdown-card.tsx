@@ -27,7 +27,7 @@ export function RejectionBreakdownCard({
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-sm text-gray-500">No rejections.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">No rejections.</p>
         ) : (
           <ul>
             {items.map(([reason, count]) => {

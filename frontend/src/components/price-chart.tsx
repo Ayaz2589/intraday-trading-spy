@@ -7,7 +7,21 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { HelpTooltip } from "./help-tooltip";
+import { useTheme } from "@/lib/theme";
 import type { BarView } from "@/api/types";
+
+const CHART_THEME = {
+  light: {
+    background: "#ffffff",
+    text: "#333333",
+    grid: "#f3f4f6",
+  },
+  dark: {
+    background: "#0f172a",
+    text: "#cbd5e1",
+    grid: "#1e293b",
+  },
+} as const;
 
 const toUtc = (iso: string): UTCTimestamp =>
   Math.floor(new Date(iso).getTime() / 1000) as UTCTimestamp;
@@ -41,19 +55,21 @@ export function PriceChart({
   markers: ChartMarker[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+  const colors = CHART_THEME[theme];
 
   useEffect(() => {
     if (!ref.current) return;
     const chart = createChart(ref.current, {
       height: 400,
       layout: {
-        background: { color: "#ffffff" },
-        textColor: "#333333",
+        background: { color: colors.background },
+        textColor: colors.text,
         attributionLogo: false,
       },
       grid: {
-        vertLines: { color: "#f3f4f6" },
-        horzLines: { color: "#f3f4f6" },
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
       },
       timeScale: { timeVisible: true, secondsVisible: false },
     });
@@ -119,11 +135,11 @@ export function PriceChart({
     }
     chart.timeScale().fitContent();
     return () => chart.remove();
-  }, [bars, vwap, or, markers]);
+  }, [bars, vwap, or, markers, colors]);
 
   return (
-    <div className="border rounded bg-white">
-      <div className="flex gap-4 p-2 text-xs items-center border-b">
+    <div className="border rounded border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex gap-4 p-2 text-xs items-center border-b border-gray-200 dark:border-slate-700">
         <span className="flex items-center">
           <span className="w-3 h-0.5 bg-blue-500 mr-1" />
           VWAP

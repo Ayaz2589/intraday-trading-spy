@@ -40,9 +40,17 @@ function Section<T>({
   children: (data: T) => ReactNode;
 }) {
   if ("loading" in state)
-    return <div className="text-sm text-gray-500 p-4">Loading…</div>;
+    return (
+      <div className="text-sm text-gray-500 dark:text-slate-400 p-4">
+        Loading…
+      </div>
+    );
   if ("error" in state)
-    return <div className="text-sm text-red-700 p-4">Error: {state.error}</div>;
+    return (
+      <div className="text-sm text-red-700 dark:text-red-400 p-4">
+        Error: {state.error}
+      </div>
+    );
   return <>{children(state.data)}</>;
 }
 
@@ -114,14 +122,18 @@ export function RunViewer() {
 
   const renderChart = () => {
     if ("loading" in bars)
-      return <div className="text-sm text-gray-500 p-4">Loading chart…</div>;
+      return (
+        <div className="text-sm text-gray-500 dark:text-slate-400 p-4">
+          Loading chart…
+        </div>
+      );
     if ("error" in bars) {
       const msg =
         bars.error === "source_data_missing"
           ? "Source data missing — the bars CSV referenced by this run is no longer on disk."
           : `Chart unavailable: ${bars.error}`;
       return (
-        <div className="border rounded p-4 text-sm text-amber-700 bg-amber-50">
+        <div className="border border-amber-200 rounded p-4 text-sm text-amber-700 bg-amber-50 dark:border-amber-700/50 dark:text-amber-200 dark:bg-amber-900/20">
           {msg}
         </div>
       );

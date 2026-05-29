@@ -14,7 +14,7 @@ function Metric({
 }) {
   return (
     <div>
-      <div className="text-xs text-gray-500 flex items-center">
+      <div className="text-xs text-gray-500 dark:text-slate-400 flex items-center">
         {label}
         <HelpTooltip helpKey={helpKey} />
       </div>

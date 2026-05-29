@@ -18,10 +18,10 @@ export function Root() {
     return (
       <div className="p-8">
         <h1 className="text-xl font-semibold mb-2">No backtest runs yet</h1>
-        <p className="mb-4 text-gray-600">
+        <p className="mb-4 text-gray-600 dark:text-slate-400">
           Run a backtest to populate this viewer.
         </p>
-        <pre className="bg-gray-100 p-3 rounded inline-block">make backtest</pre>
+        <pre className="bg-gray-100 dark:bg-slate-800 p-3 rounded inline-block">make backtest</pre>
       </div>
     );
   }
