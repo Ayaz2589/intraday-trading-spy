@@ -64,7 +64,7 @@ export function PriceChart({
   useEffect(() => {
     if (!ref.current) return;
     const chart = createChart(ref.current, {
-      height: 400,
+      height: 500,
       layout: {
         background: { color: colors.background },
         textColor: colors.text,
@@ -74,7 +74,15 @@ export function PriceChart({
         vertLines: { color: colors.grid },
         horzLines: { color: colors.grid },
       },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 2,
+        barSpacing: 8,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      },
+      crosshair: { mode: 0 }, // Normal crosshair (free-move)
     });
     const candles = chart.addSeries(CandlestickSeries, {
       upColor: "#10b981",
@@ -94,7 +102,9 @@ export function PriceChart({
         })),
       ),
     );
-    if (showVwap && vwap.length) {
+    if (showVwap && vwap.length && bars.length) {
+      const firstBarTime = toUtc(bars[0].timestamp);
+      const lastBarTime = toUtc(bars[bars.length - 1].timestamp);
       const line = chart.addSeries(LineSeries, {
         color: "#f59e0b",
         lineWidth: 2,
@@ -103,7 +113,12 @@ export function PriceChart({
       });
       line.setData(
         ascendingByTime(
-          vwap.map((p) => ({ time: toUtc(p.time), value: p.value })),
+          vwap
+            .map((p) => ({ time: toUtc(p.time), value: p.value }))
+            // Clamp the VWAP series to the bar data range so the line
+            // doesn't extend into empty time slots when the journal
+            // contains rows past the last available bar.
+            .filter((p) => p.time >= firstBarTime && p.time <= lastBarTime),
         ),
       );
     }
@@ -125,18 +140,24 @@ export function PriceChart({
         axisLabelVisible: true,
       });
     }
-    if (markers.length) {
-      const mapped = markers.map((m) => ({
-        time: toUtc(m.time),
-        position: m.position,
-        color: m.color,
-        shape: m.shape,
-        text: m.text,
-      }));
-      // Markers must be sorted by time too. Unlike candles/lines, duplicate
-      // timestamps ARE allowed (entry + rejected on the same bar), so only sort.
+    if (markers.length && bars.length) {
+      const firstBarTime = toUtc(bars[0].timestamp);
+      const lastBarTime = toUtc(bars[bars.length - 1].timestamp);
+      const mapped = markers
+        .map((m) => ({
+          time: toUtc(m.time),
+          position: m.position,
+          color: m.color,
+          shape: m.shape,
+          text: m.text,
+        }))
+        // Clamp to the visible bar range so markers don't render at empty
+        // time slots past the last bar.
+        .filter((m) => m.time >= firstBarTime && m.time <= lastBarTime);
+      // Markers must be sorted by time. Duplicate timestamps ARE allowed
+      // (entry + rejected on the same bar), so only sort.
       mapped.sort((a, b) => a.time - b.time);
-      createSeriesMarkers(candles, mapped);
+      if (mapped.length) createSeriesMarkers(candles, mapped);
     }
     chart.timeScale().fitContent();
     return () => chart.remove();

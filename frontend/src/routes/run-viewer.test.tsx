@@ -293,14 +293,14 @@ describe("RunViewer route", () => {
     });
     // Initial render with filter='all' — chart should have at least one Entry marker.
     const initial = priceChartCalls.at(-1)!.markers as Array<{ text: string }>;
-    expect(initial.some((m) => m.text.startsWith("Entry"))).toBe(true);
+    expect(initial.some((m) => m.text.startsWith("E "))).toBe(true);
 
     // Click the "executed" filter chip — markers should still contain Entry.
     await userEvent.click(
       screen.getByRole("button", { name: /^executed$/i }),
     );
     const filtered = priceChartCalls.at(-1)!.markers as Array<{ text: string }>;
-    expect(filtered.every((m) => m.text.startsWith("Entry"))).toBe(true);
+    expect(filtered.every((m) => m.text.startsWith("E "))).toBe(true);
 
     // Click "rejected" filter chip — no Entry markers (rejections aren't shown
     // unless the rejection-toggle is on).
@@ -310,6 +310,6 @@ describe("RunViewer route", () => {
     const afterRejected = priceChartCalls.at(-1)!.markers as Array<{
       text: string;
     }>;
-    expect(afterRejected.some((m) => m.text.startsWith("Entry"))).toBe(false);
+    expect(afterRejected.some((m) => m.text.startsWith("E "))).toBe(false);
   });
 });

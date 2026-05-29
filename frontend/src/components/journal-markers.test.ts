@@ -37,7 +37,7 @@ describe("buildMarkers", () => {
     expect(markers).toHaveLength(1);
     expect(markers[0].shape).toBe("arrowUp");
     expect(markers[0].position).toBe("belowBar");
-    expect(markers[0].text).toContain("Entry");
+    expect(markers[0].text).toMatch(/^E /);
     expect(markers[0].text).toContain("525.45");
   });
 
@@ -55,9 +55,8 @@ describe("buildMarkers", () => {
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers).toHaveLength(1);
     expect(markers[0].color).toBe("#10b981");
-    expect(markers[0].text).toContain("target");
-    expect(markers[0].text).toContain("+1.00R");
-    expect(markers[0].text).toContain("+$200.00");
+    expect(markers[0].text).toMatch(/^T /);
+    expect(markers[0].text).toContain("+1.0R");
   });
 
   it("creates a red Exit marker on stop exits", () => {
@@ -73,8 +72,8 @@ describe("buildMarkers", () => {
     ];
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers[0].color).toBe("#ef4444");
-    expect(markers[0].text).toContain("-1.00R");
-    expect(markers[0].text).toContain("-$100.00");
+    expect(markers[0].text).toMatch(/^S /);
+    expect(markers[0].text).toContain("-1.0R");
   });
 
   it("creates a gray force_flat marker", () => {
@@ -90,7 +89,7 @@ describe("buildMarkers", () => {
     ];
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers[0].color).toBe("#6b7280");
-    expect(markers[0].text).toContain("force_flat");
+    expect(markers[0].text).toMatch(/^FF /);
   });
 
   it("omits rejection markers when showRejections=false", () => {
@@ -107,6 +106,6 @@ describe("buildMarkers", () => {
     const markers = buildMarkers(rows, { showRejections: true });
     expect(markers).toHaveLength(1);
     expect(markers[0].shape).toBe("square");
-    expect(markers[0].text).toContain("position_value_exceeds_cap");
+    expect(markers[0].text).toBe("✕");
   });
 });
