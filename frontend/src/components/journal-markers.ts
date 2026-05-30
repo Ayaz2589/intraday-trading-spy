@@ -1,10 +1,12 @@
 import type { JournalRowView } from "@/api/types";
 import type { ChartMarker } from "./price-chart";
 
+// Pill backgrounds use design tokens so the chart palette stays cohesive
+// with the rest of the dashboard.
 const EXIT_COLOR: Record<NonNullable<JournalRowView["exit_reason"]>, string> = {
-  target: "#10b981",
-  stop: "#ef4444",
-  force_flat: "#6b7280",
+  target: "#14b884", // --profit (dark)
+  stop: "#f04f6a", // --loss (dark)
+  force_flat: "#66738c", // --text-faint (dark) — neutral
 };
 
 const EXIT_LABEL: Record<NonNullable<JournalRowView["exit_reason"]>, string> = {
@@ -12,6 +14,8 @@ const EXIT_LABEL: Record<NonNullable<JournalRowView["exit_reason"]>, string> = {
   stop: "Stop",
   force_flat: "Force Flat",
 };
+
+const ENTRY_COLOR = "#2563eb"; // --accent
 
 // R-multiple: how many "R" (risk units) the trade gained or lost.
 // +1.0R = made exactly what was risked. -1.0R = lost exactly what
@@ -27,6 +31,8 @@ const signedDollar = (n: number) => {
   })}`;
 };
 
+// Compact one-line marker text. Richer detail (time, qty, hold duration)
+// lives in the click-to-inspect rationale popover, not on the chart.
 export function buildMarkers(
   rows: JournalRowView[],
   opts: { showRejections: boolean },
@@ -38,14 +44,14 @@ export function buildMarkers(
       markers.push({
         time: r.timestamp,
         position: "belowBar",
-        color: "#3b82f6",
+        color: ENTRY_COLOR,
         shape: "arrowUp",
         text: price != null ? `Entry $${price.toFixed(2)}` : "Entry",
       });
     } else if (r.status === "exited" || r.status === "force_flat") {
       const reason = r.exit_reason ?? "force_flat";
       const color = EXIT_COLOR[reason];
-      const parts = [EXIT_LABEL[reason]];
+      const parts: string[] = [EXIT_LABEL[reason]];
       if (r.realized_r != null) parts.push(signedR(r.realized_r));
       if (r.realized_pnl != null) parts.push(signedDollar(r.realized_pnl));
       markers.push({
@@ -59,7 +65,7 @@ export function buildMarkers(
       markers.push({
         time: r.timestamp,
         position: "aboveBar",
-        color: "#9ca3af",
+        color: "#66738c", // --text-faint
         shape: "square",
         text: "Rejected",
       });

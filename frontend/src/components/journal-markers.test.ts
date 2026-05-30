@@ -54,7 +54,8 @@ describe("buildMarkers", () => {
     ];
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers).toHaveLength(1);
-    expect(markers[0].color).toBe("#10b981");
+    // Colors now match the design's --profit / --loss / --text-faint tokens.
+    expect(markers[0].color).toBe("#14b884");
     expect(markers[0].text).toMatch(/^Target /);
     expect(markers[0].text).toContain("+1.0R");
     expect(markers[0].text).toContain("+$200");
@@ -72,7 +73,7 @@ describe("buildMarkers", () => {
       },
     ];
     const markers = buildMarkers(rows, { showRejections: false });
-    expect(markers[0].color).toBe("#ef4444");
+    expect(markers[0].color).toBe("#f04f6a");
     expect(markers[0].text).toMatch(/^Stop /);
     expect(markers[0].text).toContain("-1.0R");
     expect(markers[0].text).toContain("-$100");
@@ -90,7 +91,7 @@ describe("buildMarkers", () => {
       },
     ];
     const markers = buildMarkers(rows, { showRejections: false });
-    expect(markers[0].color).toBe("#6b7280");
+    expect(markers[0].color).toBe("#66738c");
     expect(markers[0].text).toMatch(/^Force Flat /);
   });
 

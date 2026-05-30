@@ -17,6 +17,7 @@ import { findSwingPivots } from "@/lib/swing-pivots";
 import { entryRationale, type EntryRationale } from "@/lib/entry-rationale";
 import { exitRationale, type ExitRationale } from "@/lib/exit-rationale";
 import { clusterRejections } from "@/lib/rejection-clusters";
+import { useCandleStyle, CANDLE_STYLES } from "@/lib/candle-style";
 import { createRejectionClusterOverlays } from "./rejection-cluster-overlay";
 import type { BarView, JournalRowView } from "@/api/types";
 
@@ -81,7 +82,15 @@ function resolveToken(name: string): string {
 
 // Build a CHART_STYLES object whose colors come from the live design tokens.
 // Re-evaluated on every theme change so canvas colors track the tokens.
-function buildChartStyles(theme: "light" | "dark") {
+function buildChartStyles(
+  theme: "light" | "dark",
+  candleStyle:
+    | "candle_solid"
+    | "candle_stroke"
+    | "candle_up_stroke"
+    | "candle_down_stroke"
+    | "ohlc" = "candle_up_stroke",
+) {
   const profit =
     resolveToken("--profit") || (theme === "dark" ? "#14b884" : "#0f9e6e");
   const loss =
@@ -108,7 +117,12 @@ function buildChartStyles(theme: "light" | "dark") {
     // Tint it to the chart-bg so it disappears.
     separator: { size: 1, color: resolveToken("--chart-bg") || (theme === "dark" ? "#0c111c" : "#fbfcfe"), fill: false },
     candle: {
+      // Style is configurable via the chart-header dropdown (useCandleStyle).
+      type: candleStyle,
       bar: {
+        // For hollow up-candles KLineCharts uses `upBorderColor` as the
+        // visible color (fill is transparent). For solid down-candles
+        // both downColor (fill) and downBorderColor matter.
         upColor: profit,
         downColor: loss,
         upBorderColor: profit,
@@ -235,8 +249,8 @@ registerOverlay({
 // PILL_HALF_HEIGHT approximates half the pill's rendered height so the
 // stem stops at the pill edge, not inside it.
 
-const PILL_OFFSET = 28;
-const PILL_HALF_HEIGHT = 9;
+const PILL_OFFSET = 34;
+const PILL_HALF_HEIGHT = 13;
 
 registerOverlay({
   name: "tradeRationaleTag",
@@ -345,9 +359,11 @@ export function PriceChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const { theme } = useTheme();
+  const { style: candleStyle, setStyle: setCandleStyle } = useCandleStyle();
   const [showVwap, setShowVwap] = useState(true);
   const [showOR, setShowOR] = useState(true);
   const [showSR, setShowSR] = useState(false);
+  const [showMarkers, setShowMarkers] = useState(true);
   const [selectedBar, setSelectedBar] = useState<KLineData | null>(null);
   const orOverlayIds = useRef<string[]>([]);
   const srOverlayIds = useRef<string[]>([]);
@@ -492,13 +508,16 @@ export function PriceChart({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const chart = init(container, { styles: buildChartStyles(theme) });
+    const chart = init(container, { styles: buildChartStyles(theme, candleStyle) });
     if (!chart) return;
     chartRef.current = chart;
     chart.setSymbol({ ticker: "SPY", pricePrecision: 2, volumePrecision: 0 });
     chart.setPeriod({ type: "minute", span: 5 });
     chart.setOffsetRightDistance(28);
-    chart.createIndicator("VOL");
+    // VOL indicator with the default MA5/MA10/MA20 overlays stripped —
+    // those produced the orange + blue lines on top of the volume bars
+    // which read as noise on a backtest-research chart.
+    chart.createIndicator({ name: "VOL", calcParams: [] });
     return () => {
       dispose(container);
       chartRef.current = null;
@@ -615,10 +634,10 @@ export function PriceChart({
     }
   }, [bars]);
 
-  // Theme — re-apply styles whenever theme changes.
+  // Theme + candle-style — re-apply styles whenever either changes.
   useEffect(() => {
-    chartRef.current?.setStyles(buildChartStyles(theme));
-  }, [theme]);
+    chartRef.current?.setStyles(buildChartStyles(theme, candleStyle));
+  }, [theme, candleStyle]);
 
   // Refit bar width when the container resizes (e.g. window resize,
   // sidebar toggled, ultra-wide breakpoint changes layout).
@@ -865,6 +884,7 @@ export function PriceChart({
     const chart = chartRef.current;
     if (!chart) return;
     chart.removeOverlay({ name: "tradeRationaleTag" });
+    if (!showMarkers) return;
     if (!markers.length || !bars.length) return;
     const vwapByTs = new Map<number, number>();
     for (const p of vwap) vwapByTs.set(new Date(p.time).getTime(), p.value);
@@ -883,24 +903,29 @@ export function PriceChart({
         points: [{ timestamp: ts, value }],
         extendData: { text: m.text, direction },
         styles: {
-          line: { color: m.color, size: 1 },
-          // Colored background, white text, padding tuned for longer
-          // labels like "Target +1.0R · +$200".
+          line: { color: m.color, size: 1.5 },
+          // KLineCharts text figures need `style: "stroke_fill"` to render
+          // a border around the padded background. Without it, only the
+          // fill is drawn and the white border is invisible.
           text: {
+            style: "stroke_fill",
             color: "#ffffff",
             backgroundColor: m.color,
-            size: 11,
-            weight: "500",
-            paddingLeft: 6,
-            paddingRight: 6,
-            paddingTop: 3,
-            paddingBottom: 3,
-            borderRadius: 3,
+            borderColor: "#ffffff",
+            borderSize: 1.5,
+            borderStyle: "solid",
+            size: 13,
+            weight: "600",
+            paddingLeft: 10,
+            paddingRight: 10,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 999, // pill shape, not rectangle
           },
         },
       });
     });
-  }, [markers, bars, vwap]);
+  }, [markers, bars, vwap, showMarkers]);
 
   return (
     <section className="card chart-card">
@@ -961,6 +986,15 @@ export function PriceChart({
           Force-flat exit
           <HelpTooltip helpKey="force_flat_exit" />
         </span>
+        <button
+          type="button"
+          className={`btn btn-ghost btn-sm${showMarkers ? " is-on" : ""}`}
+          aria-pressed={showMarkers}
+          onClick={() => setShowMarkers((v) => !v)}
+          title="Toggle trade marker pills"
+        >
+          {showMarkers ? "Hide markers" : "Show markers"}
+        </button>
         {onToggleRejections && (
           <button
             type="button"
@@ -971,7 +1005,36 @@ export function PriceChart({
             {showRejections ? "Hide rejections" : "Show rejections"}
           </button>
         )}
-        <span className="ml-auto text-gray-500 dark:text-slate-500 italic">
+        <span
+          className="flex items-center gap-1"
+          style={{ marginLeft: "auto" }}
+        >
+          <label
+            htmlFor="candle-style-select"
+            className="text-gray-500 dark:text-slate-400"
+            style={{ fontSize: "var(--fs-xs)" }}
+          >
+            Candles
+          </label>
+          <span className="knob-select" style={{ width: 170 }}>
+            <select
+              id="candle-style-select"
+              value={candleStyle}
+              onChange={(e) =>
+                setCandleStyle(e.target.value as typeof candleStyle)
+              }
+              aria-label="Candlestick style"
+            >
+              {CANDLE_STYLES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <span className="sel-caret">▾</span>
+          </span>
+        </span>
+        <span className="text-gray-500 dark:text-slate-500 italic" style={{ fontSize: "var(--fs-xs)" }}>
           {selectedBar ? "" : "Click a candle for details"}
         </span>
       </div>
