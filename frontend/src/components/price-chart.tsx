@@ -16,6 +16,8 @@ import { humanize } from "@/lib/format";
 import { findSwingPivots } from "@/lib/swing-pivots";
 import { entryRationale, type EntryRationale } from "@/lib/entry-rationale";
 import { exitRationale, type ExitRationale } from "@/lib/exit-rationale";
+import { clusterRejections } from "@/lib/rejection-clusters";
+import { createRejectionClusterOverlays } from "./rejection-cluster-overlay";
 import type { BarView, JournalRowView } from "@/api/types";
 
 // VWAP line thickness in px. The entry-dot radius scales off this so
@@ -47,7 +49,7 @@ registerIndicator({
       title: "VWAP: ",
       type: "line",
       styles: () => ({
-        color: "#f59e0b",
+        color: "#f5a524",
         size: VWAP_LINE_SIZE,
         style: "solid",
         smooth: false,
@@ -67,50 +69,65 @@ const TOOLTIP_OFF = {
   showRule: "none",
 } as const;
 
-const CHART_STYLES = {
-  light: {
-    grid: { horizontal: { color: "#f3f4f6" }, vertical: { color: "#f3f4f6" } },
+// Resolve a CSS custom property at runtime. Returns the trimmed value or an
+// empty string if not set. Used to feed KLineCharts (a Canvas renderer that
+// needs concrete color strings) from our design tokens.
+function resolveToken(name: string): string {
+  if (typeof document === "undefined") return "";
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+}
+
+// Build a CHART_STYLES object whose colors come from the live design tokens.
+// Re-evaluated on every theme change so canvas colors track the tokens.
+function buildChartStyles(theme: "light" | "dark") {
+  const profit =
+    resolveToken("--profit") || (theme === "dark" ? "#14b884" : "#0f9e6e");
+  const loss =
+    resolveToken("--loss") || (theme === "dark" ? "#f04f6a" : "#e23b58");
+  const grid =
+    resolveToken("--grid") ||
+    (theme === "dark"
+      ? "rgba(148, 163, 184, 0.08)"
+      : "rgba(15, 23, 42, 0.06)");
+  const textFaint =
+    resolveToken("--text-faint") || (theme === "dark" ? "#66738c" : "#8a96ab");
+  const border =
+    resolveToken("--border") ||
+    (theme === "dark"
+      ? "rgba(148, 163, 184, 0.12)"
+      : "rgba(15, 23, 42, 0.09)");
+  const surface2 =
+    resolveToken("--surface-2") || (theme === "dark" ? "#182030" : "#f6f8fc");
+  return {
+    grid: { horizontal: { color: grid }, vertical: { color: grid } },
     candle: {
       bar: {
-        upColor: "#10b981",
-        downColor: "#ef4444",
-        upBorderColor: "#10b981",
-        downBorderColor: "#ef4444",
-        upWickColor: "#10b981",
-        downWickColor: "#ef4444",
+        upColor: profit,
+        downColor: loss,
+        upBorderColor: profit,
+        downBorderColor: loss,
+        upWickColor: profit,
+        downWickColor: loss,
       },
       tooltip: TOOLTIP_OFF,
     },
     indicator: { tooltip: TOOLTIP_OFF },
     crosshair: {
-      horizontal: { line: { color: "#9ca3af" }, text: { backgroundColor: "#374151" } },
-      vertical: { line: { color: "#9ca3af" }, text: { backgroundColor: "#374151" } },
-    },
-    xAxis: { axisLine: { color: "#e5e7eb" }, tickText: { color: "#6b7280" } },
-    yAxis: { axisLine: { color: "#e5e7eb" }, tickText: { color: "#6b7280" } },
-  },
-  dark: {
-    grid: { horizontal: { color: "#1e293b" }, vertical: { color: "#1e293b" } },
-    candle: {
-      bar: {
-        upColor: "#10b981",
-        downColor: "#ef4444",
-        upBorderColor: "#10b981",
-        downBorderColor: "#ef4444",
-        upWickColor: "#10b981",
-        downWickColor: "#ef4444",
+      horizontal: {
+        line: { color: textFaint },
+        text: { backgroundColor: surface2 },
       },
-      tooltip: TOOLTIP_OFF,
+      vertical: {
+        line: { color: textFaint },
+        text: { backgroundColor: surface2 },
+      },
     },
-    indicator: { tooltip: TOOLTIP_OFF },
-    crosshair: {
-      horizontal: { line: { color: "#64748b" }, text: { backgroundColor: "#1e293b" } },
-      vertical: { line: { color: "#64748b" }, text: { backgroundColor: "#1e293b" } },
-    },
-    xAxis: { axisLine: { color: "#334155" }, tickText: { color: "#94a3b8" } },
-    yAxis: { axisLine: { color: "#334155" }, tickText: { color: "#94a3b8" } },
-  },
-} as const;
+    xAxis: { axisLine: { color: border }, tickText: { color: textFaint } },
+    yAxis: { axisLine: { color: border }, tickText: { color: textFaint } },
+  } as const;
+}
 
 // Compact pill style shared by every labeled overlay tag (OR, S/R).
 const TAG_TEXT_BASE = {
@@ -303,6 +320,8 @@ export function PriceChart({
   journal,
   accountValue,
   positionCapPct,
+  showRejections = false,
+  onToggleRejections,
 }: {
   bars: BarView[];
   vwap: { time: string; value: number }[];
@@ -311,6 +330,8 @@ export function PriceChart({
   journal: JournalRowView[];
   accountValue: number;
   positionCapPct: number;
+  showRejections?: boolean;
+  onToggleRejections?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -325,6 +346,7 @@ export function PriceChart({
   const vwapTagId = useRef<string | null>(null);
   const entryDotIds = useRef<string[]>([]);
   const exitDotIds = useRef<string[]>([]);
+  const rejectionClusterIds = useRef<string[]>([]);
   const [entryPopover, setEntryPopover] = useState<{
     row: JournalRowView;
     priorBar: BarView | null;
@@ -349,7 +371,7 @@ export function PriceChart({
     const up = prev ? last.close >= prev.close : true;
     return {
       value: last.close,
-      color: up ? "#16a34a" : "#dc2626",
+      color: up ? "#0f9e6e" : "#f04f6a",
     };
   }, [bars]);
 
@@ -422,10 +444,10 @@ export function PriceChart({
       const reason = r.exit_reason ?? "force_flat";
       const color =
         reason === "target"
-          ? "#10b981"
+          ? "#14b884"
           : reason === "stop"
-            ? "#ef4444"
-            : "#6b7280";
+            ? "#f04f6a"
+            : "#66738c";
       out.push({ row: r, ts, vwap: vwapAt, entryTimestamp: lastEntryTs, color });
       lastEntryTs = null; // consumed
     }
@@ -461,7 +483,7 @@ export function PriceChart({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const chart = init(container, { styles: CHART_STYLES[theme] });
+    const chart = init(container, { styles: buildChartStyles(theme) });
     if (!chart) return;
     chartRef.current = chart;
     chart.setSymbol({ ticker: "SPY", pricePrecision: 2, volumePrecision: 0 });
@@ -586,7 +608,7 @@ export function PriceChart({
 
   // Theme — re-apply styles whenever theme changes.
   useEffect(() => {
-    chartRef.current?.setStyles(CHART_STYLES[theme]);
+    chartRef.current?.setStyles(buildChartStyles(theme));
   }, [theme]);
 
   // Refit bar width when the container resizes (e.g. window resize,
@@ -647,7 +669,7 @@ export function PriceChart({
           polygon: {
             style: "stroke_fill",
             color: "#ffffff",
-            borderColor: "#f59e0b",
+            borderColor: "#f5a524",
             borderSize: 3,
           },
         },
@@ -684,6 +706,26 @@ export function PriceChart({
     }
   }, [exits, showVwap]);
 
+  // Rejection clusters — grey "Rej · ×N" tags above rejected bars when
+  // `showRejections` is on. Cluster-collapse per FR-008.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    for (const id of rejectionClusterIds.current) chart.removeOverlay({ id });
+    rejectionClusterIds.current = [];
+    if (!showRejections) return;
+    const rejectionRows = journal.filter((r) => r.status === "rejected");
+    if (rejectionRows.length === 0 || bars.length === 0) return;
+    const clusters = clusterRejections(rejectionRows, bars);
+    const barHighByTimestamp = new Map<string, number>();
+    for (const b of bars) barHighByTimestamp.set(b.timestamp, b.high);
+    rejectionClusterIds.current = createRejectionClusterOverlays(
+      chart,
+      clusters,
+      barHighByTimestamp,
+    );
+  }, [showRejections, journal, bars]);
+
   // OR high/low — labeled horizontal lines via `simpleTag`. extendData
   // is the tag text.
   useEffect(() => {
@@ -702,8 +744,8 @@ export function PriceChart({
         extendData: `OR Hi ${or.high.toFixed(2)}`,
         points: [{ value: or.high }],
         styles: {
-          line: { color: "#22c55e", style: "dashed", size: 1 },
-          text: { ...TAG_TEXT_BASE, backgroundColor: "#16a34a" },
+          line: { color: "#14b884", style: "dashed", size: 1 },
+          text: { ...TAG_TEXT_BASE, backgroundColor: "#0f9e6e" },
         },
       }),
     );
@@ -713,8 +755,8 @@ export function PriceChart({
         extendData: `OR Lo ${or.low.toFixed(2)}`,
         points: [{ value: or.low }],
         styles: {
-          line: { color: "#ef4444", style: "dashed", size: 1 },
-          text: { ...TAG_TEXT_BASE, backgroundColor: "#dc2626" },
+          line: { color: "#f04f6a", style: "dashed", size: 1 },
+          text: { ...TAG_TEXT_BASE, backgroundColor: "#f04f6a" },
         },
       }),
     );
@@ -738,8 +780,8 @@ export function PriceChart({
           extendData: `R ${level.toFixed(2)}`,
           points: [{ value: level }],
           styles: {
-            line: { color: "#dc2626", style: "dashed", size: 1 },
-            text: { ...TAG_TEXT_BASE, backgroundColor: "#dc2626" },
+            line: { color: "#f04f6a", style: "dashed", size: 1 },
+            text: { ...TAG_TEXT_BASE, backgroundColor: "#f04f6a" },
           },
         }),
       );
@@ -751,8 +793,8 @@ export function PriceChart({
           extendData: `S ${level.toFixed(2)}`,
           points: [{ value: level }],
           styles: {
-            line: { color: "#16a34a", style: "dashed", size: 1 },
-            text: { ...TAG_TEXT_BASE, backgroundColor: "#16a34a" },
+            line: { color: "#0f9e6e", style: "dashed", size: 1 },
+            text: { ...TAG_TEXT_BASE, backgroundColor: "#0f9e6e" },
           },
         }),
       );
@@ -776,7 +818,7 @@ export function PriceChart({
       extendData: "VWAP",
       points: [{ value: vwap[0].value }],
       styles: {
-        text: { ...TAG_TEXT_BASE, backgroundColor: "#f59e0b" },
+        text: { ...TAG_TEXT_BASE, backgroundColor: "#f5a524" },
       },
     });
     const id = Array.isArray(result) ? result[0] : result;
@@ -852,36 +894,40 @@ export function PriceChart({
   }, [markers, bars, vwap]);
 
   return (
-    <div className="border rounded border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+    <section className="card chart-card">
       <div className="flex gap-4 p-2 text-xs items-center border-b border-gray-200 dark:border-slate-700">
-        <button
-          type="button"
-          aria-pressed={showVwap}
-          aria-label="Toggle VWAP"
-          onClick={() => setShowVwap((v) => !v)}
-          className={cn(
-            "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
-            !showVwap && "opacity-40 line-through",
-          )}
-        >
-          <span className="inline-block w-4 h-[3px] bg-amber-500 mr-1.5" />
-          VWAP
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-pressed={showVwap}
+            aria-label="Toggle VWAP"
+            onClick={() => setShowVwap((v) => !v)}
+            className={cn(
+              "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
+              !showVwap && "opacity-40 line-through",
+            )}
+          >
+            <span className="inline-block w-4 h-[3px] bg-amber-500 mr-1.5" />
+            VWAP
+          </button>
           <HelpTooltip helpKey="vwap" />
-        </button>
-        <button
-          type="button"
-          aria-pressed={showOR}
-          aria-label="Toggle OR"
-          onClick={() => setShowOR((v) => !v)}
-          className={cn(
-            "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
-            !showOR && "opacity-40 line-through",
-          )}
-        >
-          <span className="w-3 h-0.5 bg-green-500 mr-1" />
-          OR high / low
+        </span>
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-pressed={showOR}
+            aria-label="Toggle OR"
+            onClick={() => setShowOR((v) => !v)}
+            className={cn(
+              "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
+              !showOR && "opacity-40 line-through",
+            )}
+          >
+            <span className="w-3 h-0.5 bg-green-500 mr-1" />
+            OR high / low
+          </button>
           <HelpTooltip helpKey="opening_range" />
-        </button>
+        </span>
         <button
           type="button"
           aria-pressed={showSR}
@@ -906,6 +952,16 @@ export function PriceChart({
           Force-flat exit
           <HelpTooltip helpKey="force_flat_exit" />
         </span>
+        {onToggleRejections && (
+          <button
+            type="button"
+            className={`btn btn-ghost btn-sm${showRejections ? " is-on" : ""}`}
+            aria-pressed={showRejections}
+            onClick={onToggleRejections}
+          >
+            {showRejections ? "Hide rejections" : "Show rejections"}
+          </button>
+        )}
         <span className="ml-auto text-gray-500 dark:text-slate-500 italic">
           {selectedBar ? "" : "Click a candle for details"}
         </span>
@@ -947,7 +1003,7 @@ export function PriceChart({
           />
         )}
       </div>
-    </div>
+    </section>
   );
 }
 

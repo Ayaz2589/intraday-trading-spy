@@ -20,11 +20,28 @@ const manifest: RunManifestView = {
 };
 
 describe("RunHeader", () => {
-  it("renders run id, code_version, and sha256[:8]", () => {
+  it("renders run id as an h1 with mono font (FR-004)", () => {
     render(<RunHeader manifest={manifest} />);
-    expect(screen.getByText("20260528-220714-7697908e")).toBeInTheDocument();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    expect(h1).toHaveTextContent("20260528-220714-7697908e");
+    expect(h1.className).toContain("mono");
+  });
+
+  it("renders Started / Code / Data overline labels (FR-001)", () => {
+    render(<RunHeader manifest={manifest} />);
+    expect(screen.getByText("Started")).toBeInTheDocument();
+    expect(screen.getByText("Code")).toBeInTheDocument();
+    expect(screen.getByText("Data")).toBeInTheDocument();
+  });
+
+  it("renders code_version and sha256[:8]", () => {
+    render(<RunHeader manifest={manifest} />);
     expect(screen.getByText(/deadbeef/)).toBeInTheDocument();
-    // sha256[:8] rendered in a separate span — match exactly.
-    expect(screen.getByText(/^data /)).toHaveTextContent("data 7697908e");
+    expect(screen.getByText("7697908e")).toBeInTheDocument();
+  });
+
+  it("renders the 'complete' status badge", () => {
+    render(<RunHeader manifest={manifest} />);
+    expect(screen.getByText(/complete/i)).toBeInTheDocument();
   });
 });

@@ -20,7 +20,9 @@ export type HelpContentKey =
   | "force_flat_exit"
   | "take_profit"
   | "stop_loss"
-  | "risk_per_trade";
+  | "risk_per_trade"
+  | "layout_mode"
+  | "show_rejections";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -92,5 +94,15 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Risk per Trade",
     description:
       "Maximum dollar loss accepted on any single trade, as a percentage of account size. The app uses this plus the stop distance to compute how many shares to buy. Default 1%: with $1,000 account, max risk is $10/trade.",
+  },
+  layout_mode: {
+    title: "Layout Mode",
+    description:
+      "Overview puts the three summary cards above the chart; Chart focus puts the chart on top with the cards as a three-column row below. Your choice persists across reloads via localStorage.",
+  },
+  show_rejections: {
+    title: "Show rejections on chart",
+    description:
+      "Marks every bar where the strategy emitted a signal that the risk manager blocked. Consecutive bars sharing the same rejection check collapse into one tag like 'Rej · ×N'. Helps answer 'why didn't this fire?' visually.",
   },
 };

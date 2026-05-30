@@ -67,31 +67,32 @@ describe("JournalTable", () => {
     expect(screen.getByText("Executed")).toBeInTheDocument();
   });
 
-  it("clicking a filter chip fires onFilterChange", async () => {
+  it("clicking a filter pill fires onFilterChange (FR-001)", async () => {
     const onFilterChange = vi.fn();
     render(
       <JournalTable rows={rows} filter="all" onFilterChange={onFilterChange} />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /^rejected$/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /^rejected/i }));
     expect(onFilterChange).toHaveBeenCalledWith("rejected");
   });
 
-  it("clicking an expand button reveals the indicator snapshot", async () => {
+  it("clicking a row toggles the expanded indicator snapshot (FR-011)", async () => {
     render(<JournalTable rows={rows} />);
     // Before expansion: VWAP value is not in the DOM.
     expect(screen.queryByText(/524\.88/)).toBeNull();
-    await userEvent.click(
-      screen.getByRole("button", { name: /expand row 0/i }),
-    );
-    // After expansion: indicator labels + values render.
-    expect(screen.getByText(/^VWAP$/)).toBeInTheDocument();
+    // Click the row containing the timestamp cell.
+    const timeCell = screen.getByText("09:30").closest("tr");
+    expect(timeCell).not.toBeNull();
+    await userEvent.click(timeCell!);
+    // After expansion: indicator labels + values render in the trade-detail.
+    expect(screen.getByText("Indicator snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Planned trade")).toBeInTheDocument();
+    expect(screen.getByText("Outcome")).toBeInTheDocument();
     expect(screen.getByText("524.88")).toBeInTheDocument();
     expect(screen.getByText("525.00")).toBeInTheDocument(); // or_high
     expect(screen.getByText("525.05")).toBeInTheDocument(); // prior_bar_close
     // Click again collapses.
-    await userEvent.click(
-      screen.getByRole("button", { name: /collapse row 0/i }),
-    );
-    expect(screen.queryByText(/^VWAP$/)).toBeNull();
+    await userEvent.click(timeCell!);
+    expect(screen.queryByText("Indicator snapshot")).toBeNull();
   });
 });

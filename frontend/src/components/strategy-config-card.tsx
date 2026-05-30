@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { humanize } from "@/lib/format";
 import type { RunManifestView } from "@/api/types";
 
@@ -30,67 +29,56 @@ const fmt = (v: number | string | undefined) => {
   return typeof v === "number" ? v.toFixed(1) : v;
 };
 
-export function StrategyConfigCard({
-  manifest,
-}: {
-  manifest: RunManifestView;
-}) {
+// StrategyConfigCard — restyled per design handoff's .card + .config-grid.
+// Spec FR-016: accent rail in --accent (brand blue) for Config card.
+export function StrategyConfigCard({ manifest }: { manifest: RunManifestView }) {
   const cfg = manifest.config_snapshot ?? {};
   const risk = (cfg as { risk?: Risk }).risk ?? {};
   const strategy = (cfg as { strategy?: Strategy }).strategy ?? {};
   const vwap = strategy.vwap_pullback ?? {};
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Strategy & Risk Config</CardTitle>
-      </CardHeader>
-      <CardContent className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9 gap-x-6 gap-y-3 text-sm">
-        <Field
-          label="Setup"
-          value={
-            strategy.enabled_setup ? humanize(strategy.enabled_setup) : "—"
-          }
-        />
-        <Field label="Account" value={fmtMoney(risk.account_value)} />
-        <Field
-          label="Risk / Trade"
-          value={fmtPct(risk.max_risk_per_trade_pct)}
-        />
-        <Field
-          label="Position Cap"
-          value={fmtPct(risk.max_position_value_pct)}
-        />
-        <Field
-          label="Max Consecutive Losses"
-          value={risk.max_consecutive_losses ?? "—"}
-        />
-        <Field
-          label="Opening Range"
-          value={fmtMin(strategy.opening_range?.minutes)}
-        />
-        <Field label="Risk:Reward" value={fmt(vwap.target?.risk_reward)} />
-        <Field label="Stop Buffer" value={fmtPct(vwap.stop?.buffer_pct)} />
-        <Field
-          label="Max Distance from VWAP"
-          value={fmtPct(vwap.max_distance_from_vwap_pct)}
-        />
-      </CardContent>
-    </Card>
-  );
-}
+  const items: Array<{ label: string; value: string | number; wide?: boolean; mono?: boolean }> = [
+    {
+      label: "Setup",
+      value: strategy.enabled_setup ? humanize(strategy.enabled_setup) : "—",
+      wide: true,
+      mono: false,
+    },
+    { label: "Account", value: fmtMoney(risk.account_value) },
+    { label: "Risk / Trade", value: fmtPct(risk.max_risk_per_trade_pct) },
+    { label: "Position Cap", value: fmtPct(risk.max_position_value_pct) },
+    {
+      label: "Max Consec. Losses",
+      value: risk.max_consecutive_losses ?? "—",
+    },
+    { label: "Opening Range", value: fmtMin(strategy.opening_range?.minutes) },
+    { label: "Risk : Reward", value: fmt(vwap.target?.risk_reward) },
+    { label: "Stop Buffer", value: fmtPct(vwap.stop?.buffer_pct) },
+    { label: "Max Dist. from VWAP", value: fmtPct(vwap.max_distance_from_vwap_pct) },
+  ];
 
-function Field({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
   return (
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-500 dark:text-slate-400">{label}</span>
-      <span className="font-mono">{value}</span>
-    </div>
+    <section className="card">
+      <header className="card-head">
+        <h3 className="card-title">
+          <span className="card-accent" style={{ background: "var(--accent)" }} />
+          Strategy &amp; Risk Config
+        </h3>
+        <span className="chip chip-accent">VWAP Pullback</span>
+      </header>
+      <div className="config-grid">
+        {items.map((it) => (
+          <div
+            key={it.label}
+            className={`config-item${it.wide ? " span-2" : ""}`}
+          >
+            <div className="stat-label">{it.label}</div>
+            <div className={`config-val${it.mono === false ? "" : " mono"}`}>
+              {it.value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

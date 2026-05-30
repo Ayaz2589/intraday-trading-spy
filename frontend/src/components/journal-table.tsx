@@ -1,14 +1,4 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -33,86 +23,132 @@ function f(v: number | null, digits = 4): string {
   return v == null ? "—" : v.toFixed(digits);
 }
 
+function countForFilter(rows: JournalRowView[], filter: JournalFilter): number {
+  if (filter === "all") return rows.length;
+  return rows.filter((r) => r.status === filter).length;
+}
+
+// ExpandedRow — 3-column detail panel per design handoff (.trade-detail).
+// Spec FR-011: Indicator snapshot · Planned trade · Outcome columns + full-width
+// reason; left accent rail comes from `.trade-detail::before`.
 function ExpandedRow({ row }: { row: JournalRowView }) {
   return (
-    <TableCell colSpan={11} className="bg-gray-50 dark:bg-slate-800/50 p-4">
-      <div className="grid grid-cols-3 gap-x-6 gap-y-3 text-xs">
-        <Section title="Indicator snapshot">
-          <Field label="VWAP" value={f(row.vwap, 2)} />
-          <Field label="OR high" value={f(row.or_high, 2)} />
-          <Field label="OR low" value={f(row.or_low, 2)} />
-          <Field
+    <td colSpan={11}>
+      <div className="trade-detail">
+        <div className="dt-col">
+          <div className="dt-head">Indicator snapshot</div>
+          <DetailRow label="VWAP" value={f(row.vwap, 2)} />
+          <DetailRow label="OR high" value={f(row.or_high, 2)} />
+          <DetailRow label="OR low" value={f(row.or_low, 2)} />
+          <DetailRow
             label="Distance from VWAP %"
             value={f(row.distance_from_vwap_pct, 3)}
           />
-          <Field label="Prior bar close" value={f(row.prior_bar_close, 2)} />
-        </Section>
-        <Section title="Planned trade">
-          <Field label="Direction" value={row.direction ?? "—"} />
-          <Field label="Planned entry" value={f(row.planned_entry, 2)} />
-          <Field label="Stop loss" value={f(row.stop_loss, 2)} />
-          <Field label="Take profit" value={f(row.take_profit, 2)} />
-          <Field label="Quantity" value={row.quantity?.toString() ?? "—"} />
-          <Field
+          <DetailRow label="Prior bar close" value={f(row.prior_bar_close, 2)} />
+        </div>
+        <div className="dt-col">
+          <div className="dt-head">Planned trade</div>
+          <DetailRow
+            label="Direction"
+            value={
+              row.direction ? (
+                <span className="chip chip-profit">{row.direction}</span>
+              ) : (
+                "—"
+              )
+            }
+          />
+          <DetailRow label="Planned entry" value={f(row.planned_entry, 2)} />
+          <DetailRow
+            label="Stop loss"
+            value={f(row.stop_loss, 2)}
+            tone="loss"
+          />
+          <DetailRow
+            label="Take profit"
+            value={f(row.take_profit, 2)}
+            tone="profit"
+          />
+          <DetailRow label="Quantity" value={row.quantity?.toString() ?? "—"} />
+          <DetailRow
             label="Planned risk $"
             value={f(row.planned_risk_dollars, 2)}
           />
-        </Section>
-        <Section title="Outcome">
-          <Field label="Actual entry" value={f(row.actual_entry, 2)} />
-          <Field label="Actual exit" value={f(row.actual_exit, 2)} />
-          <Field
+        </div>
+        <div className="dt-col">
+          <div className="dt-head">Outcome</div>
+          <DetailRow label="Actual entry" value={f(row.actual_entry, 2)} />
+          <DetailRow label="Actual exit" value={f(row.actual_exit, 2)} />
+          <DetailRow
             label="Exit reason"
             value={row.exit_reason ? humanize(row.exit_reason) : "—"}
           />
-          <Field label="Realized R" value={f(row.realized_r, 3)} />
-          <Field label="Realized $" value={f(row.realized_pnl, 2)} />
-          <Field
-            label="Same-bar tiebreak"
-            value={row.same_bar_tiebreak ? humanize(row.same_bar_tiebreak) : "—"}
+          <DetailRow
+            label="Realized R"
+            value={f(row.realized_r, 3)}
+            tone={
+              row.realized_r == null
+                ? null
+                : row.realized_r >= 0
+                  ? "profit"
+                  : "loss"
+            }
           />
-        </Section>
-        <div className="col-span-3 pt-2 border-t border-gray-200 dark:border-slate-700">
-          <div className="text-gray-500 dark:text-slate-400 mb-1">
-            Full reason
-          </div>
-          <div className="font-mono">{row.reason}</div>
+          <DetailRow
+            label="Realized $"
+            value={f(row.realized_pnl, 2)}
+            tone={
+              row.realized_pnl == null
+                ? null
+                : row.realized_pnl >= 0
+                  ? "profit"
+                  : "loss"
+            }
+          />
+          <DetailRow
+            label="Same-bar tiebreak"
+            value={
+              row.same_bar_tiebreak ? humanize(row.same_bar_tiebreak) : "—"
+            }
+          />
+        </div>
+        <div className="dt-reason">
+          <div className="dt-head">Full reason</div>
+          <p>{row.reason || "—"}</p>
           {row.rejection_check && (
             <>
-              <div className="text-gray-500 dark:text-slate-400 mt-2 mb-1">
+              <div className="dt-head" style={{ marginTop: "var(--sp-3)" }}>
                 Rejection check
               </div>
-              <div className="font-mono">{row.rejection_check}</div>
+              <p className="mono" style={{ fontStyle: "normal" }}>
+                {row.rejection_check}
+              </p>
             </>
           )}
         </div>
       </div>
-    </TableCell>
+    </td>
   );
 }
 
-function Section({
-  title,
-  children,
+function DetailRow({
+  label,
+  value,
+  tone,
 }: {
-  title: string;
-  children: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  tone?: "profit" | "loss" | null;
 }) {
   return (
-    <div>
-      <div className="font-semibold mb-1.5 text-gray-700 dark:text-slate-300">
-        {title}
-      </div>
-      <dl className="space-y-1">{children}</dl>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-gray-500 dark:text-slate-400">{label}</dt>
-      <dd className="font-mono">{value}</dd>
+    <div className="dt-row">
+      <span className="dt-label">{label}</span>
+      <span
+        className="dt-value mono"
+        style={tone ? { color: `var(--${tone})` } : undefined}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -138,107 +174,123 @@ export function JournalTable({
     });
   return (
     <TooltipProvider delayDuration={150}>
-    <div className="space-y-2">
-      {onFilterChange && (
-        <div className="flex gap-1 flex-wrap">
-          {FILTERS.map((f) => (
-            <Button
-              key={f}
-              size="sm"
-              variant={f === filter ? "default" : "outline"}
-              onClick={() => onFilterChange(f)}
-            >
-              {humanize(f)}
-            </Button>
-          ))}
+      <section className="card trades-card">
+        {onFilterChange && (
+          <div className="filter-tabs" role="tablist" aria-label="Status filter">
+            {FILTERS.map((flt) => {
+              const count = countForFilter(rows, flt);
+              const isActive = flt === filter;
+              return (
+                <button
+                  key={flt}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={isActive ? "tab tab-on" : "tab"}
+                  onClick={() => onFilterChange(flt)}
+                >
+                  {humanize(flt)}
+                  {count > 0 && <span className="tab-count">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="table-scroll">
+          <table className="trades">
+            <thead>
+              <tr>
+                <th className="th-time">Time</th>
+                <th>Status</th>
+                <th>Setup</th>
+                <th className="th-num">Entry</th>
+                <th className="th-num">
+                  Stop <span className="th-sub">/ Target</span>
+                  <HelpTooltip helpKey="stop_loss" />
+                  <HelpTooltip helpKey="take_profit" />
+                </th>
+                <th className="th-num">Qty</th>
+                <th className="th-num">
+                  Risk $<HelpTooltip helpKey="risk_per_trade" />
+                </th>
+                <th className="th-num">Realized R</th>
+                <th className="th-reason">Reason / Check</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((r) => {
+                const isOpen = expanded.has(r.row_seq);
+                return (
+                  <Fragment key={r.row_seq}>
+                    <tr
+                      className={isOpen ? "trow trow-open" : "trow"}
+                      onClick={() => toggleExpand(r.row_seq)}
+                    >
+                      <td className="th-time">
+                        <span className={`chevron${isOpen ? " rot" : ""}`}>
+                          ›
+                        </span>
+                        <span className="mono">{r.timestamp.slice(11, 16)}</span>
+                      </td>
+                      <td>
+                        <StatusBadge status={r.status} />
+                      </td>
+                      <td className="setup-cell">
+                        {humanize(r.setup) || "—"}
+                      </td>
+                      <td className="th-num mono">{f(r.planned_entry, 2)}</td>
+                      <td className="th-num mono">
+                        <span style={{ color: "var(--loss)" }}>
+                          {f(r.stop_loss, 2)}
+                        </span>
+                        <span className="stk-sep"> / </span>
+                        <span style={{ color: "var(--profit)" }}>
+                          {f(r.take_profit, 2)}
+                        </span>
+                      </td>
+                      <td className="th-num mono">{r.quantity ?? "—"}</td>
+                      <td className="th-num mono">
+                        {f(r.planned_risk_dollars, 2)}
+                      </td>
+                      <td
+                        className="th-num mono"
+                        style={
+                          r.realized_r != null
+                            ? {
+                                color: `var(--${r.realized_r >= 0 ? "profit" : "loss"})`,
+                              }
+                            : undefined
+                        }
+                      >
+                        {f(r.realized_r, 3)}
+                      </td>
+                      <td className="th-reason">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="reason-text">
+                              {r.rejection_check
+                                ? humanize(r.rejection_check)
+                                : truncate(r.reason, 40)}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            {r.rejection_check ?? r.reason}
+                          </TooltipContent>
+                        </Tooltip>
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="detail-tr">
+                        <ExpandedRow row={r} />
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
-      <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-8"></TableHead>
-          <TableHead>Time</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Setup</TableHead>
-          <TableHead>Entry</TableHead>
-          <TableHead className="flex items-center">
-            Stop<HelpTooltip helpKey="stop_loss" />
-          </TableHead>
-          <TableHead className="flex items-center">
-            Target<HelpTooltip helpKey="take_profit" />
-          </TableHead>
-          <TableHead>Qty</TableHead>
-          <TableHead className="flex items-center">
-            Risk $<HelpTooltip helpKey="risk_per_trade" />
-          </TableHead>
-          <TableHead>Realized R</TableHead>
-          <TableHead>Reason / Check</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {visible.map((r) => {
-          const isOpen = expanded.has(r.row_seq);
-          return (
-          <Fragment key={r.row_seq}>
-          <TableRow>
-            <TableCell className="p-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => toggleExpand(r.row_seq)}
-                aria-label={`${isOpen ? "Collapse" : "Expand"} row ${r.row_seq}`}
-              >
-                {isOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-            </TableCell>
-            <TableCell className="font-mono text-xs">
-              {r.timestamp.slice(11, 16)}
-            </TableCell>
-            <TableCell>
-              <StatusBadge status={r.status} />
-            </TableCell>
-            <TableCell className="text-xs">
-              {humanize(r.setup) || "—"}
-            </TableCell>
-            <TableCell className="font-mono">{f(r.planned_entry, 2)}</TableCell>
-            <TableCell className="font-mono">{f(r.stop_loss, 2)}</TableCell>
-            <TableCell className="font-mono">{f(r.take_profit, 2)}</TableCell>
-            <TableCell className="font-mono">{r.quantity ?? "—"}</TableCell>
-            <TableCell className="font-mono">
-              {f(r.planned_risk_dollars, 2)}
-            </TableCell>
-            <TableCell className="font-mono">{f(r.realized_r, 3)}</TableCell>
-            <TableCell className="text-xs">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="cursor-help underline decoration-dotted decoration-gray-400 underline-offset-2">
-                    {r.rejection_check
-                      ? humanize(r.rejection_check)
-                      : truncate(r.reason, 40)}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {r.rejection_check ?? r.reason}
-                </TooltipContent>
-              </Tooltip>
-            </TableCell>
-          </TableRow>
-          {isOpen && (
-            <TableRow>
-              <ExpandedRow row={r} />
-            </TableRow>
-          )}
-          </Fragment>
-          );
-        })}
-      </TableBody>
-    </Table>
-    </div>
+      </section>
     </TooltipProvider>
   );
 }

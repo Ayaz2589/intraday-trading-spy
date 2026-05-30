@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import type { RunSummaryView } from "@/api/types";
-import { cn } from "@/lib/utils";
 
+// RunsSidebar — restyled per the design handoff's .sidebar block.
+// Spec ref: specs/004-design-system-adoption/spec.md FR-009, FR-015, FR-020.
 export function RunsSidebar({
   runs,
   selectedRunId,
@@ -11,42 +12,111 @@ export function RunsSidebar({
 }) {
   if (runs.length === 0) {
     return (
-      <aside className="w-64 2xl:w-72 border-r border-gray-200 dark:border-slate-700 p-4 shrink-0">
-        <h2 className="font-semibold mb-2">No runs yet</h2>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">
-          Run a backtest to populate this viewer.
-        </p>
-        <pre className="bg-gray-100 dark:bg-slate-800 p-2 rounded text-xs">make backtest</pre>
-      </aside>
+      <>
+        <div className="side-head">
+          <span className="side-title">Runs</span>
+          <span className="count-pill">0</span>
+        </div>
+        <div style={{ padding: "0 var(--sp-2)" }}>
+          <h2
+            style={{
+              fontSize: "var(--fs-md)",
+              fontWeight: 700,
+              margin: 0,
+              marginBottom: "var(--sp-2)",
+            }}
+          >
+            No runs yet
+          </h2>
+          <p
+            style={{
+              fontSize: "var(--fs-sm)",
+              color: "var(--text-muted)",
+              margin: 0,
+              marginBottom: "var(--sp-3)",
+            }}
+          >
+            Run a backtest to populate this viewer.
+          </p>
+          <pre
+            className="mono"
+            style={{
+              background: "var(--surface-2)",
+              color: "var(--text)",
+              padding: "8px 12px",
+              borderRadius: "var(--r-md)",
+              fontSize: "var(--fs-xs)",
+              margin: 0,
+              display: "inline-block",
+            }}
+          >
+            make backtest
+          </pre>
+        </div>
+        <Footer />
+      </>
     );
   }
+
   return (
-    <aside className="w-64 2xl:w-72 border-r border-gray-200 dark:border-slate-700 overflow-y-auto shrink-0">
-      <h2 className="font-semibold p-4 border-b border-gray-200 dark:border-slate-700">
-        Runs ({runs.length})
-      </h2>
-      <ul>
-        {runs.map((r) => (
-          <li
-            key={r.run_id}
-            data-selected={r.run_id === selectedRunId}
-            className={cn(
-              "border-b border-gray-200 dark:border-slate-700",
-              r.run_id === selectedRunId && "bg-blue-50 dark:bg-slate-800",
-            )}
-          >
+    <>
+      <div className="side-head">
+        <span className="side-title">Runs</span>
+        <span className="count-pill">{runs.length}</span>
+      </div>
+      <div className="run-list" role="list">
+        {runs.map((r) => {
+          const isActive = r.run_id === selectedRunId;
+          const totalR = r.summary?.total_r ?? 0;
+          const totalTrades = r.summary?.total_trades ?? 0;
+          const positive = totalR >= 0;
+          return (
             <Link
+              key={r.run_id}
               to={`/runs/${r.run_id}`}
-              className="block p-3 hover:bg-gray-50 dark:hover:bg-slate-800"
+              role="listitem"
+              data-selected={isActive ? "true" : "false"}
+              aria-current={isActive ? "page" : undefined}
+              className={isActive ? "run-item run-on" : "run-item"}
+              style={{ textDecoration: "none" }}
             >
-              <div className="font-mono text-xs">{r.run_id}</div>
-              <div className="text-xs text-gray-500 dark:text-slate-400">
+              <span className="run-id mono">{r.run_id}</span>
+              <span className="run-time">
                 {new Date(r.started_at).toLocaleString()}
-              </div>
+              </span>
+              <span className="run-meta">
+                <span
+                  className={`badge badge-xs ${
+                    positive ? "badge-profit" : "badge-loss"
+                  } mono`}
+                >
+                  {positive ? "+" : ""}
+                  {totalR.toFixed(2)}R
+                </span>
+                <span className="run-trades mono">{totalTrades}t</span>
+              </span>
             </Link>
-          </li>
-        ))}
-      </ul>
-    </aside>
+          );
+        })}
+      </div>
+      <Footer />
+    </>
+  );
+}
+
+function Footer() {
+  return (
+    <div className="side-foot">
+      <div className="legend-mini">
+        <span>
+          <i className="dot" style={{ background: "var(--warn)" }} />
+          VWAP
+        </span>
+        <span>
+          <i className="dot" style={{ background: "var(--profit)" }} />
+          OR hi/lo
+        </span>
+      </div>
+    </div>
   );
 }

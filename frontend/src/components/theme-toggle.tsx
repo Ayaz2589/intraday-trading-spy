@@ -1,18 +1,22 @@
-import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme";
 
+// ThemeToggle — pill track + thumb per design handoff's .tt-track + .tt-thumb.
+// Spec FR-002 (theme persistence — handled by useTheme).
 export function ThemeToggle() {
   const { theme, toggle } = useTheme();
-  const isDark = theme === "dark";
   return (
-    <Button
-      variant="outline"
-      size="icon"
+    <button
+      type="button"
+      className="theme-toggle"
       onClick={toggle}
       aria-label={`Toggle theme (currently ${theme})`}
+      title="Toggle theme"
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
+      <span className={`tt-track ${theme}`}>
+        <span className="tt-thumb" aria-hidden>
+          {theme === "dark" ? "☾" : "☀"}
+        </span>
+      </span>
+    </button>
   );
 }

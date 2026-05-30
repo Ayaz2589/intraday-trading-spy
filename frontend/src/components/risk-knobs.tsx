@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sliders, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fireToast } from "@/lib/toast-controller";
 import {
   Popover,
   PopoverContent,
@@ -122,6 +123,7 @@ export function RiskKnobs({
     if (!form) return;
     setBusy(true);
     setError(null);
+    fireToast("Running with custom settings…");
     try {
       const { run_id } = await runBacktest(buildOverrides(form));
       setOpen(false);

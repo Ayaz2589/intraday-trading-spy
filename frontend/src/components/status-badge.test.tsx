@@ -8,10 +8,10 @@ describe("StatusBadge", () => {
     expect(screen.getByText("Executed")).toBeInTheDocument();
   });
 
-  it("applies color class based on status", () => {
+  it("applies tone class per status (executed=profit, rejected=loss)", () => {
     const { rerender } = render(<StatusBadge status="executed" />);
-    expect(screen.getByText("Executed").className).toMatch(/green/);
+    expect(screen.getByText("Executed").className).toMatch(/badge-profit/);
     rerender(<StatusBadge status="rejected" />);
-    expect(screen.getByText("Rejected").className).toMatch(/red/);
+    expect(screen.getByText("Rejected").className).toMatch(/badge-loss/);
   });
 });

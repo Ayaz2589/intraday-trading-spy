@@ -147,7 +147,7 @@ describe("RunViewer route", () => {
       </MemoryRouter>,
     );
     await waitFor(() =>
-      expect(screen.getByText(/Error: run_not_found/)).toBeInTheDocument(),
+      expect(screen.getByText(/run_not_found/)).toBeInTheDocument(),
     );
     // Header + summary still rendered ("r1" appears in sidebar + header).
     expect(screen.getAllByText("r1").length).toBeGreaterThan(0);
@@ -297,7 +297,7 @@ describe("RunViewer route", () => {
 
     // Click the "executed" filter chip — markers should still contain Entry.
     await userEvent.click(
-      screen.getByRole("button", { name: /^executed$/i }),
+      screen.getByRole("tab", { name: /^executed/i }),
     );
     const filtered = priceChartCalls.at(-1)!.markers as Array<{ text: string }>;
     expect(filtered.every((m) => m.text.startsWith("Entry "))).toBe(true);
@@ -305,11 +305,30 @@ describe("RunViewer route", () => {
     // Click "rejected" filter chip — no Entry markers (rejections aren't shown
     // unless the rejection-toggle is on).
     await userEvent.click(
-      screen.getByRole("button", { name: /^rejected$/i }),
+      screen.getByRole("tab", { name: /^rejected/i }),
     );
     const afterRejected = priceChartCalls.at(-1)!.markers as Array<{
       text: string;
     }>;
     expect(afterRejected.some((m) => m.text.startsWith("Entry "))).toBe(false);
+  });
+
+  it("US2 — layout-mode preference restored from localStorage on mount", async () => {
+    mockFetchAll();
+    localStorage.setItem("isb-layout", "focus");
+    const { container } = render(
+      <MemoryRouter initialEntries={["/runs/r1"]}>
+        <Routes>
+          <Route path="/runs/:run_id" element={<RunViewer />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getAllByText("r1").length).toBeGreaterThan(0);
+    });
+    const content = container.querySelector(".content");
+    expect(content).not.toBeNull();
+    expect(content?.className).toContain("focus");
+    localStorage.removeItem("isb-layout");
   });
 });

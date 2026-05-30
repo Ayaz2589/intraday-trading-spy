@@ -13,7 +13,12 @@ import {
   fetchManifest,
   fetchBars,
 } from "@/api/client";
+import { AppShell } from "@/components/app-shell";
+import { Topbar } from "@/components/topbar";
+import { Skeleton } from "@/components/skeleton";
+import { ErrorCard } from "@/components/error-card";
 import { RunsSidebar } from "@/components/runs-sidebar";
+import { useLayoutMode } from "@/lib/layout-mode";
 import { RunHeader } from "@/components/run-header";
 import { SummaryMetricsCard } from "@/components/summary-metrics-card";
 import { StrategyConfigCard } from "@/components/strategy-config-card";
@@ -21,12 +26,7 @@ import { RejectionBreakdownCard } from "@/components/rejection-breakdown-card";
 import { JournalTable } from "@/components/journal-table";
 import { PriceChart } from "@/components/price-chart";
 import { SessionPicker } from "@/components/session-picker";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { RunActions } from "@/components/run-actions";
-import { RiskKnobs } from "@/components/risk-knobs";
-import { PresetPicker } from "@/components/preset-picker";
 import { buildMarkers } from "@/components/journal-markers";
-import { Button } from "@/components/ui/button";
 import type {
   BarView,
   JournalFilter,
@@ -46,23 +46,32 @@ type SectionState<T> =
 function Section<T>({
   state,
   children,
+  loading,
 }: {
   state: SectionState<T>;
   children: (data: T) => ReactNode;
+  loading?: ReactNode;
 }) {
-  if ("loading" in state)
-    return (
-      <div className="text-sm text-gray-500 dark:text-slate-400 p-4">
-        Loading…
-      </div>
-    );
-  if ("error" in state)
-    return (
-      <div className="text-sm text-red-700 dark:text-red-400 p-4">
-        Error: {state.error}
-      </div>
-    );
+  if ("loading" in state) return <>{loading ?? <CardSkeleton />}</>;
+  if ("error" in state) return <ErrorCard message={state.error} />;
   return <>{children(state.data)}</>;
+}
+
+// Default card-shaped skeleton: ~6 placeholder rows that fill the same
+// space as the loaded card. Sections that need a different shape pass
+// their own `loading` prop.
+function CardSkeleton() {
+  return (
+    <section className="card" aria-hidden>
+      <Skeleton width="40%" height={16} rounded="md" />
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        <Skeleton width="100%" height={14} />
+        <Skeleton width="100%" height={14} />
+        <Skeleton width="85%" height={14} />
+        <Skeleton width="92%" height={14} />
+      </div>
+    </section>
+  );
 }
 
 function loadSection<T>(
@@ -95,6 +104,7 @@ export function RunViewer() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [showRejections, setShowRejections] = useState(false);
   const [filter, setFilter] = useState<JournalFilter>("all");
+  const { layout, setLayout } = useLayoutMode();
 
   const refreshRuns = useCallback(() => {
     fetchRuns().then(setRuns).catch(() => {});
@@ -147,20 +157,16 @@ export function RunViewer() {
   const renderChart = () => {
     if ("loading" in bars)
       return (
-        <div className="text-sm text-gray-500 dark:text-slate-400 p-4">
-          Loading chart…
-        </div>
+        <section className="card chart-card" aria-hidden>
+          <Skeleton width="100%" height={360} rounded="md" />
+        </section>
       );
     if ("error" in bars) {
       const msg =
         bars.error === "source_data_missing"
           ? "Source data missing — the bars CSV referenced by this run is no longer on disk."
           : `Chart unavailable: ${bars.error}`;
-      return (
-        <div className="border border-amber-200 rounded p-4 text-sm text-amber-700 bg-amber-50 dark:border-amber-700/50 dark:text-amber-200 dark:bg-amber-900/20">
-          {msg}
-        </div>
-      );
+      return <ErrorCard title="Chart unavailable" message={msg} />;
     }
     if (!selectedSession || sessions.length === 0) return null;
     const sessionBars = bars.data.filter(
@@ -247,13 +253,6 @@ export function RunViewer() {
             selected={selectedSession}
             onChange={setSelectedSession}
           />
-          <Button
-            size="sm"
-            variant={showRejections ? "default" : "outline"}
-            onClick={() => setShowRejections((s) => !s)}
-          >
-            {showRejections ? "Hide rejections" : "Show rejections"}
-          </Button>
         </div>
         <PriceChart
           bars={sessionBars}
@@ -263,84 +262,68 @@ export function RunViewer() {
           journal={sessionJournal}
           accountValue={accountValue}
           positionCapPct={positionCapPct}
+          showRejections={showRejections}
+          onToggleRejections={() => setShowRejections((v) => !v)}
         />
       </div>
     );
   };
 
+  const onRunChange = (id: string) => {
+    refreshRuns();
+    navigate(`/runs/${id}`);
+  };
+  const onCleared = () => {
+    refreshRuns();
+    navigate("/", { replace: true });
+  };
+
   return (
-    <div className="flex h-screen">
-      <RunsSidebar runs={runs} selectedRunId={run_id ?? null} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <RunActions
-              currentRunId={run_id ?? null}
-              onNewRun={(id) => {
-                refreshRuns();
-                navigate(`/runs/${id}`);
-              }}
-              onCleared={() => {
-                refreshRuns();
-                navigate("/", { replace: true });
-              }}
-            />
-            <PresetPicker
-              onNewRun={(id) => {
-                refreshRuns();
-                navigate(`/runs/${id}`);
-              }}
-            />
-            <RiskKnobs
-              onNewRun={(id) => {
-                refreshRuns();
-                navigate(`/runs/${id}`);
-              }}
-            />
-          </div>
-          <ThemeToggle />
-        </div>
+    <AppShell
+      sidebar={<RunsSidebar runs={runs} selectedRunId={run_id ?? null} />}
+      topbar={
+        <Topbar
+          currentRunId={run_id ?? null}
+          onRunChange={onRunChange}
+          onCleared={onCleared}
+          layout={layout}
+          onLayoutChange={setLayout}
+        />
+      }
+    >
+      <div className={layout === "focus" ? "content focus" : "content"}>
         <Section state={manifest}>
           {(m) => <RunHeader manifest={m} />}
         </Section>
-        <div className="p-4 grid grid-cols-3 2xl:grid-cols-12 gap-4">
-          {/* Strategy: full-width row on standard screens, 5/12 on ultra-wide */}
-          <div className="col-span-3 2xl:col-span-5">
-            <Section state={manifest}>
-              {(m) => <StrategyConfigCard manifest={m} />}
-            </Section>
-          </div>
-          {/* Summary: 2/3 of row 2 on standard, 5/12 row 1 on ultra-wide */}
-          <div className="col-span-2 2xl:col-span-5">
-            <Section state={summary}>
-              {(s) => <SummaryMetricsCard summary={s} />}
-            </Section>
-          </div>
-          {/* Rejections: 1/3 of row 2 on standard, 2/12 row 1 on ultra-wide */}
-          <div className="col-span-1 2xl:col-span-2">
-            <Section state={summary}>
-              {(s) => (
-                <RejectionBreakdownCard
-                  breakdown={s.rejection_breakdown}
-                  total={s.rejected_signal_count}
-                />
-              )}
-            </Section>
-          </div>
-        </div>
-        <div className="p-4">{renderChart()}</div>
-        <div className="p-4">
-          <Section state={journal}>
-            {(j) => (
-              <JournalTable
-                rows={j}
-                filter={filter}
-                onFilterChange={setFilter}
+        <div className="stat-row">
+          <Section state={manifest}>
+            {(m) => <StrategyConfigCard manifest={m} />}
+          </Section>
+          <Section state={summary}>
+            {(s) => <SummaryMetricsCard summary={s} />}
+          </Section>
+          <Section state={summary}>
+            {(s) => (
+              <RejectionBreakdownCard
+                breakdown={s.rejection_breakdown}
+                total={s.rejected_signal_count}
+                show={showRejections}
+                onToggle={() => setShowRejections((v) => !v)}
               />
             )}
           </Section>
         </div>
-      </main>
-    </div>
+        {renderChart()}
+        <Section state={journal}>
+          {(j) => (
+            <JournalTable
+              rows={j}
+              filter={filter}
+              onFilterChange={setFilter}
+            />
+          )}
+        </Section>
+      </div>
+    </AppShell>
   );
 }

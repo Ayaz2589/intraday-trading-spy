@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Play, Trash2, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { runBacktest, deleteRun, deleteAllRuns } from "@/api/client";
+import { fireToast } from "@/lib/toast-controller";
 
 type Busy = null | "run" | "delete" | "delete_all";
 
@@ -20,6 +21,7 @@ export function RunActions({
   const handleRun = async () => {
     setBusy("run");
     setError(null);
+    fireToast("New backtest queued…");
     try {
       const { run_id } = await runBacktest();
       onNewRun(run_id);

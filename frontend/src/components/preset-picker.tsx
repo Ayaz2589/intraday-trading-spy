@@ -11,6 +11,7 @@ import {
   runBacktestWithConfig,
   type ConfigSummary,
 } from "@/api/client";
+import { fireToast } from "@/lib/toast-controller";
 
 export function PresetPicker({
   onNewRun,
@@ -32,6 +33,7 @@ export function PresetPicker({
   const handlePick = async (cfg: ConfigSummary) => {
     setBusyName(cfg.name);
     setError(null);
+    fireToast(`Running preset "${cfg.name}"…`);
     try {
       const { run_id } = await runBacktestWithConfig(cfg.path);
       setOpen(false);

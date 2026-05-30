@@ -1,15 +1,39 @@
 import type { RunManifestView } from "@/api/types";
 
+// RunHeader — restyled per design handoff's .run-header block.
+// Spec FR-001, FR-004 (mono numerics).
 export function RunHeader({ manifest }: { manifest: RunManifestView }) {
+  const totalR = manifest.summary?.total_r ?? 0;
+  const positive = totalR >= 0;
   return (
-    <header className="border-b border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-1">
-      <h1 className="text-xl font-mono">{manifest.run_id}</h1>
-      <div className="text-sm text-gray-500 dark:text-slate-400 flex gap-4 flex-wrap">
-        <span>
-          started {new Date(manifest.run_started_at).toLocaleString()}
+    <header className="run-header">
+      <div className="rh-main">
+        <h1 className="rh-title mono">{manifest.run_id}</h1>
+        <span
+          className={`badge badge-xs ${
+            positive ? "badge-profit" : "badge-loss"
+          }`}
+        >
+          complete
         </span>
-        <span>code {manifest.code_version}</span>
-        <span>data {manifest.data_fingerprint.sha256.slice(0, 8)}</span>
+      </div>
+      <div className="rh-meta">
+        <span>
+          <b>Started</b>
+          {new Date(manifest.run_started_at).toLocaleString()}
+        </span>
+        <span className="rh-dot" />
+        <span>
+          <b>Code</b>
+          <code className="mono">{manifest.code_version.slice(0, 12)}…</code>
+        </span>
+        <span className="rh-dot" />
+        <span>
+          <b>Data</b>
+          <code className="mono">
+            {manifest.data_fingerprint.sha256.slice(0, 8)}
+          </code>
+        </span>
       </div>
     </header>
   );

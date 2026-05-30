@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { fetchRuns } from "@/api/client";
-import { RunActions } from "@/components/run-actions";
-import { RiskKnobs } from "@/components/risk-knobs";
-import { PresetPicker } from "@/components/preset-picker";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppShell } from "@/components/app-shell";
+import { Topbar } from "@/components/topbar";
+import { RunsSidebar } from "@/components/runs-sidebar";
 import type { RunSummaryView } from "@/api/types";
 
 export function Root() {
@@ -18,33 +17,40 @@ export function Root() {
     return () => ctrl.abort();
   }, []);
 
-  if (runs == null) return <div className="p-8">Loading…</div>;
+  if (runs == null) return <div className="main-scroll">Loading…</div>;
   if (runs.length === 0) {
     return (
-      <div>
-        <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <RunActions
-              currentRunId={null}
-              onNewRun={(id) => navigate(`/runs/${id}`)}
-              onCleared={() => setRuns([])}
-            />
-            <PresetPicker onNewRun={(id) => navigate(`/runs/${id}`)} />
-            <RiskKnobs onNewRun={(id) => navigate(`/runs/${id}`)} />
+      <AppShell
+        sidebar={<RunsSidebar runs={[]} selectedRunId={null} />}
+        topbar={
+          <Topbar
+            currentRunId={null}
+            onRunChange={(id) => navigate(`/runs/${id}`)}
+            onCleared={() => setRuns([])}
+          />
+        }
+      >
+        <div className="content">
+          <div>
+            <h1
+              style={{
+                fontSize: "var(--fs-xl)",
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                margin: 0,
+                marginBottom: "var(--sp-3)",
+              }}
+            >
+              No backtest runs yet
+            </h1>
+            <p style={{ color: "var(--text-muted)", margin: 0 }}>
+              Click <span style={{ fontWeight: 700 }}>New backtest</span> above
+              to queue your first run, or use the CLI shortcut shown in the
+              sidebar.
+            </p>
           </div>
-          <ThemeToggle />
         </div>
-        <div className="p-8">
-          <h1 className="text-xl font-semibold mb-2">No backtest runs yet</h1>
-          <p className="mb-4 text-gray-600 dark:text-slate-400">
-            Click <span className="font-semibold">New backtest</span> above, or
-            run from the CLI:
-          </p>
-          <pre className="bg-gray-100 dark:bg-slate-800 p-3 rounded inline-block">
-            make backtest
-          </pre>
-        </div>
-      </div>
+      </AppShell>
     );
   }
   return <Navigate to={`/runs/${runs[0].run_id}`} replace />;

@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
-const STORAGE_KEY = "theme";
-
-function getSystemTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
+const STORAGE_KEY = "isb-theme";
+const DEFAULT_THEME: Theme = "dark";
 
 function getStoredTheme(): Theme | null {
   if (typeof window === "undefined") return null;
@@ -16,13 +10,23 @@ function getStoredTheme(): Theme | null {
   return v === "dark" || v === "light" ? v : null;
 }
 
+// Apply the theme by setting the `data-theme` attribute on <html> and
+// briefly suppressing transitions to avoid the in-flight color flicker
+// when token-driven properties swap (see research R2 of feature 004).
 export function applyTheme(theme: Theme): void {
-  document.documentElement.classList.toggle("dark", theme === "dark");
+  const root = document.documentElement;
+  root.classList.add("theme-no-anim");
+  root.setAttribute("data-theme", theme);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      root.classList.remove("theme-no-anim");
+    });
+  });
 }
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(
-    () => getStoredTheme() ?? getSystemTheme(),
+    () => getStoredTheme() ?? DEFAULT_THEME,
   );
 
   useEffect(() => {
