@@ -630,6 +630,23 @@ body {
 
 /* ---------------- Chart card ---------------- */
 .chart-card { padding: var(--sp-4) var(--sp-5) var(--sp-5); background: var(--surface); }
+
+/* Fullscreen state — fills the entire viewport. The inner canvas-wrap
+   stretches to use the available height so the chart actually grows
+   (rather than staying at its 620px design size). */
+.chart-card-fullscreen,
+.chart-card:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+.chart-card-fullscreen [data-chart-root],
+.chart-card:fullscreen [data-chart-root] {
+  height: calc(100vh - 110px) !important; /* viewport - header chrome */
+  flex: 1;
+}
 .chart-top {
   display: flex;
   align-items: center;

@@ -8,7 +8,7 @@ import {
   type KLineData,
   type Point,
 } from "klinecharts";
-import { X } from "lucide-react";
+import { X, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HelpTooltip } from "./help-tooltip";
 import { useTheme } from "@/lib/theme";
@@ -357,7 +357,9 @@ export function PriceChart({
   onToggleRejections?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartCardRef = useRef<HTMLElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { theme } = useTheme();
   const { style: candleStyle, setStyle: setCandleStyle } = useCandleStyle();
   const [showVwap, setShowVwap] = useState(true);
@@ -640,7 +642,8 @@ export function PriceChart({
   }, [theme, candleStyle]);
 
   // Refit bar width when the container resizes (e.g. window resize,
-  // sidebar toggled, ultra-wide breakpoint changes layout).
+  // sidebar toggled, ultra-wide breakpoint changes layout, fullscreen
+  // entered/exited).
   useEffect(() => {
     const container = containerRef.current;
     const chart = chartRef.current;
@@ -654,6 +657,25 @@ export function PriceChart({
     observer.observe(container);
     return () => observer.disconnect();
   }, [bars]);
+
+  // Browser fullscreen API — toggle the chart card in/out of fullscreen.
+  // Sync local state with `fullscreenchange` events so the button reflects
+  // the actual browser state (handles Esc-to-exit correctly).
+  useEffect(() => {
+    const handler = () =>
+      setIsFullscreen(document.fullscreenElement === chartCardRef.current);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!chartCardRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      chartCardRef.current.requestFullscreen?.().catch(() => {});
+    }
+  };
 
   // VWAP indicator — show/hide + refresh the lookup map. Pin it to the
   // candle pane so it overlays the price (otherwise klinecharts opens a
@@ -928,7 +950,10 @@ export function PriceChart({
   }, [markers, bars, vwap, showMarkers]);
 
   return (
-    <section className="card chart-card">
+    <section
+      className={`card chart-card${isFullscreen ? " chart-card-fullscreen" : ""}`}
+      ref={chartCardRef}
+    >
       <div className="flex gap-4 p-2 text-xs items-center border-b border-gray-200 dark:border-slate-700">
         <span className="flex items-center gap-1">
           <button
@@ -1037,6 +1062,19 @@ export function PriceChart({
         <span className="text-gray-500 dark:text-slate-500 italic" style={{ fontSize: "var(--fs-xs)" }}>
           {selectedBar ? "" : "Click a candle for details"}
         </span>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+          onClick={toggleFullscreen}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </button>
       </div>
       {selectedBar && (
         <BarDetailsStrip
