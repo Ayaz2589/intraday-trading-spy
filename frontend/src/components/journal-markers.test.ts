@@ -37,8 +37,8 @@ describe("buildMarkers", () => {
     expect(markers).toHaveLength(1);
     expect(markers[0].shape).toBe("arrowUp");
     expect(markers[0].position).toBe("belowBar");
-    expect(markers[0].text).toMatch(/^E /);
-    expect(markers[0].text).toContain("525.45");
+    expect(markers[0].text).toMatch(/^Entry /);
+    expect(markers[0].text).toContain("$525.45");
   });
 
   it("creates a green Exit marker on target exits with realized R and pnl", () => {
@@ -55,8 +55,9 @@ describe("buildMarkers", () => {
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers).toHaveLength(1);
     expect(markers[0].color).toBe("#10b981");
-    expect(markers[0].text).toMatch(/^T /);
+    expect(markers[0].text).toMatch(/^Target /);
     expect(markers[0].text).toContain("+1.0R");
+    expect(markers[0].text).toContain("+$200");
   });
 
   it("creates a red Exit marker on stop exits", () => {
@@ -72,11 +73,12 @@ describe("buildMarkers", () => {
     ];
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers[0].color).toBe("#ef4444");
-    expect(markers[0].text).toMatch(/^S /);
+    expect(markers[0].text).toMatch(/^Stop /);
     expect(markers[0].text).toContain("-1.0R");
+    expect(markers[0].text).toContain("-$100");
   });
 
-  it("creates a gray force_flat marker", () => {
+  it("creates a gray Force Flat marker", () => {
     const rows: JournalRowView[] = [
       {
         ...baseRow,
@@ -89,7 +91,21 @@ describe("buildMarkers", () => {
     ];
     const markers = buildMarkers(rows, { showRejections: false });
     expect(markers[0].color).toBe("#6b7280");
-    expect(markers[0].text).toMatch(/^FF /);
+    expect(markers[0].text).toMatch(/^Force Flat /);
+  });
+
+  it("formats large dollar amounts with thousands separator", () => {
+    const rows: JournalRowView[] = [
+      {
+        ...baseRow,
+        status: "exited",
+        exit_reason: "target",
+        realized_r: 3.0,
+        realized_pnl: 12500,
+      },
+    ];
+    const markers = buildMarkers(rows, { showRejections: false });
+    expect(markers[0].text).toContain("+$12,500");
   });
 
   it("omits rejection markers when showRejections=false", () => {
@@ -106,6 +122,6 @@ describe("buildMarkers", () => {
     const markers = buildMarkers(rows, { showRejections: true });
     expect(markers).toHaveLength(1);
     expect(markers[0].shape).toBe("square");
-    expect(markers[0].text).toBe("✕");
+    expect(markers[0].text).toBe("Rejected");
   });
 });

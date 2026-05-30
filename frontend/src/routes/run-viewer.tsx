@@ -228,6 +228,17 @@ export function RunViewer() {
         }
       : null;
     const markers = buildMarkers(filteredForMarkers, { showRejections });
+    // Pull account value + position cap out of the manifest's config
+    // snapshot so the chart can show "(0.10% of account)" / "(46% of
+    // cap)" on the entry rationale popover. Defaults match config.yaml
+    // for runs that predate the snapshot fields.
+    const m = "data" in manifest ? manifest.data : null;
+    const riskCfg =
+      (m?.config_snapshot?.risk as
+        | { account_value?: number; max_position_value_pct?: number }
+        | undefined) ?? {};
+    const accountValue = riskCfg.account_value ?? 25000;
+    const positionCapPct = riskCfg.max_position_value_pct ?? 100;
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -250,6 +261,8 @@ export function RunViewer() {
           or={or}
           markers={markers}
           journal={sessionJournal}
+          accountValue={accountValue}
+          positionCapPct={positionCapPct}
         />
       </div>
     );

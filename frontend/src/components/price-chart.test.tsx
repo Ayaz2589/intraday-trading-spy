@@ -15,11 +15,16 @@ vi.mock("klinecharts", () => {
     createOverlay: vi.fn(),
     removeIndicator: vi.fn(),
     removeOverlay: vi.fn(),
+    subscribeAction: vi.fn(),
+    unsubscribeAction: vi.fn(),
+    convertFromPixel: vi.fn(() => [{}]),
+    getDataList: vi.fn(() => []),
   };
   return {
     init: vi.fn(() => chart),
     dispose: vi.fn(),
     registerIndicator: vi.fn(),
+    registerOverlay: vi.fn(),
   };
 });
 
@@ -45,6 +50,9 @@ describe("PriceChart", () => {
         vwap={[{ time: "2026-01-01T09:30:00-05:00", value: 525.05 }]}
         or={null}
         markers={[]}
+        journal={[]}
+        accountValue={25000}
+        positionCapPct={100}
       />,
     );
     expect(container.querySelector("[data-chart-root]")).toBeTruthy();
@@ -52,14 +60,32 @@ describe("PriceChart", () => {
 
   it("renders HelpTooltips for vwap and opening_range in legend", () => {
     const { container } = render(
-      <PriceChart bars={bars} vwap={[]} or={null} markers={[]} />,
+      <PriceChart
+        bars={bars}
+        vwap={[]}
+        or={null}
+        markers={[]}
+        journal={[]}
+        accountValue={25000}
+        positionCapPct={100}
+      />,
     );
     expect(container.querySelector('[data-help-key="vwap"]')).toBeTruthy();
     expect(container.querySelector('[data-help-key="opening_range"]')).toBeTruthy();
   });
 
   it("VWAP and OR legend items are toggle buttons (pressed by default)", () => {
-    render(<PriceChart bars={bars} vwap={[]} or={null} markers={[]} />);
+    render(
+      <PriceChart
+        bars={bars}
+        vwap={[]}
+        or={null}
+        markers={[]}
+        journal={[]}
+        accountValue={25000}
+        positionCapPct={100}
+      />,
+    );
     expect(
       screen.getByRole("button", { name: /toggle vwap/i }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -70,7 +96,17 @@ describe("PriceChart", () => {
 
   it("clicking the VWAP toggle flips aria-pressed", async () => {
     const user = userEvent.setup();
-    render(<PriceChart bars={bars} vwap={[]} or={null} markers={[]} />);
+    render(
+      <PriceChart
+        bars={bars}
+        vwap={[]}
+        or={null}
+        markers={[]}
+        journal={[]}
+        accountValue={25000}
+        positionCapPct={100}
+      />,
+    );
     const vwapToggle = screen.getByRole("button", { name: /toggle vwap/i });
     await user.click(vwapToggle);
     expect(vwapToggle).toHaveAttribute("aria-pressed", "false");
@@ -96,7 +132,15 @@ describe("PriceChart", () => {
       },
     ];
     const { container } = render(
-      <PriceChart bars={bars} vwap={[]} or={null} markers={markers} />,
+      <PriceChart
+        bars={bars}
+        vwap={[]}
+        or={null}
+        markers={markers}
+        journal={[]}
+        accountValue={25000}
+        positionCapPct={100}
+      />,
     );
     expect(container.querySelector("[data-chart-root]")).toBeTruthy();
   });

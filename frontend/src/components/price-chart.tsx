@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   init,
   dispose,
@@ -14,7 +14,15 @@ import { HelpTooltip } from "./help-tooltip";
 import { useTheme } from "@/lib/theme";
 import { humanize } from "@/lib/format";
 import { findSwingPivots } from "@/lib/swing-pivots";
+import { entryRationale, type EntryRationale } from "@/lib/entry-rationale";
+import { exitRationale, type ExitRationale } from "@/lib/exit-rationale";
 import type { BarView, JournalRowView } from "@/api/types";
+
+// VWAP line thickness in px. The entry-dot radius scales off this so
+// the dot stays visually balanced with the line — too small and it
+// looks like noise; too large and it eats the curve.
+const VWAP_LINE_SIZE = 4;
+const ENTRY_DOT_RADIUS = VWAP_LINE_SIZE * 2;
 
 // ── Custom VWAP indicator ──────────────────────────────────────────
 //
@@ -38,7 +46,12 @@ registerIndicator({
       key: "vwap",
       title: "VWAP: ",
       type: "line",
-      styles: () => ({ color: "#f59e0b", size: 2, style: "solid", smooth: false }),
+      styles: () => ({
+        color: "#f59e0b",
+        size: VWAP_LINE_SIZE,
+        style: "solid",
+        smooth: false,
+      }),
     },
   ],
   calc: (data: KLineData[]) =>
@@ -121,6 +134,126 @@ const TAG_TEXT_BASE = {
 // crowded as soon as two levels are at near-identical prices. Inline
 // pills above the line keep the y-axis ticks readable.
 
+// ── Custom `pill` overlay ──────────────────────────────────────────
+//
+// Text-only label, no line. Used when an existing visual (e.g. the
+// VWAP indicator's own curve) already draws the line and we just want
+// to attach an identifying pill at a specific bar/value coordinate.
+
+registerOverlay({
+  name: "pill",
+  totalStep: 2,
+  needDefaultPointFigure: false,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ overlay, coordinates }) => {
+    const y = coordinates[0].y;
+    const text = String(overlay.extendData ?? "");
+    return [
+      {
+        type: "text",
+        attrs: { x: 6, y: y - 3, text, baseline: "bottom", align: "left" },
+        ignoreEvent: true,
+      },
+    ];
+  },
+});
+
+// ── Custom `vwapDot` overlay ───────────────────────────────────────
+//
+// A filled circle at a (timestamp, value) point — used to mark
+// executed entries on the VWAP line. Polygon-based circle approx
+// (16 vertices) so we don't depend on a `circle` figure primitive.
+
+function circlePolygon(cx: number, cy: number, r: number, sides = 16) {
+  const pts: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < sides; i++) {
+    const angle = (i / sides) * 2 * Math.PI;
+    pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+  }
+  return pts;
+}
+
+registerOverlay({
+  name: "vwapDot",
+  totalStep: 2,
+  needDefaultPointFigure: false,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ coordinates }) => {
+    return [
+      {
+        type: "polygon",
+        attrs: {
+          coordinates: circlePolygon(
+            coordinates[0].x,
+            coordinates[0].y,
+            ENTRY_DOT_RADIUS,
+          ),
+        },
+        ignoreEvent: true,
+      },
+    ];
+  },
+});
+
+// ── Custom `tradeRationaleTag` overlay ─────────────────────────────
+//
+// Anchored at a VWAP-dot point (timestamp, vwap value), draws a pill
+// offset vertically away from the dot with a thin stem connecting
+// them. Keeps the dot exactly on VWAP for precise read while moving
+// the labeled pill clear of the VWAP line. Direction (above|below)
+// comes from extendData.
+//
+// PILL_OFFSET = px from dot center to pill center.
+// PILL_HALF_HEIGHT approximates half the pill's rendered height so the
+// stem stops at the pill edge, not inside it.
+
+const PILL_OFFSET = 28;
+const PILL_HALF_HEIGHT = 9;
+
+registerOverlay({
+  name: "tradeRationaleTag",
+  totalStep: 2,
+  needDefaultPointFigure: false,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ overlay, coordinates }) => {
+    const { x, y: dotY } = coordinates[0];
+    const data = overlay.extendData as {
+      text: string;
+      direction: "above" | "below";
+    };
+    const sign = data.direction === "above" ? -1 : 1;
+    const pillY = dotY + sign * PILL_OFFSET;
+    const stemFromY = dotY + sign * ENTRY_DOT_RADIUS;
+    const stemToY = pillY - sign * PILL_HALF_HEIGHT;
+    return [
+      {
+        type: "line",
+        attrs: {
+          coordinates: [
+            { x, y: stemFromY },
+            { x, y: stemToY },
+          ],
+        },
+        ignoreEvent: true,
+      },
+      {
+        type: "text",
+        attrs: {
+          x,
+          y: pillY,
+          text: data.text,
+          align: "center",
+          baseline: "middle",
+        },
+        ignoreEvent: true,
+      },
+    ];
+  },
+});
+
 registerOverlay({
   name: "labeledLevel",
   totalStep: 2,
@@ -168,12 +301,16 @@ export function PriceChart({
   or,
   markers,
   journal,
+  accountValue,
+  positionCapPct,
 }: {
   bars: BarView[];
   vwap: { time: string; value: number }[];
   or: { high: number; low: number; from: string; to: string } | null;
   markers: ChartMarker[];
   journal: JournalRowView[];
+  accountValue: number;
+  positionCapPct: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -185,6 +322,21 @@ export function PriceChart({
   const orOverlayIds = useRef<string[]>([]);
   const srOverlayIds = useRef<string[]>([]);
   const lastOverlayId = useRef<string | null>(null);
+  const vwapTagId = useRef<string | null>(null);
+  const entryDotIds = useRef<string[]>([]);
+  const exitDotIds = useRef<string[]>([]);
+  const [entryPopover, setEntryPopover] = useState<{
+    row: JournalRowView;
+    priorBar: BarView | null;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [exitPopover, setExitPopover] = useState<{
+    row: JournalRowView;
+    entryTimestamp: string | null;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const pivots = useMemo(() => findSwingPivots(bars), [bars]);
 
@@ -202,10 +354,83 @@ export function PriceChart({
   }, [bars]);
 
   // Whenever the run/session changes, clear the previously selected bar
-  // so the details panel doesn't show stale data.
+  // and any open popover so neither shows stale data.
   useEffect(() => {
     setSelectedBar(null);
+    setEntryPopover(null);
+    setExitPopover(null);
   }, [bars]);
+
+  // Executed entries with their VWAP-line position (timestamp, value).
+  // Used both to render dots and to detect dot-clicks in the container
+  // click handler.
+  const entries = useMemo(() => {
+    const vwapByTs = new Map<number, number>();
+    for (const p of vwap) vwapByTs.set(new Date(p.time).getTime(), p.value);
+    const barByTs = new Map<number, BarView>();
+    for (let i = 0; i < bars.length; i++) {
+      barByTs.set(new Date(bars[i].timestamp).getTime(), bars[i]);
+    }
+    const barTimes = bars.map((b) => new Date(b.timestamp).getTime());
+    const out: Array<{
+      row: JournalRowView;
+      ts: number;
+      vwap: number;
+      priorBar: BarView | null;
+    }> = [];
+    for (const r of journal) {
+      if (r.status !== "executed") continue;
+      const ts = new Date(r.timestamp).getTime();
+      const vwapAt = vwapByTs.get(ts);
+      if (vwapAt == null) continue;
+      const idx = barTimes.indexOf(ts);
+      const priorBar = idx > 0 ? bars[idx - 1] : null;
+      out.push({ row: r, ts, vwap: vwapAt, priorBar });
+    }
+    return out;
+  }, [bars, vwap, journal]);
+
+  // Exits — one entry per (exited | force_flat) journal row, anchored
+  // to the VWAP value at that bar. Each exit also carries the entry
+  // timestamp (the nearest prior executed row) so the popover can show
+  // trade duration.
+  const exits = useMemo(() => {
+    const vwapByTs = new Map<number, number>();
+    for (const p of vwap) vwapByTs.set(new Date(p.time).getTime(), p.value);
+    const out: Array<{
+      row: JournalRowView;
+      ts: number;
+      vwap: number;
+      entryTimestamp: string | null;
+      color: string;
+    }> = [];
+    let lastEntryTs: string | null = null;
+    // Single forward pass — journal is timestamp-ordered, so we can
+    // track the most recent entry and pair it with the next exit.
+    const sorted = [...journal].sort((a, b) =>
+      a.timestamp.localeCompare(b.timestamp),
+    );
+    for (const r of sorted) {
+      if (r.status === "executed") {
+        lastEntryTs = r.timestamp;
+        continue;
+      }
+      if (r.status !== "exited" && r.status !== "force_flat") continue;
+      const ts = new Date(r.timestamp).getTime();
+      const vwapAt = vwapByTs.get(ts);
+      if (vwapAt == null) continue;
+      const reason = r.exit_reason ?? "force_flat";
+      const color =
+        reason === "target"
+          ? "#10b981"
+          : reason === "stop"
+            ? "#ef4444"
+            : "#6b7280";
+      out.push({ row: r, ts, vwap: vwapAt, entryTimestamp: lastEntryTs, color });
+      lastEntryTs = null; // consumed
+    }
+    return out;
+  }, [vwap, journal]);
 
   // Look up the journal VWAP for the selected bar (if any).
   const selectedVwap = useMemo(() => {
@@ -264,6 +489,56 @@ export function PriceChart({
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      // 1. Entry-dot hit-test first — dots sit on top of the VWAP
+      //    curve in the candle pane.
+      for (const entry of entries) {
+        const c = chart.convertToPixel(
+          [{ timestamp: entry.ts, value: entry.vwap }],
+          { paneId: "candle_pane" },
+        );
+        const coord = (Array.isArray(c) ? c[0] : c) as Partial<Point> & {
+          x?: number;
+          y?: number;
+        };
+        if (coord?.x == null || coord?.y == null) continue;
+        if (Math.hypot(x - coord.x, y - coord.y) < ENTRY_DOT_RADIUS + 6) {
+          setEntryPopover({
+            row: entry.row,
+            priorBar: entry.priorBar,
+            x: coord.x,
+            y: coord.y,
+          });
+          setExitPopover(null);
+          setSelectedBar(null);
+          return;
+        }
+      }
+      // 2. Exit-dot hit-test.
+      for (const exit of exits) {
+        const c = chart.convertToPixel(
+          [{ timestamp: exit.ts, value: exit.vwap }],
+          { paneId: "candle_pane" },
+        );
+        const coord = (Array.isArray(c) ? c[0] : c) as Partial<Point> & {
+          x?: number;
+          y?: number;
+        };
+        if (coord?.x == null || coord?.y == null) continue;
+        if (Math.hypot(x - coord.x, y - coord.y) < ENTRY_DOT_RADIUS + 6) {
+          setExitPopover({
+            row: exit.row,
+            entryTimestamp: exit.entryTimestamp,
+            x: coord.x,
+            y: coord.y,
+          });
+          setEntryPopover(null);
+          setSelectedBar(null);
+          return;
+        }
+      }
+      // 3. Fall through to bar selection.
+      setEntryPopover(null);
+      setExitPopover(null);
       const result = chart.convertFromPixel(
         [{ x, y }],
         { paneId: "candle_pane" },
@@ -281,7 +556,7 @@ export function PriceChart({
     };
     container.addEventListener("click", onClick);
     return () => container.removeEventListener("click", onClick);
-  }, [bars]);
+  }, [bars, entries, exits]);
 
   // Bars data — refresh whenever the bar set changes. Also size the bars
   // so they fill the available width (otherwise on ultra-wide screens a
@@ -351,6 +626,63 @@ export function PriceChart({
       });
     }
   }, [vwap, showVwap]);
+
+  // Entry dots on the VWAP line — one per executed entry. Tied to
+  // VWAP visibility (no line, no dots). Click handling lives in the
+  // container `onClick` handler below so the popover can position
+  // itself relative to the chart bounds.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    for (const id of entryDotIds.current) chart.removeOverlay({ id });
+    entryDotIds.current = [];
+    if (!showVwap) return;
+    for (const e of entries) {
+      const result = chart.createOverlay({
+        name: "vwapDot",
+        points: [{ timestamp: e.ts, value: e.vwap }],
+        styles: {
+          // White fill + amber stroke. `stroke_fill` is required — the
+          // default `"fill"` mode draws no border at all.
+          polygon: {
+            style: "stroke_fill",
+            color: "#ffffff",
+            borderColor: "#f59e0b",
+            borderSize: 3,
+          },
+        },
+      });
+      const id = Array.isArray(result) ? result[0] : result;
+      if (typeof id === "string") entryDotIds.current.push(id);
+    }
+  }, [entries, showVwap]);
+
+  // Exit dots on the VWAP line — one per exited/force_flat row.
+  // Border color matches the exit marker color (green/red/gray) so
+  // entry and exit dots are visually distinguishable.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    for (const id of exitDotIds.current) chart.removeOverlay({ id });
+    exitDotIds.current = [];
+    if (!showVwap) return;
+    for (const e of exits) {
+      const result = chart.createOverlay({
+        name: "vwapDot",
+        points: [{ timestamp: e.ts, value: e.vwap }],
+        styles: {
+          polygon: {
+            style: "stroke_fill",
+            color: "#ffffff",
+            borderColor: e.color,
+            borderSize: 3,
+          },
+        },
+      });
+      const id = Array.isArray(result) ? result[0] : result;
+      if (typeof id === "string") exitDotIds.current.push(id);
+    }
+  }, [exits, showVwap]);
 
   // OR high/low — labeled horizontal lines via `simpleTag`. extendData
   // is the tag text.
@@ -427,6 +759,30 @@ export function PriceChart({
     }
   }, [pivots, showSR]);
 
+  // "VWAP" pill — labels the indicator's own line. Anchored to the
+  // first VWAP value so the pill sits at the left edge of the chart
+  // where the line starts. Text only; the VWAP indicator draws the
+  // line itself, so no horizontal overlay line is needed.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (vwapTagId.current) {
+      chart.removeOverlay({ id: vwapTagId.current });
+      vwapTagId.current = null;
+    }
+    if (!showVwap || vwap.length === 0) return;
+    const result = chart.createOverlay({
+      name: "pill",
+      extendData: "VWAP",
+      points: [{ value: vwap[0].value }],
+      styles: {
+        text: { ...TAG_TEXT_BASE, backgroundColor: "#f59e0b" },
+      },
+    });
+    const id = Array.isArray(result) ? result[0] : result;
+    if (typeof id === "string") vwapTagId.current = id;
+  }, [vwap, showVwap]);
+
   // "Last" pill — labels the built-in last-close price marker that
   // klinecharts draws by default. Same labeledLevel overlay as OR/SR
   // so the visual treatment is consistent.
@@ -451,31 +807,49 @@ export function PriceChart({
     if (typeof id === "string") lastOverlayId.current = id;
   }, [lastClose]);
 
-  // Markers — entry/exit/rejection annotations at specific bars.
+  // Markers — entry/exit/rejection annotations anchored to the VWAP
+  // dot for that bar, with the pill offset above or below so it never
+  // sits on the VWAP line. A thin stem connects the dot to the pill.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.removeOverlay({ name: "simpleAnnotation" });
+    chart.removeOverlay({ name: "tradeRationaleTag" });
     if (!markers.length || !bars.length) return;
+    const vwapByTs = new Map<number, number>();
+    for (const p of vwap) vwapByTs.set(new Date(p.time).getTime(), p.value);
     const barByTs = new Map<number, BarView>();
-    bars.forEach((b) =>
-      barByTs.set(new Date(b.timestamp).getTime(), b),
-    );
+    bars.forEach((b) => barByTs.set(new Date(b.timestamp).getTime(), b));
     markers.forEach((m) => {
       const ts = new Date(m.time).getTime();
-      const bar = barByTs.get(ts);
-      if (!bar) return;
-      const value = m.position === "belowBar" ? bar.low : bar.high;
+      const value = vwapByTs.get(ts) ?? barByTs.get(ts)?.high;
+      if (value == null) return;
+      const direction: "above" | "below" =
+        m.text.startsWith("Stop") || m.text.startsWith("Force")
+          ? "below"
+          : "above";
       chart.createOverlay({
-        name: "simpleAnnotation",
+        name: "tradeRationaleTag",
         points: [{ timestamp: ts, value }],
-        extendData: m.text,
+        extendData: { text: m.text, direction },
         styles: {
-          line: { color: m.color },
+          line: { color: m.color, size: 1 },
+          // Colored background, white text, padding tuned for longer
+          // labels like "Target +1.0R · +$200".
+          text: {
+            color: "#ffffff",
+            backgroundColor: m.color,
+            size: 11,
+            weight: "500",
+            paddingLeft: 6,
+            paddingRight: 6,
+            paddingTop: 3,
+            paddingBottom: 3,
+            borderRadius: 3,
+          },
         },
       });
     });
-  }, [markers, bars]);
+  }, [markers, bars, vwap]);
 
   return (
     <div className="border rounded border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -545,13 +919,334 @@ export function PriceChart({
           onClose={() => setSelectedBar(null)}
         />
       )}
-      <div
-        ref={containerRef}
-        data-chart-root
-        className="w-full"
-        style={{ height: 500 }}
-      />
+      <div className="relative">
+        <div
+          ref={containerRef}
+          data-chart-root
+          className="w-full"
+          style={{ height: 500 }}
+        />
+        {entryPopover && (
+          <EntryRationalePopover
+            row={entryPopover.row}
+            priorBar={entryPopover.priorBar}
+            x={entryPopover.x}
+            y={entryPopover.y}
+            accountValue={accountValue}
+            positionCapPct={positionCapPct}
+            onClose={() => setEntryPopover(null)}
+          />
+        )}
+        {exitPopover && (
+          <ExitRationalePopover
+            row={exitPopover.row}
+            entryTimestamp={exitPopover.entryTimestamp}
+            x={exitPopover.x}
+            y={exitPopover.y}
+            onClose={() => setExitPopover(null)}
+          />
+        )}
+      </div>
     </div>
+  );
+}
+
+function EntryRationalePopover({
+  row,
+  priorBar,
+  x,
+  y,
+  accountValue,
+  positionCapPct,
+  onClose,
+}: {
+  row: JournalRowView;
+  priorBar: BarView | null;
+  x: number;
+  y: number;
+  accountValue: number;
+  positionCapPct: number;
+  onClose: () => void;
+}) {
+  const r: EntryRationale = useMemo(
+    () => entryRationale(row, priorBar, accountValue, positionCapPct),
+    [row, priorBar, accountValue, positionCapPct],
+  );
+  const time = new Date(row.timestamp).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const POPOVER_WIDTH = 340;
+  // Clamp so the popover doesn't fall off the chart's right edge. Place
+  // ~14px to the right of the dot, vertically centred on it.
+  const left = Math.max(8, x + 14);
+  const top = Math.max(8, y - 30);
+  return (
+    <div
+      role="dialog"
+      aria-label="Entry rationale"
+      className="absolute z-20 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 shadow-lg text-xs"
+      style={{ left, top, width: POPOVER_WIDTH }}
+    >
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-slate-700">
+        <div className="font-semibold text-blue-600 dark:text-blue-400">
+          Entry rationale
+        </div>
+        <div className="text-gray-500 dark:text-slate-400 font-mono">
+          {time} ET
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close entry rationale"
+          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 -mr-1"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="px-3 py-2 border-b border-gray-200 dark:border-slate-700">
+        <div className="uppercase tracking-wide text-[10px] text-gray-500 dark:text-slate-400 mb-1">
+          Trigger
+        </div>
+        <ul className="space-y-1 font-mono">
+          {r.triggers.map((t) => (
+            <TriggerRow key={t.key} t={t} />
+          ))}
+        </ul>
+      </div>
+      <div className="px-3 py-2">
+        <div className="uppercase tracking-wide text-[10px] text-gray-500 dark:text-slate-400 mb-1">
+          Trade plan
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono">
+          <Kv k="Entry" v={`$${r.plan.entry.toFixed(2)}`} />
+          <Kv
+            k="Stop"
+            v={`$${r.plan.stop.toFixed(2)}`}
+            tail={`-$${r.plan.riskPerShare.toFixed(2)}/sh`}
+            tailClass="text-red-600 dark:text-red-400"
+          />
+          <Kv
+            k="Target"
+            v={`$${r.plan.target.toFixed(2)}`}
+            tail={`+$${r.plan.rewardPerShare.toFixed(2)}/sh`}
+            tailClass="text-emerald-600 dark:text-emerald-400"
+          />
+          <Kv k="R:R" v={r.plan.rrRatio.toFixed(2)} />
+          {r.plan.qty != null && (
+            <Kv k="Qty" v={`${r.plan.qty} sh`} />
+          )}
+          {r.plan.riskDollars != null && (
+            <Kv
+              k="Risk"
+              v={`$${r.plan.riskDollars.toFixed(2)}`}
+              tail={
+                r.plan.riskPctOfAccount != null
+                  ? `(${(r.plan.riskPctOfAccount * 100).toFixed(2)}%)`
+                  : undefined
+              }
+            />
+          )}
+          {r.plan.positionValue != null && (
+            <Kv
+              k="Position"
+              v={`$${r.plan.positionValue.toLocaleString("en-US", {
+                maximumFractionDigits: 0,
+              })}`}
+              tail={
+                r.plan.positionPctOfCap != null
+                  ? `(${(r.plan.positionPctOfCap * 100).toFixed(0)}% cap)`
+                  : undefined
+              }
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExitRationalePopover({
+  row,
+  entryTimestamp,
+  x,
+  y,
+  onClose,
+}: {
+  row: JournalRowView;
+  entryTimestamp: string | null;
+  x: number;
+  y: number;
+  onClose: () => void;
+}) {
+  const r: ExitRationale = useMemo(
+    () => exitRationale(row, entryTimestamp),
+    [row, entryTimestamp],
+  );
+  const time = new Date(row.timestamp).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const POPOVER_WIDTH = 320;
+  const left = Math.max(8, x + 14);
+  const top = Math.max(8, y - 30);
+  const headerColor =
+    r.reason === "target"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : r.reason === "stop"
+        ? "text-red-600 dark:text-red-400"
+        : "text-gray-600 dark:text-slate-300";
+  const rColor =
+    r.realizedR != null && r.realizedR >= 0
+      ? "text-emerald-600 dark:text-emerald-400"
+      : "text-red-600 dark:text-red-400";
+  return (
+    <div
+      role="dialog"
+      aria-label="Exit rationale"
+      className="absolute z-20 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 shadow-lg text-xs"
+      style={{ left, top, width: POPOVER_WIDTH }}
+    >
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-slate-700">
+        <div className={cn("font-semibold", headerColor)}>{r.reasonLabel}</div>
+        <div className="text-gray-500 dark:text-slate-400 font-mono">
+          {time} ET
+          {r.durationMinutes != null && ` · ${r.durationMinutes}m`}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close exit rationale"
+          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 -mr-1"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="px-3 py-2 border-b border-gray-200 dark:border-slate-700">
+        <div className="uppercase tracking-wide text-[10px] text-gray-500 dark:text-slate-400 mb-1">
+          Outcome
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono">
+          <Kv k="Exit" v={`$${r.exitPrice.toFixed(2)}`} />
+          {r.realizedR != null && (
+            <Kv
+              k="R-multiple"
+              v={
+                <span className={rColor}>
+                  {r.realizedR >= 0 ? "+" : ""}
+                  {r.realizedR.toFixed(2)}R
+                </span>
+              }
+            />
+          )}
+          {r.realizedPnl != null && (
+            <Kv
+              k="P&L"
+              v={
+                <span className={rColor}>
+                  {r.realizedPnl >= 0 ? "+" : "-"}$
+                  {Math.abs(r.realizedPnl).toLocaleString("en-US", {
+                    maximumFractionDigits: 0,
+                  })}
+                </span>
+              }
+            />
+          )}
+        </div>
+      </div>
+      {r.reason === "force_flat" ? (
+        <div className="px-3 py-2 text-gray-600 dark:text-slate-300 italic">
+          End-of-session safety close at 15:55 ET.
+        </div>
+      ) : (
+        <div className="px-3 py-2">
+          <div className="uppercase tracking-wide text-[10px] text-gray-500 dark:text-slate-400 mb-1">
+            Plan vs actual
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono">
+            {r.entry != null && (
+              <Kv k="Entry" v={`$${r.entry.toFixed(2)}`} />
+            )}
+            {r.plannedExit != null && (
+              <Kv k="Planned exit" v={`$${r.plannedExit.toFixed(2)}`} />
+            )}
+            <Kv k="Actual exit" v={`$${r.exitPrice.toFixed(2)}`} />
+            {r.slippage != null && (
+              <Kv
+                k="Slippage"
+                v={
+                  <span
+                    className={
+                      r.slippage >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }
+                  >
+                    {r.slippage >= 0 ? "+" : ""}
+                    {r.slippage.toFixed(2)}
+                  </span>
+                }
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TriggerRow({ t }: { t: import("@/lib/entry-rationale").TriggerCheck }) {
+  if (t.key === "pullback_threshold") {
+    return (
+      <li className="leading-snug">
+        <span className="text-emerald-600 dark:text-emerald-400 mr-1">✓</span>
+        <span className="text-gray-700 dark:text-slate-200">{t.label}</span>
+        <span className="text-gray-500 dark:text-slate-400 ml-1">
+          ({t.leftValue.toFixed(2)}%)
+        </span>
+      </li>
+    );
+  }
+  const sign = t.delta >= 0 ? "+" : "";
+  return (
+    <li className="leading-snug">
+      <span className={cn("mr-1", t.passed ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+        {t.passed ? "✓" : "✗"}
+      </span>
+      <span className="text-gray-700 dark:text-slate-200">{t.label}</span>
+      <div className="ml-4 text-gray-500 dark:text-slate-400">
+        {t.leftValue.toFixed(2)} {t.passed ? ">" : "≤"} {t.rightValue.toFixed(2)}{" "}
+        <span className={t.delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+          ({sign}{t.delta.toFixed(2)}, {sign}{t.deltaPct.toFixed(2)}%)
+        </span>
+      </div>
+    </li>
+  );
+}
+
+function Kv({
+  k,
+  v,
+  tail,
+  tailClass = "text-gray-500 dark:text-slate-400",
+}: {
+  k: string;
+  v: ReactNode;
+  tail?: string;
+  tailClass?: string;
+}) {
+  return (
+    <>
+      <span className="text-gray-500 dark:text-slate-400">{k}</span>
+      <span>
+        <strong>{v}</strong>
+        {tail && <span className={cn("ml-1", tailClass)}>{tail}</span>}
+      </span>
+    </>
   );
 }
 
@@ -697,7 +1392,7 @@ function Section({
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div>
