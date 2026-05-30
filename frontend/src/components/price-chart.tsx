@@ -3,6 +3,7 @@ import {
   init,
   dispose,
   registerIndicator,
+  registerOverlay,
   type Chart,
   type KLineData,
   type Point,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { HelpTooltip } from "./help-tooltip";
 import { useTheme } from "@/lib/theme";
 import { humanize } from "@/lib/format";
+import { findSwingPivots } from "@/lib/swing-pivots";
 import type { BarView, JournalRowView } from "@/api/types";
 
 // ── Custom VWAP indicator ──────────────────────────────────────────
@@ -97,6 +99,57 @@ const CHART_STYLES = {
   },
 } as const;
 
+// Compact pill style shared by every labeled overlay tag (OR, S/R).
+const TAG_TEXT_BASE = {
+  color: "#ffffff",
+  size: 10,
+  paddingLeft: 5,
+  paddingRight: 5,
+  paddingTop: 2,
+  paddingBottom: 2,
+  borderRadius: 3,
+} as const;
+
+// ── Custom `labeledLevel` overlay ──────────────────────────────────
+//
+// Draws a horizontal dashed line across the candle pane PLUS a small
+// pill label positioned just above the line at the left edge of the
+// chart. `extendData` is the pill text (e.g. "R 658.52"). Styles come
+// from `overlay.styles.line` and `overlay.styles.text` set per-call.
+//
+// Built-in `simpleTag` puts the label on the y-axis gutter, which gets
+// crowded as soon as two levels are at near-identical prices. Inline
+// pills above the line keep the y-axis ticks readable.
+
+registerOverlay({
+  name: "labeledLevel",
+  totalStep: 2,
+  needDefaultPointFigure: false,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ overlay, coordinates, bounding }) => {
+    const y = coordinates[0].y;
+    const text = String(overlay.extendData ?? "");
+    return [
+      {
+        type: "line",
+        attrs: {
+          coordinates: [
+            { x: 0, y },
+            { x: bounding.width, y },
+          ],
+        },
+        ignoreEvent: true,
+      },
+      {
+        type: "text",
+        attrs: { x: 6, y: y - 3, text, baseline: "bottom", align: "left" },
+        ignoreEvent: true,
+      },
+    ];
+  },
+});
+
 // ── Types ──────────────────────────────────────────────────────────
 
 export type ChartMarker = {
@@ -127,7 +180,26 @@ export function PriceChart({
   const { theme } = useTheme();
   const [showVwap, setShowVwap] = useState(true);
   const [showOR, setShowOR] = useState(true);
+  const [showSR, setShowSR] = useState(false);
   const [selectedBar, setSelectedBar] = useState<KLineData | null>(null);
+  const orOverlayIds = useRef<string[]>([]);
+  const srOverlayIds = useRef<string[]>([]);
+  const lastOverlayId = useRef<string | null>(null);
+
+  const pivots = useMemo(() => findSwingPivots(bars), [bars]);
+
+  // The latest bar's close. Color tracks direction vs the previous
+  // bar, matching the candle convention.
+  const lastClose = useMemo(() => {
+    if (bars.length === 0) return null;
+    const last = bars[bars.length - 1];
+    const prev = bars.length >= 2 ? bars[bars.length - 2] : null;
+    const up = prev ? last.close >= prev.close : true;
+    return {
+      value: last.close,
+      color: up ? "#16a34a" : "#dc2626",
+    };
+  }, [bars]);
 
   // Whenever the run/session changes, clear the previously selected bar
   // so the details panel doesn't show stale data.
@@ -280,28 +352,104 @@ export function PriceChart({
     }
   }, [vwap, showVwap]);
 
-  // OR high/low — horizontal dashed lines.
+  // OR high/low — labeled horizontal lines via `simpleTag`. extendData
+  // is the tag text.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.removeOverlay({ name: "horizontalStraightLine" });
-    if (showOR && or) {
+    for (const id of orOverlayIds.current) chart.removeOverlay({ id });
+    orOverlayIds.current = [];
+    if (!(showOR && or)) return;
+    const pushId = (raw: unknown) => {
+      const id = Array.isArray(raw) ? raw[0] : raw;
+      if (typeof id === "string") orOverlayIds.current.push(id);
+    };
+    pushId(
       chart.createOverlay({
-        name: "horizontalStraightLine",
+        name: "labeledLevel",
+        extendData: `OR Hi ${or.high.toFixed(2)}`,
         points: [{ value: or.high }],
         styles: {
           line: { color: "#22c55e", style: "dashed", size: 1 },
+          text: { ...TAG_TEXT_BASE, backgroundColor: "#16a34a" },
         },
-      });
+      }),
+    );
+    pushId(
       chart.createOverlay({
-        name: "horizontalStraightLine",
+        name: "labeledLevel",
+        extendData: `OR Lo ${or.low.toFixed(2)}`,
         points: [{ value: or.low }],
         styles: {
           line: { color: "#ef4444", style: "dashed", size: 1 },
+          text: { ...TAG_TEXT_BASE, backgroundColor: "#dc2626" },
         },
-      });
-    }
+      }),
+    );
   }, [or, showOR]);
+
+  // Swing-pivot S/R levels — R for resistance, S for support.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    for (const id of srOverlayIds.current) chart.removeOverlay({ id });
+    srOverlayIds.current = [];
+    if (!showSR) return;
+    const pushId = (raw: unknown) => {
+      const id = Array.isArray(raw) ? raw[0] : raw;
+      if (typeof id === "string") srOverlayIds.current.push(id);
+    };
+    for (const level of pivots.highs) {
+      pushId(
+        chart.createOverlay({
+          name: "labeledLevel",
+          extendData: `R ${level.toFixed(2)}`,
+          points: [{ value: level }],
+          styles: {
+            line: { color: "#dc2626", style: "dashed", size: 1 },
+            text: { ...TAG_TEXT_BASE, backgroundColor: "#dc2626" },
+          },
+        }),
+      );
+    }
+    for (const level of pivots.lows) {
+      pushId(
+        chart.createOverlay({
+          name: "labeledLevel",
+          extendData: `S ${level.toFixed(2)}`,
+          points: [{ value: level }],
+          styles: {
+            line: { color: "#16a34a", style: "dashed", size: 1 },
+            text: { ...TAG_TEXT_BASE, backgroundColor: "#16a34a" },
+          },
+        }),
+      );
+    }
+  }, [pivots, showSR]);
+
+  // "Last" pill — labels the built-in last-close price marker that
+  // klinecharts draws by default. Same labeledLevel overlay as OR/SR
+  // so the visual treatment is consistent.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (lastOverlayId.current) {
+      chart.removeOverlay({ id: lastOverlayId.current });
+      lastOverlayId.current = null;
+    }
+    if (!lastClose) return;
+    const result = chart.createOverlay({
+      name: "labeledLevel",
+      extendData: `Last ${lastClose.value.toFixed(2)}`,
+      points: [{ value: lastClose.value }],
+      styles: {
+        line: { color: lastClose.color, style: "dashed", size: 1 },
+        text: { ...TAG_TEXT_BASE, backgroundColor: lastClose.color },
+      },
+    });
+    const id = Array.isArray(result) ? result[0] : result;
+    if (typeof id === "string") lastOverlayId.current = id;
+  }, [lastClose]);
 
   // Markers — entry/exit/rejection annotations at specific bars.
   useEffect(() => {
@@ -359,6 +507,25 @@ export function PriceChart({
           <span className="w-3 h-0.5 bg-green-500 mr-1" />
           OR high / low
           <HelpTooltip helpKey="opening_range" />
+        </button>
+        <button
+          type="button"
+          aria-pressed={showSR}
+          aria-label="Toggle support/resistance"
+          onClick={() => setShowSR((v) => !v)}
+          className={cn(
+            "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
+            !showSR && "opacity-40 line-through",
+          )}
+        >
+          <span className="flex items-center gap-0.5 mr-1">
+            <span className="w-2 h-0.5 bg-red-600" />
+            <span className="w-2 h-0.5 bg-green-600" />
+          </span>
+          S/R
+          <span className="ml-1 text-gray-500 dark:text-slate-400">
+            ({pivots.highs.length}↑ {pivots.lows.length}↓)
+          </span>
         </button>
         <span className="flex items-center">
           <span className="inline-block w-2 h-2 bg-gray-400 mr-1" />

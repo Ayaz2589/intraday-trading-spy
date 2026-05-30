@@ -28,6 +28,8 @@ describe("RiskKnobs", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
       if (String(url) === "/api/config")
         return Promise.resolve(new Response(JSON.stringify(baseConfig)));
+      if (String(url) === "/api/datasets")
+        return Promise.resolve(new Response("[]"));
       return Promise.resolve(new Response("{}"));
     });
     render(<RiskKnobs onNewRun={() => {}} />);
@@ -47,6 +49,8 @@ describe("RiskKnobs", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
       if (String(url) === "/api/config")
         return Promise.resolve(new Response(JSON.stringify(baseConfig)));
+      if (String(url) === "/api/datasets")
+        return Promise.resolve(new Response("[]"));
       if (String(url) === "/api/backtests/run")
         return Promise.resolve(
           new Response(JSON.stringify({ run_id: "x" })),
@@ -82,6 +86,8 @@ describe("RiskKnobs", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
       if (String(url) === "/api/config")
         return Promise.resolve(new Response(JSON.stringify(baseConfig)));
+      if (String(url) === "/api/datasets")
+        return Promise.resolve(new Response("[]"));
       if (String(url) === "/api/backtests/run")
         return Promise.resolve(
           new Response(JSON.stringify({ run_id: "new-run-id" })),
@@ -115,6 +121,8 @@ describe("RiskKnobs", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
       if (String(url) === "/api/config")
         return Promise.resolve(new Response(JSON.stringify(baseConfig)));
+      if (String(url) === "/api/datasets")
+        return Promise.resolve(new Response("[]"));
       return Promise.resolve(new Response("{}"));
     });
     render(<RiskKnobs onNewRun={() => {}} />);
