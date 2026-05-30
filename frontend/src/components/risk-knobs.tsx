@@ -143,88 +143,113 @@ export function RiskKnobs({
           Customize
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96">
-        <h4 className="font-semibold mb-3">Risk + strategy knobs</h4>
+      <PopoverContent
+        className="popover knobs-pop"
+        style={{ padding: 0, width: 380 }}
+      >
+        <div className="pop-head">
+          <span className="pop-title">Risk + strategy knobs</span>
+        </div>
         {form == null ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p
+            style={{
+              fontSize: "var(--fs-sm)",
+              color: "var(--text-muted)",
+              padding: "var(--sp-4) var(--sp-5)",
+            }}
+          >
             Loading config…
           </p>
         ) : (
-          <div className="space-y-3 text-sm">
-            <DatasetField
-              label="Data window"
-              value={form.csv_path}
-              datasets={datasets}
-              onChange={(v) => update("csv_path", v)}
-            />
-            <NumberField
-              label="Account value ($)"
-              value={form.account_value}
-              step={1000}
-              onChange={(v) => update("account_value", v)}
-            />
-            <NumberField
-              label="Risk per trade (%)"
-              value={form.max_risk_per_trade_pct}
-              step={0.05}
-              onChange={(v) => update("max_risk_per_trade_pct", v)}
-            />
-            <NumberField
-              label="Position cap (%)"
-              value={form.max_position_value_pct}
-              step={5}
-              onChange={(v) => update("max_position_value_pct", v)}
-            />
-            <NumberField
-              label="Max consecutive losses"
-              value={form.max_consecutive_losses}
-              step={1}
-              integer
-              onChange={(v) => update("max_consecutive_losses", v)}
-            />
-            <NumberField
-              label="Opening range (min)"
-              value={form.opening_range_minutes}
-              step={5}
-              integer
-              onChange={(v) => update("opening_range_minutes", v)}
-            />
-            <NumberField
-              label="Risk:Reward"
-              value={form.risk_reward}
-              step={0.5}
-              onChange={(v) => update("risk_reward", v)}
-            />
-            <NumberField
-              label="Max distance from VWAP (%)"
-              value={form.max_distance_from_vwap_pct}
-              step={0.05}
-              onChange={(v) => update("max_distance_from_vwap_pct", v)}
-            />
-            <div className="flex gap-2 mt-2">
-              <Button
-                size="sm"
-                variant="outline"
+          <>
+            <div className="knob-grid">
+              <DatasetField
+                label="Data window"
+                value={form.csv_path}
+                datasets={datasets}
+                onChange={(v) => update("csv_path", v)}
+              />
+              <NumberField
+                label="Account value"
+                suffix="$"
+                value={form.account_value}
+                step={1000}
+                onChange={(v) => update("account_value", v)}
+              />
+              <NumberField
+                label="Risk per trade"
+                suffix="%"
+                value={form.max_risk_per_trade_pct}
+                step={0.05}
+                onChange={(v) => update("max_risk_per_trade_pct", v)}
+              />
+              <NumberField
+                label="Position cap"
+                suffix="%"
+                value={form.max_position_value_pct}
+                step={5}
+                onChange={(v) => update("max_position_value_pct", v)}
+              />
+              <NumberField
+                label="Max consecutive losses"
+                value={form.max_consecutive_losses}
+                step={1}
+                integer
+                onChange={(v) => update("max_consecutive_losses", v)}
+              />
+              <NumberField
+                label="Opening range"
+                suffix="min"
+                value={form.opening_range_minutes}
+                step={5}
+                integer
+                onChange={(v) => update("opening_range_minutes", v)}
+              />
+              <NumberField
+                label="Risk:Reward"
+                value={form.risk_reward}
+                step={0.5}
+                onChange={(v) => update("risk_reward", v)}
+              />
+              <NumberField
+                label="Max distance from VWAP"
+                suffix="%"
+                value={form.max_distance_from_vwap_pct}
+                step={0.05}
+                onChange={(v) => update("max_distance_from_vwap_pct", v)}
+              />
+            </div>
+            <div className="knob-foot">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
                 onClick={handleRevert}
                 disabled={!isDirty || busy}
                 aria-label="Revert"
               >
-                <Undo2 className="h-4 w-4 mr-1" />
-                Revert
-              </Button>
-              <Button
-                size="sm"
-                className="flex-1"
+                <Undo2 className="h-4 w-4 mr-1" /> Revert
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
                 disabled={busy}
                 onClick={handleRun}
               >
                 {busy ? "Running…" : "Run with these settings"}
-              </Button>
+              </button>
             </div>
             {error && (
-              <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+              <p
+                style={{
+                  fontSize: "var(--fs-xs)",
+                  color: "var(--loss)",
+                  padding: "0 var(--sp-5) var(--sp-3)",
+                }}
+              >
+                {error}
+              </p>
             )}
-          </div>
+          </>
         )}
       </PopoverContent>
     </Popover>
@@ -243,36 +268,35 @@ function DatasetField({
   onChange: (v: string) => void;
 }) {
   const id = label.replace(/\s+/g, "-").toLowerCase();
-  // If the config's csv_path isn't in the listed datasets (e.g. user
-  // pointed at a moved file), keep it as a stale option so the select
-  // doesn't silently rewrite the path.
+  // If the config's csv_path isn't in the listed datasets, keep the stale
+  // option so the select doesn't silently rewrite the path.
   const inList = datasets.some((d) => d.path === value);
   return (
-    <div className="flex items-center justify-between gap-3">
-      <label htmlFor={id} className="text-gray-700 dark:text-slate-300 flex-1">
-        {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-56 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 font-mono text-right"
-      >
-        {!inList && value && (
-          <option value={value}>{value} (current)</option>
-        )}
-        {datasets.length === 0 && (
-          <option value="" disabled>
-            No CSVs in data/raw/
-          </option>
-        )}
-        {datasets.map((d) => (
-          <option key={d.path} value={d.path}>
-            {datasetLabel(d)}
-          </option>
-        ))}
-      </select>
-    </div>
+    <label className="knob" htmlFor={id}>
+      <span className="knob-label">{label}</span>
+      <div className="knob-select">
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {!inList && value && (
+            <option value={value}>{value} (current)</option>
+          )}
+          {datasets.length === 0 && (
+            <option value="" disabled>
+              No CSVs in data/raw/
+            </option>
+          )}
+          {datasets.map((d) => (
+            <option key={d.path} value={d.path}>
+              {datasetLabel(d)}
+            </option>
+          ))}
+        </select>
+        <span className="sel-caret">▾</span>
+      </div>
+    </label>
   );
 }
 
@@ -281,33 +305,35 @@ function NumberField({
   value,
   step,
   integer = false,
+  suffix,
   onChange,
 }: {
   label: string;
   value: number;
   step: number;
   integer?: boolean;
+  suffix?: string;
   onChange: (v: number) => void;
 }) {
   const id = label.replace(/\s+/g, "-").toLowerCase();
   return (
-    <div className="flex items-center justify-between gap-3">
-      <label htmlFor={id} className="text-gray-700 dark:text-slate-300 flex-1">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="number"
-        value={value}
-        step={step}
-        onChange={(e) => {
-          const v = integer
-            ? parseInt(e.target.value, 10)
-            : parseFloat(e.target.value);
-          if (!Number.isNaN(v)) onChange(v);
-        }}
-        className="w-28 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 font-mono text-right"
-      />
-    </div>
+    <label className="knob" htmlFor={id}>
+      <span className="knob-label">{label}</span>
+      <div className="knob-field">
+        <input
+          id={id}
+          type="number"
+          value={value}
+          step={step}
+          onChange={(e) => {
+            const v = integer
+              ? parseInt(e.target.value, 10)
+              : parseFloat(e.target.value);
+            if (!Number.isNaN(v)) onChange(v);
+          }}
+        />
+        {suffix && <span className="knob-suffix">{suffix}</span>}
+      </div>
+    </label>
   );
 }

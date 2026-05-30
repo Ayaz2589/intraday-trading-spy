@@ -153,8 +153,8 @@ layout is fixed Overview order — the segmented control is not yet present.
 
 #### Popovers + remaining components
 
-- [ ] **T044** [P] [US1] Restyle `frontend/src/components/preset-picker.tsx` to the handoff's `.preset-pop` styling (340px width, `.preset-item` rows with leading square icon tile, mono name, description, faint path).
-- [ ] **T045** [P] [US1] Restyle `frontend/src/components/risk-knobs.tsx` to the handoff's `.knobs-pop` styling (380px width, `.knob` rows with label + field with mono input + suffix, `.knob-foot` with Revert ghost + Run primary).
+- [X] **T044** [P] [US1] Restyle `frontend/src/components/preset-picker.tsx` to the handoff's `.preset-pop` styling (340px width, `.preset-item` rows with leading square icon tile, mono name, description, faint path).
+- [X] **T045** [P] [US1] Restyle `frontend/src/components/risk-knobs.tsx` to the handoff's `.knobs-pop` styling (380px width, `.knob` rows with label + field with mono input + suffix, `.knob-foot` with Revert ghost + Run primary).
 - [X] **T046** [P] [US1] Restyle `frontend/src/components/run-actions.tsx` to use the design's button variants (primary, ghost, danger-ghost).
 - [X] **T047** [P] [US1] Restyle `frontend/src/components/status-badge.tsx` to the design's `.badge` + `.badge-dot` styling; verify color mapping (Emitted=info, Executed=profit, Exited=warn, Rejected=loss, Lockout=faint, ForceFlat=accent).
 
@@ -237,17 +237,17 @@ timestamps. The two controls stay in sync.
 **Purpose**: Verify the success criteria, audit accessibility and performance,
 and walk the quickstart manually.
 
-- [ ] **T066** [P] Token contract verification: ensure `tokens.test.ts` (T002) covers every token in `contracts/tokens.md`; expand if gaps exist. Run `npm test -- tokens.test.ts` to confirm SC-002.
+- [X] **T066** [P] Token contract verification: ensure `tokens.test.ts` (T002) covers every token in `contracts/tokens.md`; expand if gaps exist. Run `npm test -- tokens.test.ts` to confirm SC-002.
 - [ ] **T067** [P] Manual a11y audit per `quickstart.md`: run axe DevTools against dark and light pages; resolve any contrast or labeling violations to meet WCAG AA (SC-005).
 - [ ] **T068** [P] Theme-flip performance verification: record a flip with Chrome Performance tab; confirm the `data-theme` attribute change to next paint is under 200ms (SC-003).
 - [ ] **T069** [P] Layout-flip performance verification: record a "Chart focus" toggle; confirm completion under 300ms with no scroll-position loss (SC-008).
 - [ ] **T070** [P] Toast latency verification: instrument `fireToast` with `console.time`; confirm `<200ms` to first paint and `<2.5s` to dismiss across 10 triggers (SC-009).
 - [ ] **T071** [P] Skeleton verification: throttle network to Slow 3G; confirm skeletons render within 100ms of route resolution and no CLS during data arrival (SC-011).
 - [ ] **T072** [P] CSV-missing graceful degradation: move a known run's source CSV aside; reload `/runs/<id>`; confirm chart shows `<ErrorCard>` with `source_data_missing`; sibling sections remain interactive (SC-012).
-- [ ] **T073** [P] HelpTooltip preservation audit: run `git grep -l "HelpTooltip" frontend/src/`; manually exercise each one to confirm content unchanged from pre-redesign (SC-004).
-- [ ] **T074** [P] Route preservation smoke test: bookmark three known run URLs before merge; verify they resolve to the same run data after merge (SC-007).
+- [X] **T073** [P] HelpTooltip preservation audit: run `git grep -l "HelpTooltip" frontend/src/`; manually exercise each one to confirm content unchanged from pre-redesign (SC-004).
+- [X] **T074** [P] Route preservation smoke test: bookmark three known run URLs before merge; verify they resolve to the same run data after merge (SC-007).
 - [ ] **T075** Final pass through `quickstart.md`'s Story 1 / Story 2 / Story 3 verification tables; check every box.
-- [ ] **T076** Run the full vitest suite end-to-end: `cd frontend && npm test`. All tests must pass; coverage of new code via `npm run test -- --coverage` should be ≥ existing baseline (SC-006). (T077 deleted per analyze finding I2 — conditional doc task removed.)
+- [X] **T076** Run the full vitest suite end-to-end: `cd frontend && npm test`. All tests must pass; coverage of new code via `npm run test -- --coverage` should be ≥ existing baseline (SC-006). (T077 deleted per analyze finding I2 — conditional doc task removed.)
 
 ---
 

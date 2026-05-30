@@ -53,37 +53,75 @@ export function PresetPicker({
           Presets
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72">
-        <h4 className="font-semibold mb-2">Run a preset config</h4>
+      <PopoverContent
+        className="popover preset-pop"
+        style={{ padding: 0, width: 340 }}
+      >
+        <div className="pop-head">
+          <span className="pop-title">Run a preset config</span>
+          {configs && (
+            <span className="pop-sub">
+              {configs.length === 1
+                ? "1 saved config"
+                : `${configs.length} saved configs`}
+            </span>
+          )}
+        </div>
         {configs == null ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p
+            style={{
+              fontSize: "var(--fs-sm)",
+              color: "var(--text-muted)",
+              padding: "var(--sp-3) var(--sp-5)",
+            }}
+          >
             Loading…
           </p>
         ) : configs.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p
+            style={{
+              fontSize: "var(--fs-sm)",
+              color: "var(--text-muted)",
+              padding: "var(--sp-3) var(--sp-5)",
+            }}
+          >
             No configs found.
           </p>
         ) : (
-          <ul className="space-y-1">
+          <div className="preset-list">
             {configs.map((cfg) => (
-              <li key={cfg.path}>
-                <button
-                  type="button"
-                  onClick={() => handlePick(cfg)}
-                  disabled={busyName !== null}
-                  className="w-full text-left rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-50"
-                >
-                  <div className="font-mono text-sm">{cfg.name}</div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">
-                    {busyName === cfg.name ? "Running…" : cfg.path}
-                  </div>
-                </button>
-              </li>
+              <button
+                key={cfg.path}
+                type="button"
+                className="preset-item"
+                onClick={() => handlePick(cfg)}
+                disabled={busyName !== null}
+                style={busyName !== null ? { opacity: 0.5 } : undefined}
+              >
+                <span className="preset-icon mono">
+                  {cfg.name === "default" ? "★" : "›"}
+                </span>
+                <span style={{ display: "flex", flexDirection: "column" }}>
+                  <span className="preset-name mono">{cfg.name}</span>
+                  <span className="preset-desc">
+                    {busyName === cfg.name ? "Running…" : "Preset configuration"}
+                  </span>
+                </span>
+                <span className="preset-path mono">{cfg.path}</span>
+              </button>
             ))}
-          </ul>
+          </div>
         )}
         {error && (
-          <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+          <p
+            style={{
+              fontSize: "var(--fs-xs)",
+              color: "var(--loss)",
+              padding: "0 var(--sp-5) var(--sp-3)",
+            }}
+          >
+            {error}
+          </p>
         )}
       </PopoverContent>
     </Popover>
