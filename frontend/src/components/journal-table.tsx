@@ -165,6 +165,7 @@ export function JournalTable({
   const visible =
     filter === "all" ? rows : rows.filter((r) => r.status === filter);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [tableOpen, setTableOpen] = useState(true);
   const toggleExpand = (rowSeq: number) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -175,6 +176,42 @@ export function JournalTable({
   return (
     <TooltipProvider delayDuration={150}>
       <section className="card trades-card">
+        <header
+          className="card-head"
+          style={{
+            cursor: "pointer",
+            userSelect: "none",
+            padding: "0 var(--sp-3) var(--sp-3)",
+            marginBottom: 0,
+          }}
+          onClick={() => setTableOpen((v) => !v)}
+        >
+          <h3 className="card-title">
+            <span
+              className={`chevron${tableOpen ? " rot" : ""}`}
+              aria-hidden
+              style={{ marginRight: 4 }}
+            >
+              ›
+            </span>
+            Trades
+            <span className="count-pill mono">{rows.length}</span>
+          </h3>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            aria-expanded={tableOpen}
+            aria-controls="trades-table-body"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTableOpen((v) => !v);
+            }}
+          >
+            {tableOpen ? "Collapse" : "Expand"}
+          </button>
+        </header>
+        {tableOpen && (
+        <div id="trades-table-body">
         {onFilterChange && (
           <div className="filter-tabs" role="tablist" aria-label="Status filter">
             {FILTERS.map((flt) => {
@@ -290,6 +327,8 @@ export function JournalTable({
             </tbody>
           </table>
         </div>
+        </div>
+        )}
       </section>
     </TooltipProvider>
   );

@@ -102,6 +102,11 @@ function buildChartStyles(theme: "light" | "dark") {
     resolveToken("--surface-2") || (theme === "dark" ? "#182030" : "#f6f8fc");
   return {
     grid: { horizontal: { color: grid }, vertical: { color: grid } },
+    // Suppress the pane-separator line — by default KLineCharts draws a
+    // light grey divider between the candle pane and the volume pane that
+    // reads as a stark white line against the design's dark chart-bg.
+    // Tint it to the chart-bg so it disappears.
+    separator: { size: 1, color: resolveToken("--chart-bg") || (theme === "dark" ? "#0c111c" : "#fbfcfe"), fill: false },
     candle: {
       bar: {
         upColor: profit,
@@ -112,6 +117,10 @@ function buildChartStyles(theme: "light" | "dark") {
         downWickColor: loss,
       },
       tooltip: TOOLTIP_OFF,
+      priceMark: {
+        // Faint "last close" horizontal dashed line — keep it subtle.
+        last: { line: { color: textFaint } },
+      },
     },
     indicator: { tooltip: TOOLTIP_OFF },
     crosshair: {
@@ -488,7 +497,7 @@ export function PriceChart({
     chartRef.current = chart;
     chart.setSymbol({ ticker: "SPY", pricePrecision: 2, volumePrecision: 0 });
     chart.setPeriod({ type: "minute", span: 5 });
-    chart.setOffsetRightDistance(12);
+    chart.setOffsetRightDistance(28);
     chart.createIndicator("VOL");
     return () => {
       dispose(container);
@@ -975,12 +984,21 @@ export function PriceChart({
           onClose={() => setSelectedBar(null)}
         />
       )}
-      <div className="relative">
+      <div
+        className="chart-canvas-wrap"
+        style={{
+          position: "relative",
+          padding: "var(--sp-3) var(--sp-2)",
+          background: "var(--chart-bg)",
+          borderRadius: "var(--r-md)",
+          marginTop: "var(--sp-2)",
+        }}
+      >
         <div
           ref={containerRef}
           data-chart-root
           className="w-full"
-          style={{ height: 500 }}
+          style={{ height: 620 }}
         />
         {entryPopover && (
           <EntryRationalePopover

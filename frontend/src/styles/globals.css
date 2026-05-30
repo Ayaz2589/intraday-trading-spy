@@ -234,7 +234,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
-  max-width: 1640px;
+  /* No max-width — content fills the main column on ultra-wide screens. */
 }
 .content.focus .chart-card { order: -1; }
 .content.focus .stat-row { order: 0; }
