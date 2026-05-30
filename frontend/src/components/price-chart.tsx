@@ -98,14 +98,14 @@ function buildChartStyles(
   const grid =
     resolveToken("--grid") ||
     (theme === "dark"
-      ? "rgba(148, 163, 184, 0.08)"
+      ? "rgba(148, 163, 184, 0.12)"
       : "rgba(15, 23, 42, 0.06)");
   const textFaint =
-    resolveToken("--text-faint") || (theme === "dark" ? "#66738c" : "#8a96ab");
+    resolveToken("--text-faint") || (theme === "dark" ? "#8a96ab" : "#8a96ab");
   const border =
     resolveToken("--border") ||
     (theme === "dark"
-      ? "rgba(148, 163, 184, 0.12)"
+      ? "rgba(148, 163, 184, 0.18)"
       : "rgba(15, 23, 42, 0.09)");
   const surface2 =
     resolveToken("--surface-2") || (theme === "dark" ? "#182030" : "#f6f8fc");
@@ -359,6 +359,10 @@ export function PriceChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartCardRef = useRef<HTMLElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  // Tracks whether the chart has been auto-fitted once. First data load
+  // sizes bars to fill the container; subsequent loads (day-tab / run
+  // switch) preserve the user's current zoom.
+  const hasAutoFittedRef = useRef(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { theme } = useTheme();
   const { style: candleStyle, setStyle: setCandleStyle } = useCandleStyle();
@@ -474,7 +478,7 @@ export function PriceChart({
           ? "#14b884"
           : reason === "stop"
             ? "#f04f6a"
-            : "#66738c";
+            : "#8a96ab";
       out.push({ row: r, ts, vwap: vwapAt, entryTimestamp: lastEntryTs, color });
       lastEntryTs = null; // consumed
     }
@@ -610,13 +614,18 @@ export function PriceChart({
     return () => container.removeEventListener("click", onClick);
   }, [bars, entries, exits]);
 
-  // Bars data — refresh whenever the bar set changes. Also size the bars
-  // so they fill the available width (otherwise on ultra-wide screens a
-  // single session of ~78 bars × default 6px leaves the chart half-empty).
+  // Bars data — refresh whenever the bar set changes. On first load,
+  // size the bars to fill the available width (a single session of ~78
+  // bars × default 6px leaves an ultra-wide chart half-empty). On
+  // subsequent loads (day-tab / run switch), preserve both the zoom
+  // (barSpace) and the horizontal scroll position (offsetRightDistance)
+  // so the same intraday window stays in view across days.
   useEffect(() => {
     const chart = chartRef.current;
     const container = containerRef.current;
     if (!chart || !container) return;
+    const previousBarSpace = chart.getBarSpace().bar;
+    const previousOffsetRight = chart.getOffsetRightDistance();
     const klineData: KLineData[] = bars.map((b) => ({
       timestamp: new Date(b.timestamp).getTime(),
       open: b.open,
@@ -629,10 +638,16 @@ export function PriceChart({
       getBars: ({ callback }) => callback(klineData, false),
     });
     if (bars.length > 0) {
-      // 70px reserves room for the y-axis labels on the right.
-      const available = container.clientWidth - 70;
-      const fitted = Math.max(4, Math.min(30, available / bars.length));
-      chart.setBarSpace(fitted);
+      if (!hasAutoFittedRef.current) {
+        // 70px reserves room for the y-axis labels on the right.
+        const available = container.clientWidth - 70;
+        const fitted = Math.max(4, Math.min(30, available / bars.length));
+        chart.setBarSpace(fitted);
+        hasAutoFittedRef.current = true;
+      } else {
+        chart.setBarSpace(previousBarSpace);
+        chart.setOffsetRightDistance(previousOffsetRight);
+      }
     }
   }, [bars]);
 
@@ -641,18 +656,21 @@ export function PriceChart({
     chartRef.current?.setStyles(buildChartStyles(theme, candleStyle));
   }, [theme, candleStyle]);
 
-  // Refit bar width when the container resizes (e.g. window resize,
-  // sidebar toggled, ultra-wide breakpoint changes layout, fullscreen
-  // entered/exited).
+  // Refit bar width only for the very first container measurement (the
+  // initial render before bars have laid out). After the chart has been
+  // auto-fitted once, the user's zoom is the source of truth — window
+  // resizes, sidebar toggles, fullscreen, and run/session switches all
+  // preserve it. KLineCharts handles canvas resize internally.
   useEffect(() => {
     const container = containerRef.current;
     const chart = chartRef.current;
     if (!container || !chart) return;
     const observer = new ResizeObserver(() => {
-      if (!bars.length) return;
+      if (hasAutoFittedRef.current || !bars.length) return;
       const available = container.clientWidth - 70;
       const fitted = Math.max(4, Math.min(30, available / bars.length));
       chart.setBarSpace(fitted);
+      hasAutoFittedRef.current = true;
     });
     observer.observe(container);
     return () => observer.disconnect();

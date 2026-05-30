@@ -6,7 +6,7 @@ import type { ChartMarker } from "./price-chart";
 const EXIT_COLOR: Record<NonNullable<JournalRowView["exit_reason"]>, string> = {
   target: "#14b884", // --profit (dark)
   stop: "#f04f6a", // --loss (dark)
-  force_flat: "#66738c", // --text-faint (dark) — neutral
+  force_flat: "#8a96ab", // --text-faint (dark) — neutral
 };
 
 const EXIT_LABEL: Record<NonNullable<JournalRowView["exit_reason"]>, string> = {
@@ -65,7 +65,7 @@ export function buildMarkers(
       markers.push({
         time: r.timestamp,
         position: "aboveBar",
-        color: "#66738c", // --text-faint
+        color: "#8a96ab", // --text-faint
         shape: "square",
         text: "Rejected",
       });

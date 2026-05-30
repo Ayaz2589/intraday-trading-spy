@@ -91,7 +91,7 @@ describe("buildMarkers", () => {
       },
     ];
     const markers = buildMarkers(rows, { showRejections: false });
-    expect(markers[0].color).toBe("#66738c");
+    expect(markers[0].color).toBe("#8a96ab");
     expect(markers[0].text).toMatch(/^Force Flat /);
   });
 

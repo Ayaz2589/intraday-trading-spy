@@ -50,14 +50,14 @@ and the live computed style is a bug.
 | `--surface-2` | `#182030` | Trow-open bg, segmented control bg, chip-tick bg, knob-field bg, toast bg |
 | `--surface-3` | `#1f293c` | Meter track bg, info-dot soft border, badge-faint bg |
 | `--surface-hover` | `rgba(255, 255, 255, 0.04)` | Hover state on icon buttons, run-items |
-| `--border` | `rgba(148, 163, 184, 0.12)` | All standard borders, divider lines |
-| `--border-strong` | `rgba(148, 163, 184, 0.22)` | Card-internal dividers, dt-row dashes |
+| `--border` | `rgba(148, 163, 184, 0.18)` | All standard borders, divider lines |
+| `--border-strong` | `rgba(148, 163, 184, 0.32)` | Card-internal dividers, dt-row dashes |
 | `--border-accent` | `rgba(37, 99, 235, 0.5)` | Focus rings, run-on border, day-tab active border |
 | `--text` | `#eef2f8` | Body text, headings |
-| `--text-muted` | `#9aa7bd` | Secondary text, knob labels, table cell secondary |
-| `--text-faint` | `#66738c` | Overline labels, axis ticks, footer hint, info-dot fg |
+| `--text-muted` | `#b4c0d4` | Secondary text, knob labels, table cell secondary |
+| `--text-faint` | `#8a96ab` | Overline labels, axis ticks, footer hint, info-dot fg |
 | `--text-inverse` | `#0a0d15` | Reserved for use on accent-soft hover states (rare) |
-| `--grid` | `rgba(148, 163, 184, 0.08)` | Chart grid lines |
+| `--grid` | `rgba(148, 163, 184, 0.12)` | Chart grid lines |
 | `--shadow-sm` | `0 1px 2px rgba(0, 0, 0, 0.4)` | Card resting shadow |
 | `--shadow-md` | `0 8px 24px -8px rgba(0, 0, 0, 0.55)` | Hover-lifted cards |
 | `--shadow-lg` | `0 24px 60px -16px rgba(0, 0, 0, 0.7)` | Toast |

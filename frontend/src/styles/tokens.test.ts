@@ -111,15 +111,15 @@ describe("design tokens (contract from specs/004/contracts/tokens.md)", () => {
     });
 
     it("borders", () => {
-      expect(darkValue("border")).toBe("rgba(148, 163, 184, 0.12)");
-      expect(darkValue("border-strong")).toBe("rgba(148, 163, 184, 0.22)");
+      expect(darkValue("border")).toBe("rgba(148, 163, 184, 0.18)");
+      expect(darkValue("border-strong")).toBe("rgba(148, 163, 184, 0.32)");
       expect(darkValue("border-accent")).toBe("rgba(37, 99, 235, 0.5)");
     });
 
     it("text colors", () => {
       expect(darkValue("text")).toBe("#eef2f8");
-      expect(darkValue("text-muted")).toBe("#9aa7bd");
-      expect(darkValue("text-faint")).toBe("#66738c");
+      expect(darkValue("text-muted")).toBe("#b4c0d4");
+      expect(darkValue("text-faint")).toBe("#8a96ab");
     });
 
     it("P&L semantic colors (cascade from :root since dark is primary)", () => {
@@ -133,7 +133,7 @@ describe("design tokens (contract from specs/004/contracts/tokens.md)", () => {
     });
 
     it("grid", () => {
-      expect(darkValue("grid")).toBe("rgba(148, 163, 184, 0.08)");
+      expect(darkValue("grid")).toBe("rgba(148, 163, 184, 0.12)");
     });
   });
 

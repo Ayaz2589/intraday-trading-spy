@@ -64,7 +64,7 @@ export function createRejectionClusterOverlays(
       styles: {
         text: {
           color: "#ffffff",
-          backgroundColor: "rgba(102, 115, 140, 0.85)", // ~--text-faint
+          backgroundColor: "rgba(138, 150, 171, 0.85)", // ~--text-faint
           size: 10,
           paddingLeft: 5,
           paddingRight: 5,
