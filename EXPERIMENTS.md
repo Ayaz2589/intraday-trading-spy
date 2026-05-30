@@ -555,6 +555,88 @@ result we've recorded.
 
 ---
 
+## Experiment 006 — 2026-05-30 — Doubling the position cap unblocks the bottleneck
+
+### Hypothesis
+
+Raising `max_position_value_pct` from 100 → 200 will unlock most of the
+99 `position_value_exceeds_cap` rejections from the baseline. Trade
+count should jump significantly; profitability should improve because
+the cap was blocking trades indiscriminately rather than filtering for
+quality. Companion test to Experiment 003 (which tackled the same
+bottleneck from the other side — lowering risk-per-trade).
+
+### Knobs changed
+
+| Field | Baseline | Experiment |
+|---|---|---|
+| `risk.max_position_value_pct` | 100.0 | **200.0** |
+
+All other knobs identical: account $25,000, `max_risk_per_trade_pct`
+0.1%, `max_consecutive_losses` 2, OR 15 min, R:R 2.0, stop buffer
+0.05%, `max_distance_from_vwap_pct` 0.25%, all market/session times
+unchanged.
+
+### Run IDs
+
+- **Baseline**: `20260530-151016-7697908e`
+- **Experiment**: `20260530-160053-7697908e`
+
+Both ran against `data/raw/spy_5m_sample.csv` (fingerprint `7697908e`).
+Same `code_version: fa20a62812aa0b74c89d3334768c226eca30b712`.
+
+### Outcome
+
+| Metric | Baseline | Experiment | Δ |
+|---|---|---|---|
+| Total trades | 3 | 7 | +4 |
+| Wins / Losses | 1 / 2 | 2 / 2 | +1W, ±0L |
+| Force-flats (neither W nor L) | 0 | 3 | +3 |
+| Win rate | 33.3% | 28.6% | −4.7pp |
+| Total R | 0.000 | +5.203 | +5.203 |
+| Average R | 0.000 | +0.743 | +0.743 |
+| Best trade R | +2.0 | +2.0 | — |
+| Worst trade R | −1.0 | −1.0 | — |
+| Profit factor | 1.00 | 2.00 | +1.00 |
+| Max drawdown | −2.0R | −2.0R | — |
+| Rejected signals | 117 | 3 | −114 |
+| └ `position_value_exceeds_cap` | 99 | 0 | −99 |
+| └ `no_new_trades_after` | 18 | 2 | −16 |
+| └ `max_trades_per_day_reached` | 0 | 1 | +1 |
+
+### Lesson
+
+Confirmed. Cap rejections 99 → 0; trades 3 → 7; total R 0.0 → +5.2.
+The baseline's `total_r: 0` was a cap artifact, not a strategy
+property — the cap was filtering signals randomly with respect to
+outcome, not selectively keeping winners. Win rate dipped (33% →
+29%) but profit factor doubled (1.0 → 2.0) because absolute winners
+went 1 → 2, and at 2R:1R that pays for several losses.
+
+Three notable observations:
+
+1. **Trade count saturated at 7, not 99.** Once cap is unblocked,
+   other gates take over: `max_trades_per_day: 3` (× 3 days = 9
+   ceiling) and `no_new_trades_after: 15:30` together kept the
+   number to 7. Future runs may want to test relaxing the daily
+   cap on longer windows.
+2. **Force-flats jumped 0 → 3.** With more entries firing later in
+   the morning, more trades run out of session before reaching
+   target. Worth monitoring — if >50% of outcomes go force-flat,
+   the holding period is misaligned with the no-new-trades cutoff.
+3. **n=7 is not statistical.** The +5.2R could be one favourable
+   week. Next test: same `cap=200` config on the 21-session window
+   (`spy_5m_2026-04-29_2026-05-28.csv`) to see if average R holds
+   at ~0.7 or regresses.
+
+Cross-reference: Experiment 003 unlocked the same bottleneck by
+lowering `max_risk_per_trade_pct` instead. Worth comparing the two
+approaches side-by-side on a longer window — they have different
+P&L scaling properties (Exp 003 reduces dollar risk per trade; this
+one keeps it constant but adds notional exposure).
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical
