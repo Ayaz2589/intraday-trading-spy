@@ -224,6 +224,11 @@ body {
   overflow: hidden;
   background: var(--bg-app);
 }
+/* Manual sidebar collapse — hide the rail entirely; main fills the
+   viewport. Mirrors the ≤860px responsive collapse but driven by user
+   toggle. */
+.app.app-sidebar-collapsed { grid-template-columns: 1fr; }
+.app.app-sidebar-collapsed .sidebar { display: none; }
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .main-scroll {
   flex: 1;
@@ -509,10 +514,23 @@ body {
 .stat-row {
   display: grid;
   grid-template-columns: 1.25fr 1.5fr 1fr;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
   align-items: stretch;
 }
 .content.focus .stat-row { grid-template-columns: 1fr 1fr 1fr; }
+
+/* Density override: the three top cards (Strategy & Risk Config, Summary,
+   Rejections) sit above the chart and should stay compact so the chart
+   gets the vertical real estate. The base .card padding + font scale is
+   tuned for hero cards (chart, trades) — overscale here. */
+.stat-row .card { padding: var(--sp-3) var(--sp-4); }
+.stat-row .card-head { margin-bottom: var(--sp-3); }
+.stat-row .summary-grid { gap: var(--sp-3) var(--sp-3); }
+.stat-row .config-grid { gap: var(--sp-2) var(--sp-3); }
+.stat-row .stat-big { font-size: var(--fs-md); }
+.stat-row .config-val { font-size: var(--fs-xs); }
+.stat-row .win-meter { height: 5px; }
+.stat-row .rej-list { gap: var(--sp-2); }
 
 /* Chips */
 .chip {
@@ -656,27 +674,26 @@ body {
 }
 .day-tabs { display: flex; gap: 6px; }
 .day-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: inherit;
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: var(--r-md);
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--border);
   background: var(--surface-2);
   transition: all var(--speed) var(--ease);
 }
 .day-tab:hover { border-color: var(--border-strong); }
 .day-dow {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
   color: var(--text-faint);
 }
-.day-date { font-size: var(--fs-sm); font-weight: 600; color: var(--text-muted); }
+.day-date { font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
 .day-on { background: var(--accent-soft); border-color: var(--border-accent); }
 .day-on .day-dow { color: var(--accent); }
 .day-on .day-date { color: var(--accent); }

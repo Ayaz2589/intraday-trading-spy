@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { RunSummaryView } from "@/api/types";
+import { formatRunTitle, runIdHash } from "@/lib/format";
 
 // RunsSidebar — restyled per the design handoff's .sidebar block.
 // Spec ref: specs/004-design-system-adoption/spec.md FR-009, FR-015, FR-020.
@@ -80,10 +81,8 @@ export function RunsSidebar({
               className={isActive ? "run-item run-on" : "run-item"}
               style={{ textDecoration: "none" }}
             >
-              <span className="run-id mono">{r.run_id}</span>
-              <span className="run-time">
-                {new Date(r.started_at).toLocaleString()}
-              </span>
+              <span className="run-id">{formatRunTitle(r.started_at)}</span>
+              <span className="run-time mono">{runIdHash(r.run_id)}</span>
               <span className="run-meta">
                 <span
                   className={`badge badge-xs ${

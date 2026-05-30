@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/skeleton";
 import { ErrorCard } from "@/components/error-card";
 import { RunsSidebar } from "@/components/runs-sidebar";
 import { useLayoutMode } from "@/lib/layout-mode";
+import { useSidebarMode } from "@/lib/sidebar-mode";
 import { RunHeader } from "@/components/run-header";
 import { SummaryMetricsCard } from "@/components/summary-metrics-card";
 import { StrategyConfigCard } from "@/components/strategy-config-card";
@@ -105,6 +106,8 @@ export function RunViewer() {
   const [showRejections, setShowRejections] = useState(false);
   const [filter, setFilter] = useState<JournalFilter>("all");
   const { layout, setLayout } = useLayoutMode();
+  const { mode: sidebarMode, toggle: toggleSidebar } = useSidebarMode();
+  const sidebarCollapsed = sidebarMode === "collapsed";
 
   const refreshRuns = useCallback(() => {
     fetchRuns().then(setRuns).catch(() => {});
@@ -281,6 +284,7 @@ export function RunViewer() {
   return (
     <AppShell
       sidebar={<RunsSidebar runs={runs} selectedRunId={run_id ?? null} />}
+      sidebarCollapsed={sidebarCollapsed}
       topbar={
         <Topbar
           currentRunId={run_id ?? null}
@@ -288,6 +292,8 @@ export function RunViewer() {
           onCleared={onCleared}
           layout={layout}
           onLayoutChange={setLayout}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={toggleSidebar}
         />
       }
     >

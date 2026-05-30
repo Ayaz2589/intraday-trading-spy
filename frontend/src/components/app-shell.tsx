@@ -4,6 +4,7 @@ interface AppShellProps {
   sidebar: ReactNode;
   topbar: ReactNode;
   children: ReactNode;
+  sidebarCollapsed?: boolean;
 }
 
 // AppShell — CSS-grid page chrome per the design handoff.
@@ -14,9 +15,17 @@ interface AppShellProps {
 // Responsive collapse is handled in globals.css:
 //  - ≤1180px: stat-row falls back to 2 columns (Rejections spans both)
 //  - ≤860px: sidebar hidden, single-column layout
-export function AppShell({ sidebar, topbar, children }: AppShellProps) {
+//
+// Manual collapse via `sidebarCollapsed` toggles a single class that
+// hides the sidebar and reflows main to fill the viewport.
+export function AppShell({
+  sidebar,
+  topbar,
+  children,
+  sidebarCollapsed = false,
+}: AppShellProps) {
   return (
-    <div className="app">
+    <div className={sidebarCollapsed ? "app app-sidebar-collapsed" : "app"}>
       <aside className="sidebar" role="complementary">
         {sidebar}
       </aside>

@@ -10,7 +10,7 @@ const manifest: RunManifestView = {
   code_version: "deadbeef",
   config_snapshot: {},
   data_fingerprint: {
-    sha256: "7697908eabcdef0123456789",
+    sha256: "ab12cd34ef560000123456789",
     bar_count: 234,
     earliest_timestamp: "x",
     latest_timestamp: "y",
@@ -20,11 +20,19 @@ const manifest: RunManifestView = {
 };
 
 describe("RunHeader", () => {
-  it("renders run id as an h1 with mono font (FR-004)", () => {
+  it("renders a human-readable run title as the h1", () => {
     render(<RunHeader manifest={manifest} />);
     const h1 = screen.getByRole("heading", { level: 1 });
-    expect(h1).toHaveTextContent("20260528-220714-7697908e");
-    expect(h1.className).toContain("mono");
+    // The exact wording depends on relative-to-today formatting, but the
+    // raw run_id should never appear in the title.
+    expect(h1.textContent).not.toContain("20260528-220714-7697908e");
+    expect(h1.textContent ?? "").toMatch(/[A-Za-z]/);
+  });
+
+  it("renders the short run-id hash as a Run code", () => {
+    render(<RunHeader manifest={manifest} />);
+    expect(screen.getByText("Run")).toBeInTheDocument();
+    expect(screen.getByText("7697908e")).toBeInTheDocument();
   });
 
   it("renders Started / Code / Data overline labels (FR-001)", () => {
@@ -37,7 +45,7 @@ describe("RunHeader", () => {
   it("renders code_version and sha256[:8]", () => {
     render(<RunHeader manifest={manifest} />);
     expect(screen.getByText(/deadbeef/)).toBeInTheDocument();
-    expect(screen.getByText("7697908e")).toBeInTheDocument();
+    expect(screen.getByText("ab12cd34")).toBeInTheDocument();
   });
 
   it("renders the 'complete' status badge", () => {

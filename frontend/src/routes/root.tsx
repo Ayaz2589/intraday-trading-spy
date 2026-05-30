@@ -4,11 +4,14 @@ import { fetchRuns } from "@/api/client";
 import { AppShell } from "@/components/app-shell";
 import { Topbar } from "@/components/topbar";
 import { RunsSidebar } from "@/components/runs-sidebar";
+import { useSidebarMode } from "@/lib/sidebar-mode";
 import type { RunSummaryView } from "@/api/types";
 
 export function Root() {
   const navigate = useNavigate();
   const [runs, setRuns] = useState<RunSummaryView[] | null>(null);
+  const { mode: sidebarMode, toggle: toggleSidebar } = useSidebarMode();
+  const collapsed = sidebarMode === "collapsed";
   useEffect(() => {
     const ctrl = new AbortController();
     fetchRuns({ signal: ctrl.signal })
@@ -22,11 +25,14 @@ export function Root() {
     return (
       <AppShell
         sidebar={<RunsSidebar runs={[]} selectedRunId={null} />}
+        sidebarCollapsed={collapsed}
         topbar={
           <Topbar
             currentRunId={null}
             onRunChange={(id) => navigate(`/runs/${id}`)}
             onCleared={() => setRuns([])}
+            sidebarCollapsed={collapsed}
+            onToggleSidebar={toggleSidebar}
           />
         }
       >

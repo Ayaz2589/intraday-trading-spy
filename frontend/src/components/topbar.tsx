@@ -17,6 +17,8 @@ interface TopbarProps {
   onCleared?: () => void;
   layout?: LayoutMode;
   onLayoutChange?: (next: LayoutMode) => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 // Topbar — sticky page chrome per design handoff.
@@ -27,10 +29,24 @@ export function Topbar({
   onCleared,
   layout,
   onLayoutChange,
+  sidebarCollapsed,
+  onToggleSidebar,
 }: TopbarProps) {
   return (
     <header className="topbar topbar-blur">
       <div className="brand">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={onToggleSidebar}
+            aria-label={sidebarCollapsed ? "Show runs sidebar" : "Hide runs sidebar"}
+            aria-pressed={sidebarCollapsed ? "true" : "false"}
+            title={sidebarCollapsed ? "Show runs sidebar" : "Hide runs sidebar"}
+          >
+            {sidebarCollapsed ? "›" : "‹"}
+          </button>
+        )}
         <span className="brand-mark" aria-hidden>
           ◑
         </span>
