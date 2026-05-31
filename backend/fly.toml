@@ -1,0 +1,34 @@
+# fly.toml — Feature 008 deploys this image to Fly.io.
+# Feature 006 ships the file; Feature 008 wires it up + sets secrets.
+# See specs/006-fastapi-service-expansion/quickstart.md §11.
+
+app = "intraday-trade-spy"   # NOTE: Feature 008 will pin this to the chosen Fly app name
+primary_region = "iad"        # us-east-1 — close to typical Supabase regions
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+# Public env vars only. Secrets (SUPABASE_SERVICE_ROLE_KEY, etc.) are set via
+# `flyctl secrets set` and never live in this file or in source control.
+PYTHONUNBUFFERED = "1"
+
+[http_service]
+internal_port = 8000
+force_https = true
+auto_stop_machines = true
+auto_start_machines = true
+min_machines_running = 0
+processes = ["app"]
+
+[[http_service.checks]]
+grace_period = "10s"
+interval = "15s"
+method = "GET"
+timeout = "5s"
+path = "/healthz"
+
+[[vm]]
+cpu_kind = "shared"
+cpus = 1
+memory_mb = 512

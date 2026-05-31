@@ -1,11 +1,42 @@
 import socket
+import time
 from pathlib import Path
+from uuid import UUID
 
+import jwt
 import numpy as np
 import pandas as pd
 import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture()
+def hs256_secret() -> str:
+    """Shared auth fixture (Feature 006). Secret long enough for HS256."""
+    return "test-jwt-secret-with-at-least-32-characters-for-hs256"
+
+
+@pytest.fixture()
+def make_token(hs256_secret):
+    """Shared auth fixture (Feature 006). Returns a token-minting helper."""
+    def _make(
+        user_id: UUID,
+        *,
+        aud: str = "authenticated",
+        exp_delta_seconds: int = 3600,
+        secret: str | None = None,
+    ) -> str:
+        payload = {
+            "aud": aud,
+            "sub": str(user_id),
+            "iat": int(time.time()),
+            "exp": int(time.time()) + exp_delta_seconds,
+            "role": "authenticated",
+        }
+        return jwt.encode(payload, secret or hs256_secret, algorithm="HS256")
+
+    return _make
 
 
 @pytest.fixture

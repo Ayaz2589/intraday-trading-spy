@@ -64,3 +64,32 @@ cloud:
   # Seconds budget for the full push_run RPC. Aligns with SC-007 (10k signals
   # in <60s).
   push_timeout_s: 60
+
+# HTTP API (Feature 006). Used by the FastAPI app.
+api:
+  # Per-user cap on concurrent in-flight backtest runs.
+  max_concurrent_runs_per_user: 5
+  # Startup sweep transitions running rows older than this to failed.
+  polling_status_max_age_minutes: 15
+  # /healthz DB-reachability timeout.
+  health_check_timeout_s: 5.0
+  # CORS origins for development. Production overrides via the CORS_ALLOW_ORIGINS
+  # env var (comma-separated). CORS_ALLOW_ORIGIN_REGEX matches Vercel previews.
+  cors_allow_origins:
+    - http://localhost:5173
+    - http://localhost:5174
+  cors_allow_methods: [GET, POST, DELETE, OPTIONS]
+  cors_allow_headers: [Authorization, Content-Type]
+  # Data-download endpoint configuration (Feature 006, clarification Q3).
+  data_download:
+    retry_attempts: 3
+    retry_backoff_seconds: [1, 2, 4]
+    max_concurrent_per_user: 3
+
+# Data-retention policy (Feature 006, clarification Q5).
+# DECLARED here; not enforced in this feature. Future feature or pg_cron job
+# implements the actual pruning.
+retention:
+  failed_runs_days: 90
+  audit_events_days: 30
+  failed_downloads_days: 30

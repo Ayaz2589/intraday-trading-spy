@@ -30,6 +30,43 @@ class OutputExistsError(Exception):
     pass
 
 
+def _is_transient_error(exc: BaseException) -> bool:
+    """Classify an exception as transient (retry) vs non-transient (fail fast).
+
+    Used by the Feature 006 /api/data/download endpoint's retry loop
+    (clarification 2026-05-30 / Q3).
+
+    Transient:
+      - Network errors (ConnectionError, socket / DNS / timeout)
+      - HTTP 5xx / 429 from upstream
+
+    Non-transient:
+      - Validation errors (ValueError on dates, ranges)
+      - "No data" empty results (NoBarsFetchedError)
+      - Anything else
+    """
+    if isinstance(exc, (OutputExistsError, NoBarsFetchedError, ValueError, TypeError)):
+        return False
+
+    # httpx errors
+    try:
+        import httpx
+
+        if isinstance(exc, (httpx.TransportError, httpx.TimeoutException)):
+            return True
+        if isinstance(exc, httpx.HTTPStatusError):
+            status = exc.response.status_code
+            return status == 429 or 500 <= status < 600
+    except ImportError:
+        pass
+
+    # Connection / socket errors at the stdlib level
+    if isinstance(exc, (ConnectionError, OSError)):
+        return True
+
+    return False
+
+
 class NoBarsFetchedError(Exception):
     pass
 

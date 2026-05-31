@@ -40,9 +40,9 @@ KEEP ?= 5
 PUSH ?=
 PUSH_FLAG := $(if $(PUSH),--push-to-supabase,)
 
-.PHONY: help install test test-slow test-integration backtest backtest-real demo download \
+.PHONY: help install test test-slow test-integration test-api-integration backtest backtest-real demo download \
         download-clean lint clean-runs prune-runs venv \
-        ui-install ui-dev ui-build ui-server
+        ui-install ui-dev ui-build ui-server api-dev
 
 help: ## Show this help
 	@echo "intraday-trade-spy task runner"
@@ -131,5 +131,12 @@ ui-dev: ## Start the Vite dev server (http://localhost:5173)
 ui-build: ## Production build → frontend/dist/
 	cd frontend && npm run build
 
-ui-server: ## Start the FastAPI static server (override PORT=9000)
+ui-server: ## Start the FastAPI static server (Feature 003; override PORT=9000)
 	cd backend && .venv/bin/intraday-trade-spy-server --port $(PORT)
+
+api-dev: ## Start the Feature 006 HTTP API on localhost:8001 (sources .env)
+	cd backend && set -a; source .env; set +a; \
+	  .venv/bin/uvicorn intraday_trade_spy.api.app:app --host 127.0.0.1 --port 8001 --reload
+
+test-api-integration: ## Run Feature 006 API integration tests (Docker + Supabase CLI + SUPABASE_INTEGRATION=1)
+	cd backend && SUPABASE_INTEGRATION=1 .venv/bin/pytest -q -m integration tests/api/integration/

@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/005-supabase-data-layer/plan.md](specs/005-supabase-data-layer/plan.md)
+**Active plan**: [specs/006-fastapi-service-expansion/plan.md](specs/006-fastapi-service-expansion/plan.md)
 
-**Active spec**: [specs/005-supabase-data-layer/spec.md](specs/005-supabase-data-layer/spec.md)
+**Active spec**: [specs/006-fastapi-service-expansion/spec.md](specs/006-fastapi-service-expansion/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -12,6 +12,7 @@
 - [specs/002-historical-spy-yfinance-loader/plan.md](specs/002-historical-spy-yfinance-loader/plan.md) — implemented
 - [specs/003-backtest-viewer-ui/plan.md](specs/003-backtest-viewer-ui/plan.md) — implemented
 - [specs/004-design-system-adoption/plan.md](specs/004-design-system-adoption/plan.md) — implemented
+- [specs/005-supabase-data-layer/plan.md](specs/005-supabase-data-layer/plan.md) — implemented (MVP scope shipped; US2/US3/Polish deferred)
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,

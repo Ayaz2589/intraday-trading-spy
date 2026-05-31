@@ -1,0 +1,195 @@
+"""Pydantic API request/response schemas (Feature 006).
+
+Distinct from `intraday_trade_spy.storage.models` (the DB-row models). API
+schemas may omit internal fields and rename for clarity. They enforce
+constitutional invariants at the boundary (no `symbol`, no `live_auto_enabled`,
+no `direction` etc. accepted from clients).
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Literal, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class _Base(BaseModel):
+    """Strict by default — used for REQUEST bodies. Response views relax this."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class _ResponseBase(BaseModel):
+    """Response views ignore extra DB columns so internal projections don't
+    need to be manually pruned. Clients only see the declared fields."""
+
+    model_config = ConfigDict(extra="ignore")
+
+
+# ---------- Request bodies ----------
+
+
+class StartBacktestRequest(_Base):
+    config_name: str = Field(min_length=1, max_length=200)
+    data_csv_path: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_forbidden_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+        forbidden = {"symbol", "direction", "live_auto_enabled", "kind"}
+        intersect = forbidden & data.keys()
+        if intersect:
+            raise ValueError(
+                f"forbidden fields not accepted from clients (constitution I/II/V): {sorted(intersect)}"
+            )
+        return data
+
+
+class StartDataDownloadRequest(_Base):
+    start_date: date
+    end_date: date
+
+    @model_validator(mode="after")
+    def _range_valid(self) -> "StartDataDownloadRequest":
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must be >= start_date")
+        if (self.end_date - self.start_date).days > 60:
+            raise ValueError("date range may not exceed 60 days")
+        return self
+
+
+# ---------- Response bodies ----------
+
+
+class StartBacktestResponse(_ResponseBase):
+    run_id: UUID
+    status: Literal["queued"]
+
+
+class StartDataDownloadResponse(_ResponseBase):
+    job_id: UUID
+    status: Literal["queued"]
+
+
+RunStatusLiteral = Literal["queued", "running", "finished", "failed"]
+
+
+class RunSummaryView(_ResponseBase):
+    pnl: Decimal
+    win_rate: float
+    sharpe: float
+    max_drawdown: Decimal
+    total_trades: int
+    total_signals: int
+    rejected_signals: int
+
+
+class RunView(_ResponseBase):
+    id: UUID
+    started_at: datetime
+    finished_at: datetime
+    status: RunStatusLiteral
+    range_start: date
+    range_end: date
+    bar_count: int
+    summary: RunSummaryView
+    data_fingerprint: str
+    app_version: str
+
+
+class RunListResponse(_ResponseBase):
+    runs: list[RunView]
+    next_cursor: Optional[str] = None
+
+
+class RunStatusResponse(_ResponseBase):
+    status: RunStatusLiteral
+    status_updated_at: datetime
+    failure_reason: Optional[str] = None
+
+
+class TradeView(_ResponseBase):
+    id: UUID
+    direction: Literal["LONG"]
+    quantity: Decimal
+    entry_at: datetime
+    entry_price: Decimal
+    stop_price: Decimal
+    target_price: Decimal
+    exit_at: datetime
+    exit_price: Decimal
+    exit_reason: str
+    pnl: Decimal
+    r_multiple: Decimal
+
+
+class TradeListResponse(_ResponseBase):
+    trades: list[TradeView]
+    next_cursor: Optional[str] = None
+
+
+class SignalView(_ResponseBase):
+    id: UUID
+    emitted_at: datetime
+    direction: Literal["LONG"]
+    entry_price: Decimal
+    stop_price: Optional[Decimal] = None
+    target_price: Optional[Decimal] = None
+    executed: bool
+    rejection_reason: Optional[str] = None
+    trade_id: Optional[UUID] = None
+    indicator_context: dict
+    reason_text: str
+
+
+class SignalListResponse(_ResponseBase):
+    signals: list[SignalView]
+    next_cursor: Optional[str] = None
+
+
+class JournalEventView(_ResponseBase):
+    id: UUID
+    occurred_at: datetime
+    kind: str
+    severity: Literal["info", "warning", "error"]
+    message: str
+    details: dict = Field(default_factory=dict)
+
+
+class JournalListResponse(_ResponseBase):
+    events: list[JournalEventView]
+    next_cursor: Optional[str] = None
+
+
+class StrategyView(_ResponseBase):
+    key: str
+    display_name: str
+    description: str
+    symbol: Literal["SPY"]
+    direction: Literal["LONG"]
+    kind: Literal["rule_based"]
+    enabled: bool
+
+
+class StrategyListResponse(_ResponseBase):
+    strategies: list[StrategyView]
+
+
+class DataDownloadJobView(_ResponseBase):
+    id: UUID
+    start_date: date
+    end_date: date
+    status: RunStatusLiteral
+    storage_path: Optional[str] = None
+    status_updated_at: datetime
+    failure_reason: Optional[str] = None
+
+
+class HealthResponse(_ResponseBase):
+    status: Literal["ok"]
+    db: Literal["ok", "unreachable"]

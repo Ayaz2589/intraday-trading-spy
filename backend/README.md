@@ -88,3 +88,38 @@ make test-integration
 ```
 
 Without the flag, the CLI's existing local-only behavior is unchanged.
+
+## HTTP API (Feature 006)
+
+The FastAPI app is the network-facing entry point for the backtest engine —
+the path Feature 007's frontend and Feature 008's deployment use. Full
+runbook at
+[`../specs/006-fastapi-service-expansion/quickstart.md`](../specs/006-fastapi-service-expansion/quickstart.md).
+
+Quick reference:
+
+```bash
+# One-time: apply Feature 006's schema migrations
+supabase db push    # adds runs.status, push_run_finalize RPC, data_download_jobs
+
+# Start the dev server
+make api-dev        # uvicorn on http://127.0.0.1:8000
+
+# Run the API integration tests (requires Docker + Supabase CLI)
+make test-api-integration
+
+# Build the production Docker image
+docker build -t intraday-trade-spy:dev .
+docker run --rm -p 8000:8000 --env-file .env intraday-trade-spy:dev
+```
+
+Endpoints exposed (under `/api/*`, all require a Supabase-issued JWT in
+`Authorization: Bearer …`):
+
+- `POST /api/backtests` — start a backtest, returns `run_id` immediately
+- `GET /api/runs[/{id}[/status|/trades|/signals|/journal]]` — list/inspect runs
+- `POST /api/data/download` + `GET /api/data/downloads/{id}` — async yfinance fetch
+- `GET /api/strategies` — registry of available strategies
+
+Plus `GET /healthz` (unauthenticated) for deployment-platform liveness probes
+and `/legacy/*` for backward compatibility with Feature 003's frontend.

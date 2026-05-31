@@ -38,6 +38,8 @@ make backtest CONFIG=config/presets/aggressive.yaml        # backtest a preset c
 make ui-install                                 # one-time: npm install in frontend/
 make ui-server                                  # Terminal A: FastAPI on :8000 (PORT=9000 to change)
 make ui-dev                                     # Terminal B: Vite dev on :5173
+make api-dev                                    # Feature 006: authenticated HTTP API on :8001
+make test-api-integration                       # Feature 006: integration tests (needs Docker + Supabase CLI)
 ```
 
 For the viewer, open http://localhost:5173/ — it lands on the most
