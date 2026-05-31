@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { ThemeToggle } from './theme-toggle'
 import { ConnectionStatus } from './connection-status'
 import { SignOutMenu } from './auth/SignOutMenu'
@@ -30,29 +29,6 @@ export function AuthenticatedTopbar({ strategyLabel, configLabel }: Props) {
           </span>
         ) : null}
       </div>
-      <nav style={{ display: 'flex', gap: 16, alignItems: 'center' }} aria-label="Primary">
-        <Link
-          to="/runs"
-          className="text-sm"
-          activeProps={{ style: { fontWeight: 600 } }}
-        >
-          Runs
-        </Link>
-        <Link
-          to="/strategies"
-          className="text-sm"
-          activeProps={{ style: { fontWeight: 600 } }}
-        >
-          Strategies
-        </Link>
-        <Link
-          to="/data"
-          className="text-sm"
-          activeProps={{ style: { fontWeight: 600 } }}
-        >
-          Data
-        </Link>
-      </nav>
       <div className="tb-actions">
         <ConnectionStatus />
         <span className="tb-div" />

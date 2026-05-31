@@ -80,13 +80,15 @@ RunStatusLiteral = Literal["queued", "running", "finished", "failed"]
 
 
 class RunSummaryView(_ResponseBase):
-    pnl: Decimal
-    win_rate: float
-    sharpe: float
-    max_drawdown: Decimal
-    total_trades: int
-    total_signals: int
-    rejected_signals: int
+    # Defaults handle legacy rows from Feature 005/006 testing that were
+    # finalized with summary = {} before the full schema was wired up.
+    pnl: Decimal = Decimal("0")
+    win_rate: float = 0.0
+    sharpe: float = 0.0
+    max_drawdown: Decimal = Decimal("0")
+    total_trades: int = 0
+    total_signals: int = 0
+    rejected_signals: int = 0
 
 
 class RunView(_ResponseBase):
@@ -166,6 +168,31 @@ class JournalListResponse(_ResponseBase):
     next_cursor: Optional[str] = None
 
 
+class BarView(_ResponseBase):
+    symbol: Literal["SPY"] = "SPY"
+    timestamp: datetime = Field(validation_alias="bar_start")
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: int
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class BarListResponse(_ResponseBase):
+    bars: list[BarView]
+
+
+class ConfigView(_ResponseBase):
+    id: UUID
+    name: str
+    mode: Literal["backtest", "paper"]
+    timeframe: Literal["5m"]
+    strategy_id: UUID
+    params: dict
+
+
 class StrategyView(_ResponseBase):
     key: str
     display_name: str
@@ -178,6 +205,11 @@ class StrategyView(_ResponseBase):
 
 class StrategyListResponse(_ResponseBase):
     strategies: list[StrategyView]
+
+
+class RunManifestView(_ResponseBase):
+    strategy: StrategyView
+    config: ConfigView
 
 
 class DataDownloadJobView(_ResponseBase):

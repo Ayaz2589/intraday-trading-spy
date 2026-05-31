@@ -122,7 +122,12 @@ class SupabaseStorageClient:
         return str(payload.run.id)
 
     def upsert_config(self, config: ConfigRow) -> str:
-        """Upsert a config row by (user_id, name). Returns the row id."""
+        """Upsert a config row by (user_id, name). Returns the row id.
+
+        Reuses the existing row's id if one exists for (user_id, name) — otherwise
+        Postgres would try to overwrite the id and trip runs_config_id_fkey when
+        prior runs reference the old config id.
+        """
         if str(config.user_id) != self.user_id:
             raise AuthError(
                 f"upsert_config: config.user_id {config.user_id} does not match "
@@ -133,7 +138,11 @@ class SupabaseStorageClient:
                 "live_auto_enabled may not be True in v1 (constitution principle V)"
             )
 
+        existing = self.get_config_by_name(config.name)
         body = config.model_dump(mode="json", exclude_none=True)
+        if existing is not None:
+            body["id"] = existing["id"]
+
         try:
             response = (
                 self._client.table("configs")
@@ -260,6 +269,33 @@ class SupabaseStorageClient:
             )
         except Exception as exc:
             raise CloudPushError(f"get_config_by_name failed: {exc}") from exc
+        return response.data[0] if response.data else None
+
+    def get_config_by_id(self, *, config_id, user_id):
+        try:
+            response = (
+                self._client.table("configs")
+                .select("*")
+                .eq("id", str(config_id))
+                .eq("user_id", str(user_id))
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"get_config_by_id failed: {exc}") from exc
+        return response.data[0] if response.data else None
+
+    def get_strategy_by_id(self, *, strategy_id):
+        try:
+            response = (
+                self._client.table("strategies")
+                .select("*")
+                .eq("id", str(strategy_id))
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"get_strategy_by_id failed: {exc}") from exc
         return response.data[0] if response.data else None
 
     def get_run(self, *, run_id, user_id):
@@ -427,6 +463,78 @@ class SupabaseStorageClient:
         except Exception as exc:
             raise CloudPushError(f"list_strategies failed: {exc}") from exc
         return response.data or []
+
+    def delete_run(self, *, run_id, user_id) -> None:
+        """Delete a single run. ON DELETE CASCADE handles signals/trades/journal_events."""
+        try:
+            (
+                self._client.table("runs")
+                .delete()
+                .eq("id", str(run_id))
+                .eq("user_id", str(user_id))
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"delete_run failed: {exc}") from exc
+
+    def delete_all_runs(self, *, user_id) -> int:
+        """Delete every run for a user. Returns deleted count."""
+        try:
+            response = (
+                self._client.table("runs")
+                .delete()
+                .eq("user_id", str(user_id))
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"delete_all_runs failed: {exc}") from exc
+        return len(response.data or [])
+
+    def list_bars(self, *, range_start: str, range_end: str):
+        """Shared OHLC bars within a date range. Bars are not user-scoped.
+        range_end is inclusive — we filter bar_start < range_end + 1 day."""
+        from datetime import date, timedelta
+
+        end_exclusive = (date.fromisoformat(range_end) + timedelta(days=1)).isoformat()
+        try:
+            response = (
+                self._client.table("bars")
+                .select("bar_start,open,high,low,close,volume")
+                .gte("bar_start", range_start)
+                .lt("bar_start", end_exclusive)
+                .order("bar_start", desc=False)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"list_bars failed: {exc}") from exc
+        return response.data or []
+
+    def upsert_bars(self, rows: list[dict]) -> int:
+        """Insert/upsert bars. Each row must have: bar_start (ISO 8601 str or datetime),
+        open, high, low, close, volume. source defaults to 'yfinance'.
+        ON CONFLICT (bar_start, source) DO NOTHING — safe to re-run."""
+        if not rows:
+            return 0
+        prepared = []
+        for r in rows:
+            prepared.append({
+                "bar_start": r["bar_start"] if isinstance(r["bar_start"], str) else r["bar_start"].isoformat(),
+                "open": float(r["open"]),
+                "high": float(r["high"]),
+                "low": float(r["low"]),
+                "close": float(r["close"]),
+                "volume": int(r["volume"]),
+                "source": r.get("source", "yfinance"),
+            })
+        try:
+            response = (
+                self._client.table("bars")
+                .upsert(prepared, on_conflict="bar_start,source", ignore_duplicates=True)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"upsert_bars failed: {exc}") from exc
+        return len(response.data or [])
 
     def insert_data_download_job(
         self,

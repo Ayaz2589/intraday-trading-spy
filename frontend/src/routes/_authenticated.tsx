@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { getSupabase } from '@/auth/supabase-client'
 import { AuthenticatedTopbar } from '@/components/authenticated-topbar'
+import { SideNav } from '@/components/side-nav'
 
 async function getAuthState() {
   const supabase = getSupabase()
@@ -39,11 +40,14 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AuthenticatedTopbar />
-      <main style={{ flex: 1 }}>
-        <Outlet />
-      </main>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <SideNav />
+        <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

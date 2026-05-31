@@ -148,6 +148,9 @@ class RunRow(_Base):
     strategy_id: UUID
     started_at: datetime
     finished_at: datetime
+    status: Literal["queued", "running", "finished", "failed"] = "finished"
+    status_updated_at: datetime = Field(default_factory=_utcnow)
+    failure_reason: Optional[str] = None
     range_start: date
     range_end: date
     bar_count: int = Field(gt=0)

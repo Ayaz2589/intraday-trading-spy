@@ -18,7 +18,7 @@ import { Route as AuthenticatedStrategiesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedRunsRouteImport } from './routes/_authenticated.runs'
 import { Route as AuthenticatedMfaEnrollRouteImport } from './routes/_authenticated.mfa-enroll'
 import { Route as AuthenticatedDataRouteImport } from './routes/_authenticated.data'
-import { Route as AuthenticatedRunsRunIdRouteImport } from './routes/_authenticated.runs.$runId'
+import { Route as AuthenticatedRunsRunIdRouteImport } from './routes/_authenticated.runs_.$runId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -65,16 +65,16 @@ const AuthenticatedDataRoute = AuthenticatedDataRouteImport.update({
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedRunsRunIdRoute = AuthenticatedRunsRunIdRouteImport.update({
-  id: '/$runId',
-  path: '/$runId',
-  getParentRoute: () => AuthenticatedRunsRoute,
+  id: '/runs_/$runId',
+  path: '/runs/$runId',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/data': typeof AuthenticatedDataRoute
   '/mfa-enroll': typeof AuthenticatedMfaEnrollRoute
-  '/runs': typeof AuthenticatedRunsRouteWithChildren
+  '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/mfa': typeof SignInMfaRoute
@@ -85,7 +85,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/data': typeof AuthenticatedDataRoute
   '/mfa-enroll': typeof AuthenticatedMfaEnrollRoute
-  '/runs': typeof AuthenticatedRunsRouteWithChildren
+  '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/mfa': typeof SignInMfaRoute
@@ -98,12 +98,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/data': typeof AuthenticatedDataRoute
   '/_authenticated/mfa-enroll': typeof AuthenticatedMfaEnrollRoute
-  '/_authenticated/runs': typeof AuthenticatedRunsRouteWithChildren
+  '/_authenticated/runs': typeof AuthenticatedRunsRoute
   '/_authenticated/strategies': typeof AuthenticatedStrategiesRoute
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/mfa': typeof SignInMfaRoute
   '/sign-in/': typeof SignInIndexRoute
-  '/_authenticated/runs/$runId': typeof AuthenticatedRunsRunIdRoute
+  '/_authenticated/runs_/$runId': typeof AuthenticatedRunsRunIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,7 +139,7 @@ export interface FileRouteTypes {
     | '/sign-in/callback'
     | '/sign-in/mfa'
     | '/sign-in/'
-    | '/_authenticated/runs/$runId'
+    | '/_authenticated/runs_/$runId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -215,39 +215,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDataRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/runs/$runId': {
-      id: '/_authenticated/runs/$runId'
-      path: '/$runId'
+    '/_authenticated/runs_/$runId': {
+      id: '/_authenticated/runs_/$runId'
+      path: '/runs/$runId'
       fullPath: '/runs/$runId'
       preLoaderRoute: typeof AuthenticatedRunsRunIdRouteImport
-      parentRoute: typeof AuthenticatedRunsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
 
-interface AuthenticatedRunsRouteChildren {
-  AuthenticatedRunsRunIdRoute: typeof AuthenticatedRunsRunIdRoute
-}
-
-const AuthenticatedRunsRouteChildren: AuthenticatedRunsRouteChildren = {
-  AuthenticatedRunsRunIdRoute: AuthenticatedRunsRunIdRoute,
-}
-
-const AuthenticatedRunsRouteWithChildren =
-  AuthenticatedRunsRoute._addFileChildren(AuthenticatedRunsRouteChildren)
-
 interface AuthenticatedRouteChildren {
   AuthenticatedDataRoute: typeof AuthenticatedDataRoute
   AuthenticatedMfaEnrollRoute: typeof AuthenticatedMfaEnrollRoute
-  AuthenticatedRunsRoute: typeof AuthenticatedRunsRouteWithChildren
+  AuthenticatedRunsRoute: typeof AuthenticatedRunsRoute
   AuthenticatedStrategiesRoute: typeof AuthenticatedStrategiesRoute
+  AuthenticatedRunsRunIdRoute: typeof AuthenticatedRunsRunIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDataRoute: AuthenticatedDataRoute,
   AuthenticatedMfaEnrollRoute: AuthenticatedMfaEnrollRoute,
-  AuthenticatedRunsRoute: AuthenticatedRunsRouteWithChildren,
+  AuthenticatedRunsRoute: AuthenticatedRunsRoute,
   AuthenticatedStrategiesRoute: AuthenticatedStrategiesRoute,
+  AuthenticatedRunsRunIdRoute: AuthenticatedRunsRunIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

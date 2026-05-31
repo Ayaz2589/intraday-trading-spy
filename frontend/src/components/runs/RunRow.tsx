@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useDeleteRun } from '@/hooks/useDeleteRun'
 import type { Run, RunStatus } from '@/api/types'
 
 const STATUS_LABEL: Record<RunStatus, string> = {
@@ -21,61 +24,111 @@ interface Props {
 }
 
 export function RunRow({ run, failureReason }: Props) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const mutation = useDeleteRun()
+
+  const openConfirm = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setConfirmOpen(true)
+  }
+
   return (
-    <Link
-      to="/runs/$runId"
-      params={{ runId: run.id }}
-      data-testid={`run-row-${run.id}`}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 120px 120px 120px',
-        gap: 12,
-        alignItems: 'center',
-        padding: '8px 12px',
-        borderBottom: '1px solid var(--border)',
-        textDecoration: 'none',
-        color: 'inherit',
-      }}
-    >
-      <div>
-        <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 500 }}>{formatTime(run.started_at)}</div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-          {run.range_start} → {run.range_end}
-        </div>
-        {run.status === 'failed' && failureReason && (
-          <div
-            data-testid="run-row-failure-reason"
-            style={{ fontSize: 'var(--fs-xs)', color: STATUS_COLOR.failed, marginTop: 2 }}
-          >
-            {failureReason}
-          </div>
-        )}
-      </div>
-      <span
-        data-testid="run-row-status"
-        data-status={run.status}
+    <>
+      <Link
+        to="/runs/$runId"
+        params={{ runId: run.id }}
+        data-testid={`run-row-${run.id}`}
         style={{
-          display: 'inline-flex',
+          display: 'grid',
+          gridTemplateColumns: '1fr 120px 120px 120px 40px',
+          gap: 12,
           alignItems: 'center',
-          gap: 6,
-          fontSize: 'var(--fs-xs)',
-          fontWeight: 600,
-          color: STATUS_COLOR[run.status],
+          padding: '8px 12px',
+          borderBottom: '1px solid var(--border)',
+          textDecoration: 'none',
+          color: 'inherit',
         }}
       >
+        <div>
+          <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 500 }}>{formatTime(run.started_at)}</div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+            {run.range_start} → {run.range_end}
+          </div>
+          {run.status === 'failed' && failureReason && (
+            <div
+              data-testid="run-row-failure-reason"
+              style={{ fontSize: 'var(--fs-xs)', color: STATUS_COLOR.failed, marginTop: 2 }}
+            >
+              {failureReason}
+            </div>
+          )}
+        </div>
         <span
-          aria-hidden
-          style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[run.status] }}
-        />
-        {STATUS_LABEL[run.status]}
-      </span>
-      <span style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}>
-        {run.summary.total_trades} trades
-      </span>
-      <span style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}>
-        PnL {run.summary.pnl}
-      </span>
-    </Link>
+          data-testid="run-row-status"
+          data-status={run.status}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 600,
+            color: STATUS_COLOR[run.status],
+          }}
+        >
+          <span
+            aria-hidden
+            style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[run.status] }}
+          />
+          {STATUS_LABEL[run.status]}
+        </span>
+        <span style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}>
+          {run.summary.total_trades} trades
+        </span>
+        <span style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}>
+          PnL {run.summary.pnl}
+        </span>
+        <button
+          type="button"
+          onClick={openConfirm}
+          aria-label={`Delete run ${run.id.slice(0, 8)}`}
+          data-testid={`run-row-delete-${run.id}`}
+          disabled={mutation.isPending}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: 14,
+            padding: 4,
+            lineHeight: 1,
+            justifySelf: 'center',
+          }}
+          title="Delete run"
+        >
+          ×
+        </button>
+      </Link>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete this run?"
+        message={
+          <>
+            This permanently deletes the run, its trades, signals, and journal events.
+            <br />
+            <code style={{ fontSize: 'var(--fs-xs)' }}>{run.id}</code>
+          </>
+        }
+        confirmLabel={mutation.isPending ? 'Deleting…' : 'Delete'}
+        variant="destructive"
+        onConfirm={() => {
+          mutation.mutate(run.id, {
+            onSuccess: () => setConfirmOpen(false),
+          })
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   )
 }
 

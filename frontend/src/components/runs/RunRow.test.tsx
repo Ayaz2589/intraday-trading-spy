@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import type { Run } from '@/api/types'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: { children: React.ReactNode }) => <a {...props}>{children}</a>,
 }))
+
+function wrap(node: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return <QueryClientProvider client={client}>{node}</QueryClientProvider>
+}
 
 const baseRun: Run = {
   id: 'r1',
@@ -30,20 +37,20 @@ const baseRun: Run = {
 describe('<RunRow />', () => {
   it('renders run status with correct data attribute', async () => {
     const { RunRow } = await import('./RunRow')
-    render(<RunRow run={baseRun} />)
+    render(wrap(<RunRow run={baseRun} />))
     expect(screen.getByTestId('run-row-status')).toHaveAttribute('data-status', 'finished')
   })
 
   it('shows failure_reason inline when status=failed', async () => {
     const { RunRow } = await import('./RunRow')
     const failed = { ...baseRun, id: 'r2', status: 'failed' as const }
-    render(<RunRow run={failed} failureReason="data fetch error" />)
+    render(wrap(<RunRow run={failed} failureReason="data fetch error" />))
     expect(screen.getByTestId('run-row-failure-reason')).toHaveTextContent('data fetch error')
   })
 
   it('does not render failure_reason when status is not failed', async () => {
     const { RunRow } = await import('./RunRow')
-    render(<RunRow run={baseRun} failureReason="should not show" />)
+    render(wrap(<RunRow run={baseRun} failureReason="should not show" />))
     expect(screen.queryByTestId('run-row-failure-reason')).toBeNull()
   })
 })

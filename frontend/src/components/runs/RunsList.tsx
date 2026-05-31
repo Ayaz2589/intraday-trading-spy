@@ -64,7 +64,7 @@ export function RunsList({ onStartBacktest }: Props) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 120px 120px 120px',
+          gridTemplateColumns: '1fr 120px 120px 120px 40px',
           gap: 12,
           padding: '8px 12px',
           fontSize: 'var(--fs-xs)',
@@ -82,6 +82,7 @@ export function RunsList({ onStartBacktest }: Props) {
         </span>
         <span style={{ textAlign: 'right' }}>Trades</span>
         <span style={{ textAlign: 'right' }}>PnL</span>
+        <span aria-hidden />
       </div>
       {runs.map(run => (
         <RunRow key={run.id} run={run} />

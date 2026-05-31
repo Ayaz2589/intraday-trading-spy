@@ -87,6 +87,18 @@ export type JournalEvent = {
 
 export type JournalListResponse = { events: JournalEvent[]; next_cursor: string | null }
 
+export type Bar = {
+  symbol: 'SPY'
+  timestamp: string
+  open: string
+  high: string
+  low: string
+  close: string
+  volume: number
+}
+
+export type BarListResponse = { bars: Bar[] }
+
 export type Strategy = {
   key: string
   display_name: string
@@ -98,6 +110,20 @@ export type Strategy = {
 }
 
 export type StrategyListResponse = { strategies: Strategy[] }
+
+export type Config = {
+  id: UUID
+  name: string
+  mode: 'backtest' | 'paper'
+  timeframe: '5m'
+  strategy_id: UUID
+  params: Record<string, unknown>
+}
+
+export type RunManifestResponse = {
+  strategy: Strategy
+  config: Config
+}
 
 export type StartBacktestRequest = { config_name: string; data_csv_path?: string }
 export type StartBacktestResponse = { run_id: UUID; status: 'queued' }

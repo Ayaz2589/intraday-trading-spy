@@ -22,12 +22,12 @@ describe('<OtpCodeForm />', () => {
     expect(input.value).toBe('123456')
   })
 
-  it('caps input at 6 characters even if longer is pasted', async () => {
+  it('caps input at 8 characters even if longer is pasted', async () => {
     const { OtpCodeForm } = await import('./OtpCodeForm')
     render(<OtpCodeForm email="jane@example.com" onSubmit={() => {}} />)
     const input = screen.getByLabelText('Sign-in code') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '123456789' } })
-    expect(input.value).toBe('123456')
+    fireEvent.change(input, { target: { value: '1234567890' } })
+    expect(input.value).toBe('12345678')
   })
 
   it('calls onSubmit with code', async () => {

@@ -17,8 +17,10 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
     await onSubmit(code)
   }
 
-  // Strip whitespace from pasted values so common paste formats work.
-  const normalize = (value: string) => value.replace(/\s+/g, '').slice(0, 6)
+  // Supabase Email OTP length is configurable (6–8 digits). Strip
+  // whitespace from pasted values and cap at 8 — the project's
+  // configured length validates server-side.
+  const normalize = (value: string) => value.replace(/\s+/g, '').slice(0, 8)
 
   return (
     <form onSubmit={handle} data-testid="otp-code-form">

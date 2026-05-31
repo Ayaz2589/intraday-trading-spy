@@ -11,11 +11,16 @@ from intraday_trade_spy.api import errors
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
 from intraday_trade_spy.api.pagination import decode_cursor
 from intraday_trade_spy.api.schemas import (
+    BarListResponse,
+    BarView,
+    ConfigView,
     JournalListResponse,
     RunListResponse,
+    RunManifestView,
     RunStatusResponse,
     RunView,
     SignalListResponse,
+    StrategyView,
     TradeListResponse,
 )
 
@@ -127,3 +132,64 @@ def list_journal(
 
     page = storage_client.list_journal(run_id=run_id, user_id=user_id, limit=limit, cursor=cursor)
     return JournalListResponse(events=page.events, next_cursor=page.next_cursor)
+
+
+@router.get("/runs/{run_id}/bars", response_model=BarListResponse)
+def list_bars(
+    run_id: UUID,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> BarListResponse:
+    run = storage_client.get_run(run_id=run_id, user_id=user_id)
+    if run is None:
+        errors.raise_not_found(f"run {run_id} not found")
+
+    rows = storage_client.list_bars(
+        range_start=str(run["range_start"]),
+        range_end=str(run["range_end"]),
+    )
+    return BarListResponse(bars=[BarView.model_validate(r) for r in rows])
+
+
+@router.delete("/runs/{run_id}")
+def delete_run(
+    run_id: UUID,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> dict:
+    if storage_client.get_run(run_id=run_id, user_id=user_id) is None:
+        errors.raise_not_found(f"run {run_id} not found")
+    storage_client.delete_run(run_id=run_id, user_id=user_id)
+    return {"deleted": str(run_id)}
+
+
+@router.delete("/runs")
+def delete_all_runs(
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> dict:
+    count = storage_client.delete_all_runs(user_id=user_id)
+    return {"deleted_count": count}
+
+
+@router.get("/runs/{run_id}/manifest", response_model=RunManifestView)
+def get_manifest(
+    run_id: UUID,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> RunManifestView:
+    run = storage_client.get_run(run_id=run_id, user_id=user_id)
+    if run is None:
+        errors.raise_not_found(f"run {run_id} not found")
+
+    strategy_row = storage_client.get_strategy_by_id(strategy_id=run["strategy_id"])
+    if strategy_row is None:
+        errors.raise_not_found(f"strategy {run['strategy_id']} not found")
+    config_row = storage_client.get_config_by_id(config_id=run["config_id"], user_id=user_id)
+    if config_row is None:
+        errors.raise_not_found(f"config {run['config_id']} not found")
+
+    return RunManifestView(
+        strategy=StrategyView(**strategy_row),
+        config=ConfigView(**config_row),
+    )
