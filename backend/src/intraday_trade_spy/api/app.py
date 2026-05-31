@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from intraday_trade_spy.api.routers import (
     backtests,
+    configs,
     data,
     health,
     runs,
@@ -75,7 +76,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=_cors_origins(),
         allow_origin_regex=_cors_origin_regex(),
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(runs.router, prefix="/api")
     app.include_router(strategies.router, prefix="/api")
     app.include_router(data.router, prefix="/api")
+    app.include_router(configs.router, prefix="/api")
 
     # NOTE: Feature 003's static-file endpoints continue to live in
     # `intraday_trade_spy.api.static_server:app` and are served via the

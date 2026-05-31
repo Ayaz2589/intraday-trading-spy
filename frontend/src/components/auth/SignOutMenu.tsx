@@ -29,25 +29,25 @@ export function SignOutMenu({ onSignedOut }: Props) {
           className="icon-btn"
           aria-label={`Account menu for ${email}`}
           data-testid="signout-menu-trigger"
+          title={email}
+          style={{ padding: 0, background: 'transparent', border: 'none', cursor: 'pointer' }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span
-              aria-hidden
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                background: 'var(--surface-2)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {email[0]?.toUpperCase() ?? '?'}
-            </span>
-            <span className="text-xs">{email}</span>
+          <span
+            aria-hidden
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: 'var(--surface-2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--text)',
+            }}
+          >
+            {email[0]?.toUpperCase() ?? '?'}
           </span>
         </button>
       </PopoverTrigger>

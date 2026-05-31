@@ -1,74 +1,41 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { RunsList } from '@/components/runs/RunsList'
-import { StartBacktestDialog } from '@/components/runs/StartBacktestDialog'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { HelpTooltip } from '@/components/help-tooltip'
+import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useRuns, flattenRuns } from '@/hooks/useRuns'
-import { useDeleteAllRuns } from '@/hooks/useDeleteRun'
 
 export const Route = createFileRoute('/_authenticated/runs')({
-  component: RunsPage,
+  component: RunsLanding,
 })
 
-function RunsPage() {
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
+function RunsLanding() {
   const runsQuery = useRuns()
-  const runCount = flattenRuns(runsQuery.data).length
-  const deleteAll = useDeleteAllRuns()
+  const runs = flattenRuns(runsQuery.data)
+
+  if (runsQuery.isLoading) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground" data-testid="runs-landing-loading">
+        Loading runs…
+      </div>
+    )
+  }
+
+  if (runs.length > 0) {
+    return <Navigate to="/runs/$runId" params={{ runId: runs[0].id }} replace />
+  }
 
   return (
-    <div className="p-6">
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h1 className="text-2xl font-semibold">Runs</h1>
-          <HelpTooltip helpKey="backtest_queue" />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {runCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setDeleteAllOpen(true)}
-              className="px-3 py-1 border rounded text-sm"
-              data-testid="delete-all-button"
-              style={{ color: 'var(--danger, #dc2626)', borderColor: 'var(--danger, #dc2626)' }}
-            >
-              Delete all
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setDialogOpen(true)}
-            className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm"
-            data-testid="start-backtest-button"
-          >
-            Start backtest
-          </button>
-        </div>
-      </header>
-      <RunsList onStartBacktest={() => setDialogOpen(true)} />
-      <StartBacktestDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
-      <ConfirmDialog
-        open={deleteAllOpen}
-        title={`Delete all ${runCount} backtests?`}
-        message="This permanently deletes every run and all its trades, signals, and journal events. This cannot be undone."
-        confirmLabel={deleteAll.isPending ? 'Deleting…' : 'Delete all'}
-        variant="destructive"
-        onConfirm={() =>
-          deleteAll.mutate(undefined, {
-            onSuccess: () => setDeleteAllOpen(false),
-          })
-        }
-        onCancel={() => setDeleteAllOpen(false)}
-      />
+    <div
+      className="p-12"
+      data-testid="runs-landing-empty"
+      style={{ display: 'grid', placeItems: 'center', textAlign: 'center', minHeight: '60vh' }}
+    >
+      <div style={{ maxWidth: 480 }}>
+        <h2 style={{ margin: '0 0 8px', fontSize: 'var(--fs-lg)', fontWeight: 700 }}>
+          No backtests yet
+        </h2>
+        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+          Open the <strong>Strategy</strong> dropdown in the top bar to tune knobs and click{' '}
+          <strong>Run backtest</strong> to queue your first run.
+        </p>
+      </div>
     </div>
   )
 }

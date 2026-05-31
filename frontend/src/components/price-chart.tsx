@@ -10,7 +10,6 @@ import {
 } from "klinecharts";
 import { X, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HelpTooltip } from "./help-tooltip";
 import { useTheme } from "@/lib/theme";
 import { humanize } from "@/lib/format";
 import { findSwingPivots } from "@/lib/swing-pivots";
@@ -486,30 +485,47 @@ export function PriceChart({
     return out;
   }, [vwap, journal]);
 
-  // Look up the journal VWAP for the selected bar (if any).
+  // Bar details strip defaults to the most recent bar when the user
+  // hasn't picked one. Convert BarView (string timestamp) → KLineData
+  // (numeric timestamp) shape that the rest of the chart code uses.
+  const displayBar: KLineData | null = useMemo(() => {
+    if (selectedBar) return selectedBar;
+    if (bars.length === 0) return null;
+    const last = bars[bars.length - 1];
+    return {
+      timestamp: new Date(last.timestamp).getTime(),
+      open: last.open,
+      high: last.high,
+      low: last.low,
+      close: last.close,
+      volume: last.volume,
+    } as KLineData;
+  }, [selectedBar, bars]);
+
+  // Look up the journal VWAP for the display bar (if any).
   const selectedVwap = useMemo(() => {
-    if (!selectedBar) return null;
-    return vwapByTimestamp.get(selectedBar.timestamp) ?? null;
-  }, [selectedBar]);
+    if (!displayBar) return null;
+    return vwapByTimestamp.get(displayBar.timestamp) ?? null;
+  }, [displayBar]);
 
   // Previous bar's close, for "change from prev" computation.
   const selectedPrevClose = useMemo(() => {
-    if (!selectedBar || bars.length === 0) return null;
+    if (!displayBar || bars.length === 0) return null;
     const idx = bars.findIndex(
-      (b) => new Date(b.timestamp).getTime() === selectedBar.timestamp,
+      (b) => new Date(b.timestamp).getTime() === displayBar.timestamp,
     );
     return idx > 0 ? bars[idx - 1].close : null;
-  }, [selectedBar, bars]);
+  }, [displayBar, bars]);
 
-  // Journal rows that fall on the selected bar's timestamp. A single
+  // Journal rows that fall on the display bar's timestamp. A single
   // bar can produce multiple rows (e.g. emitted + rejected, or executed
   // + exited at the next bar's open).
   const selectedJournal = useMemo(() => {
-    if (!selectedBar) return [];
+    if (!displayBar) return [];
     return journal.filter(
-      (r) => new Date(r.timestamp).getTime() === selectedBar.timestamp,
+      (r) => new Date(r.timestamp).getTime() === displayBar.timestamp,
     );
-  }, [selectedBar, journal]);
+  }, [displayBar, journal]);
 
   // Init/dispose the chart once per mount.
   useEffect(() => {
@@ -975,103 +991,54 @@ export function PriceChart({
       className={`card chart-card${isFullscreen ? " chart-card-fullscreen" : ""}`}
       ref={chartCardRef}
     >
-      <div className="flex gap-4 p-2 text-xs items-center border-b border-gray-200 dark:border-slate-700">
-        <span className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-pressed={showVwap}
-            aria-label="Toggle VWAP"
-            onClick={() => setShowVwap((v) => !v)}
-            className={cn(
-              "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
-              !showVwap && "opacity-40 line-through",
-            )}
-          >
-            <span className="inline-block w-4 h-[3px] bg-amber-500 mr-1.5" />
-            VWAP
-          </button>
-          <HelpTooltip helpKey="vwap" />
-        </span>
-        <span className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-pressed={showOR}
-            aria-label="Toggle OR"
-            onClick={() => setShowOR((v) => !v)}
-            className={cn(
-              "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
-              !showOR && "opacity-40 line-through",
-            )}
-          >
-            <span className="w-3 h-0.5 bg-green-500 mr-1" />
-            OR high / low
-          </button>
-          <HelpTooltip helpKey="opening_range" />
-        </span>
-        <button
-          type="button"
-          aria-pressed={showSR}
-          aria-label="Toggle support/resistance"
-          onClick={() => setShowSR((v) => !v)}
-          className={cn(
-            "flex items-center px-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity",
-            !showSR && "opacity-40 line-through",
-          )}
-        >
-          <span className="flex items-center gap-0.5 mr-1">
-            <span className="w-2 h-0.5 bg-red-600" />
-            <span className="w-2 h-0.5 bg-green-600" />
-          </span>
-          S/R
-          <span className="ml-1 text-gray-500 dark:text-slate-400">
-            ({pivots.highs.length}↑ {pivots.lows.length}↓)
-          </span>
-        </button>
-        <span className="flex items-center">
-          <span className="inline-block w-2 h-2 bg-gray-400 mr-1" />
-          Force-flat exit
-          <HelpTooltip helpKey="force_flat_exit" />
-        </span>
-        <button
-          type="button"
-          className={`btn btn-ghost btn-sm${showMarkers ? " is-on" : ""}`}
-          aria-pressed={showMarkers}
-          onClick={() => setShowMarkers((v) => !v)}
-          title="Toggle trade marker pills"
-        >
-          {showMarkers ? "Hide markers" : "Show markers"}
-        </button>
+      <div
+        className="flex items-center text-xs border-b border-gray-200 dark:border-slate-700"
+        style={{ padding: "6px 10px", gap: 6 }}
+      >
+        <LegendToggle
+          on={showVwap}
+          dotColor="#f5a524"
+          label="VWAP"
+          onClick={() => setShowVwap(v => !v)}
+        />
+        <LegendToggle
+          on={showOR}
+          dotColor="#16a34a"
+          label="OR"
+          onClick={() => setShowOR(v => !v)}
+        />
+        <LegendToggle
+          on={showSR}
+          dotColor="#94a3b8"
+          label="S/R"
+          onClick={() => setShowSR(v => !v)}
+        />
+
+        <span style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
+
+        <LegendToggle
+          on={showMarkers}
+          label="Markers"
+          onClick={() => setShowMarkers(v => !v)}
+        />
         {onToggleRejections && (
-          <button
-            type="button"
-            className={`btn btn-ghost btn-sm${showRejections ? " is-on" : ""}`}
-            aria-pressed={showRejections}
+          <LegendToggle
+            on={showRejections}
+            label="Rejections"
             onClick={onToggleRejections}
-          >
-            {showRejections ? "Hide rejections" : "Show rejections"}
-          </button>
+          />
         )}
-        <span
-          className="flex items-center gap-1"
-          style={{ marginLeft: "auto" }}
-        >
-          <label
-            htmlFor="candle-style-select"
-            className="text-gray-500 dark:text-slate-400"
-            style={{ fontSize: "var(--fs-xs)" }}
-          >
-            Candles
-          </label>
-          <span className="knob-select" style={{ width: 170 }}>
+
+        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span className="knob-select" style={{ width: 110 }}>
             <select
               id="candle-style-select"
               value={candleStyle}
-              onChange={(e) =>
-                setCandleStyle(e.target.value as typeof candleStyle)
-              }
+              onChange={e => setCandleStyle(e.target.value as typeof candleStyle)}
               aria-label="Candlestick style"
+              style={{ fontSize: "var(--fs-xs)" }}
             >
-              {CANDLE_STYLES.map((s) => (
+              {CANDLE_STYLES.map(s => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -1079,33 +1046,18 @@ export function PriceChart({
             </select>
             <span className="sel-caret">▾</span>
           </span>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+            onClick={toggleFullscreen}
+            style={{ padding: 4 }}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
         </span>
-        <span className="text-gray-500 dark:text-slate-500 italic" style={{ fontSize: "var(--fs-xs)" }}>
-          {selectedBar ? "" : "Click a candle for details"}
-        </span>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-          onClick={toggleFullscreen}
-        >
-          {isFullscreen ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </button>
       </div>
-      {selectedBar && (
-        <BarDetailsStrip
-          bar={selectedBar}
-          vwap={selectedVwap}
-          prevClose={selectedPrevClose}
-          journal={selectedJournal}
-          onClose={() => setSelectedBar(null)}
-        />
-      )}
       <div
         className="chart-canvas-wrap"
         style={{
@@ -1143,6 +1095,15 @@ export function PriceChart({
           />
         )}
       </div>
+      {displayBar && (
+        <BarDetailsRow
+          bar={displayBar}
+          vwap={selectedVwap}
+          prevClose={selectedPrevClose}
+          journal={selectedJournal}
+          isSelected={selectedBar !== null}
+        />
+      )}
     </section>
   );
 }
@@ -1446,13 +1407,6 @@ function Kv({
   );
 }
 
-function formatDollar(n: number): string {
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(2)}K`;
-  return `$${n.toFixed(2)}`;
-}
-
 function signed(n: number, digits = 2): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(digits)}`;
 }
@@ -1467,18 +1421,18 @@ const STATUS_COLOR: Record<JournalRowView["status"], string> = {
   lockout: "text-amber-600 dark:text-amber-400",
 };
 
-function BarDetailsStrip({
+function BarDetailsRow({
   bar,
   vwap,
   prevClose,
   journal,
-  onClose,
+  isSelected,
 }: {
   bar: KLineData;
   vwap: number | null;
   prevClose: number | null;
   journal: JournalRowView[];
-  onClose: () => void;
+  isSelected: boolean;
 }) {
   const time = new Date(bar.timestamp).toLocaleString("en-US", {
     timeZone: "America/New_York",
@@ -1488,15 +1442,7 @@ function BarDetailsStrip({
     minute: "2-digit",
     hour12: false,
   });
-  const range = bar.high - bar.low;
   const body = bar.close - bar.open;
-  const bodyAbs = Math.abs(body);
-  const upperWick = bar.high - Math.max(bar.open, bar.close);
-  const lowerWick = Math.min(bar.open, bar.close) - bar.low;
-  const bodyPct = range > 0 ? (bodyAbs / range) * 100 : 0;
-  const upperPct = range > 0 ? (upperWick / range) * 100 : 0;
-  const lowerPct = range > 0 ? (lowerWick / range) * 100 : 0;
-  const dollarVol = bar.close * (bar.volume ?? 0);
   const distFromVwap =
     vwap != null ? ((bar.close - vwap) / vwap) * 100 : null;
   const change = prevClose != null ? bar.close - prevClose : null;
@@ -1508,113 +1454,88 @@ function BarDetailsStrip({
     body >= 0
       ? "text-emerald-600 dark:text-emerald-400"
       : "text-red-600 dark:text-red-400";
+  const volShort = formatVol(bar.volume ?? 0);
 
   return (
-    <div className="border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 font-mono text-xs">
-      {/* Header: time, change-from-prev, close button */}
-      <div className="flex items-center gap-5 px-3 py-2">
-        <span className="text-gray-700 dark:text-slate-200 font-semibold">
-          {time} ET
+    <div
+      className="text-xs"
+      style={{
+        marginTop: 8,
+        padding: "8px 12px",
+        borderRadius: "var(--r-sm)",
+        background: "var(--surface-1)",
+        border: "1px solid var(--border)",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "baseline",
+        gap: "8px 14px",
+        fontFamily: "var(--mono)",
+      }}
+    >
+      <span style={{ color: "var(--text-muted)" }}>
+        {isSelected ? time : `Latest · ${time}`} ET
+      </span>
+      <KV label="O" value={bar.open.toFixed(2)} />
+      <KV label="H" value={bar.high.toFixed(2)} />
+      <KV label="L" value={bar.low.toFixed(2)} />
+      <KV label="C" value={bar.close.toFixed(2)} valueClass={closeColor} />
+      {change != null && changePct != null && (
+        <span className={closeColor}>
+          {signed(change)} ({signed(changePct * 100)}%)
         </span>
-        {change != null && changePct != null && (
-          <span className={closeColor}>
-            {signed(change)} ({signed(changePct * 100)}%) from prev close
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close bar details"
-          className="ml-auto p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-700"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      )}
+      <KV label="Vol" value={volShort} />
+      {vwap != null && (
+        <KV label="VWAP" value={vwap.toFixed(2)} valueClass="text-amber-600 dark:text-amber-400" />
+      )}
+      {distFromVwap != null && <KV label="vs VWAP" value={`${signed(distFromVwap)}%`} />}
 
-      {/* Sections: price / candle anatomy / volume / indicators */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 px-3 pb-2">
-        <Section title="Price">
-          <Row k="O" v={bar.open.toFixed(2)} />
-          <Row k="H" v={bar.high.toFixed(2)} />
-          <Row k="L" v={bar.low.toFixed(2)} />
-          <Row k="C" v={bar.close.toFixed(2)} valueClass={closeColor} />
-        </Section>
-        <Section title="Candle">
-          <Row k="Body" v={`${signed(body)} (${bodyPct.toFixed(0)}%)`} />
-          <Row k="Upper wick" v={`${upperWick.toFixed(2)} (${upperPct.toFixed(0)}%)`} />
-          <Row k="Lower wick" v={`${lowerWick.toFixed(2)} (${lowerPct.toFixed(0)}%)`} />
-          <Row k="Range" v={range.toFixed(2)} />
-        </Section>
-        <Section title="Volume">
-          <Row k="Shares" v={(bar.volume ?? 0).toLocaleString()} />
-          <Row k="$ traded" v={formatDollar(dollarVol)} />
-        </Section>
-        <Section title="Indicators">
-          {vwap != null && (
-            <Row
-              k="VWAP"
-              v={vwap.toFixed(2)}
-              valueClass="text-amber-600 dark:text-amber-400"
-            />
-          )}
-          {distFromVwap != null && (
-            <Row k="vs VWAP" v={`${signed(distFromVwap)}%`} />
-          )}
-          {prevClose != null && (
-            <Row k="Prev close" v={prevClose.toFixed(2)} />
-          )}
-        </Section>
-      </div>
-
-      {/* Journal events on this bar */}
       {journal.length > 0 && (
-        <div className="px-3 pb-2 pt-1 border-t border-gray-200 dark:border-slate-700">
-          <div className="uppercase tracking-wide text-[10px] text-gray-500 dark:text-slate-400 mb-1">
-            Journal events
-          </div>
-          <ul className="space-y-1">
-            {journal.map((r, i) => (
-              <JournalEntry key={`${r.row_seq}-${i}`} row={r} />
-            ))}
-          </ul>
-        </div>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "4px 12px",
+            flexBasis: "100%",
+            borderTop: "1px solid var(--border)",
+            paddingTop: 6,
+          }}
+        >
+          {journal.map((r, i) => (
+            <JournalEntry key={`${r.row_seq}-${i}`} row={r} />
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-function Section({
-  title,
-  children,
+function KV({
+  label,
+  value,
+  valueClass,
 }: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <div className="uppercase tracking-wide text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
-        {title}
-      </div>
-      <div className="space-y-0.5">{children}</div>
-    </div>
-  );
-}
-
-function Row({
-  k,
-  v,
-  valueClass = "",
-}: {
-  k: string;
-  v: string;
+  label: string;
+  value: string;
   valueClass?: string;
 }) {
   return (
-    <div className="flex justify-between gap-2">
-      <span className="text-gray-500 dark:text-slate-400">{k}</span>
-      <strong className={valueClass}>{v}</strong>
-    </div>
+    <span style={{ display: "inline-flex", gap: 4, alignItems: "baseline" }}>
+      <span style={{ color: "var(--text-muted)" }}>{label}</span>
+      <span className={valueClass} style={{ fontWeight: 600 }}>
+        {value}
+      </span>
+    </span>
   );
+}
+
+function formatVol(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString();
 }
 
 function JournalEntry({ row }: { row: JournalRowView }) {
@@ -1664,5 +1585,56 @@ function JournalEntry({ row }: { row: JournalRowView }) {
         </div>
       )}
     </li>
+  );
+}
+
+// Compact pill toggle for the chart toolbar. Active = filled dot + bold label;
+// inactive = faded outline. Replaces the previous text-button + line-through
+// pattern which was visually heavy and inconsistent across legend items.
+function LegendToggle({
+  on,
+  label,
+  dotColor,
+  onClick,
+}: {
+  on: boolean;
+  label: string;
+  dotColor?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "3px 8px",
+        borderRadius: 999,
+        border: "1px solid var(--border)",
+        background: on ? "var(--surface-2)" : "transparent",
+        color: on ? "var(--text)" : "var(--text-muted)",
+        fontSize: "var(--fs-xs)",
+        fontWeight: on ? 600 : 500,
+        cursor: "pointer",
+        lineHeight: 1.2,
+      }}
+    >
+      {dotColor && (
+        <span
+          aria-hidden
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: on ? dotColor : "var(--text-faint, #9ca3af)",
+            opacity: on ? 1 : 0.4,
+          }}
+        />
+      )}
+      {label}
+    </button>
   );
 }

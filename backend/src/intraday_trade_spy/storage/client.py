@@ -285,6 +285,36 @@ class SupabaseStorageClient:
             raise CloudPushError(f"get_config_by_id failed: {exc}") from exc
         return response.data[0] if response.data else None
 
+    def list_configs(self, *, user_id) -> list[dict]:
+        try:
+            response = (
+                self._client.table("configs")
+                .select("*")
+                .eq("user_id", str(user_id))
+                .order("name", desc=False)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"list_configs failed: {exc}") from exc
+        return response.data or []
+
+    def update_config(self, *, config_id, user_id, params: dict) -> dict:
+        from datetime import datetime, timezone
+        body = {"params": params, "updated_at": datetime.now(timezone.utc).isoformat()}
+        try:
+            response = (
+                self._client.table("configs")
+                .update(body)
+                .eq("id", str(config_id))
+                .eq("user_id", str(user_id))
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"update_config failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("update_config returned no row")
+        return response.data[0]
+
     def get_strategy_by_id(self, *, strategy_id):
         try:
             response = (

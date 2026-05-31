@@ -50,7 +50,7 @@ export class ServiceUnavailableError extends ApiError {
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
   searchParams?: Record<string, string | number | boolean | undefined>
   noAuth?: boolean

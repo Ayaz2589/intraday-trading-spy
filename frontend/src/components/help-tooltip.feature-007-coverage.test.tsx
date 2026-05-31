@@ -23,6 +23,9 @@ vi.mock('@tanstack/react-router', async () => {
   return {
     Link: ({ children, ...rest }: { children: ReactNode }) =>
       createElement('a', { ...(rest as Record<string, unknown>) }, children),
+    Navigate: () => null,
+    useNavigate: () => vi.fn(),
+    useMatchRoute: () => () => false,
   }
 })
 vi.mock('@/hooks/useHealth', () => ({

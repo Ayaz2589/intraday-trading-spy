@@ -2,6 +2,7 @@ import { ThemeToggle } from './theme-toggle'
 import { ConnectionStatus } from './connection-status'
 import { SignOutMenu } from './auth/SignOutMenu'
 import { HelpTooltip } from './help-tooltip'
+import { StrategyConfigDropdown } from './strategy-config-dropdown'
 
 interface Props {
   strategyLabel?: string
@@ -30,6 +31,8 @@ export function AuthenticatedTopbar({ strategyLabel, configLabel }: Props) {
         ) : null}
       </div>
       <div className="tb-actions">
+        <StrategyConfigDropdown />
+        <span className="tb-div" />
         <ConnectionStatus />
         <span className="tb-div" />
         <ThemeToggle />
