@@ -52,3 +52,15 @@ broker:
   live_auto_enabled: false
   fees_per_share: 0.0
   slippage_per_share: 0.0
+
+# Cloud-push knobs (Feature 005). Used when --push-to-supabase is set.
+cloud:
+  # Seconds to wait for the strategies-registry health check before bailing out.
+  health_check_timeout_s: 5.0
+  # Retries are 0 in v1 — a failed push is reported; the operator re-invokes
+  # the CLI for a fresh attempt. The atomic push_run() RPC means a retry can
+  # safely target the same run_id without partial state in the cloud.
+  push_retries: 0
+  # Seconds budget for the full push_run RPC. Aligns with SC-007 (10k signals
+  # in <60s).
+  push_timeout_s: 60

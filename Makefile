@@ -35,7 +35,12 @@ PORT ?= 8000
 # How many most-recent backtest runs to keep with `make prune-runs`.
 KEEP ?= 5
 
-.PHONY: help install test test-slow backtest backtest-real demo download \
+# PUSH=1 appends --push-to-supabase to backtest invocations (Feature 005).
+# Requires SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_USER_ID in env.
+PUSH ?=
+PUSH_FLAG := $(if $(PUSH),--push-to-supabase,)
+
+.PHONY: help install test test-slow test-integration backtest backtest-real demo download \
         download-clean lint clean-runs prune-runs venv \
         ui-install ui-dev ui-build ui-server
 
@@ -52,6 +57,7 @@ help: ## Show this help
 	@echo "  DATA=<csv-name>    backtest input CSV under backend/data/raw/"
 	@echo "  CONFIG=<path>      config file relative to backend/ (default: config/config.yaml)"
 	@echo "  KEEP=N             prune-runs keeps N most-recent runs (default: 5)"
+	@echo "  PUSH=1             after backtest, push the run to Supabase (Feature 005)"
 
 venv: backend/.venv/bin/python ## Create the venv if it doesn't exist
 backend/.venv/bin/python:
@@ -65,23 +71,26 @@ install: venv ## Install the package + dev deps in editable mode
 	@echo "  intraday-trade-spy-backtest --help"
 	@echo "  intraday-trade-spy-download --help"
 
-test: ## Run the offline test suite (default)
-	cd backend && .venv/bin/pytest -q -m "not slow"
+test: ## Run the offline test suite (default; excludes slow and integration tests)
+	cd backend && .venv/bin/pytest -q -m "not slow and not integration"
 
 test-slow: ## Run only the slow tests (real yfinance — needs internet)
 	cd backend && .venv/bin/pytest -q -m slow
 
-backtest: ## Run a backtest (override CONFIG=<path> for preset configs)
-	cd backend && .venv/bin/intraday-trade-spy-backtest --config $(CONFIG)
+test-integration: ## Run Supabase integration tests (needs Docker + Supabase CLI + SUPABASE_INTEGRATION=1)
+	cd backend && SUPABASE_INTEGRATION=1 .venv/bin/pytest -q -m integration
 
-backtest-real: ## Run a backtest against a downloaded CSV (set DATA=<filename>)
+backtest: ## Run a backtest (CONFIG=<path> for presets; PUSH=1 to push to Supabase)
+	cd backend && .venv/bin/intraday-trade-spy-backtest --config $(CONFIG) $(PUSH_FLAG)
+
+backtest-real: ## Run a backtest against a downloaded CSV (set DATA=<filename>; PUSH=1 to push)
 	@if [ -z "$(DATA)" ]; then \
 	  echo "usage: make backtest-real DATA=spy_5m_YYYY-MM-DD_YYYY-MM-DD.csv"; \
 	  exit 1; \
 	fi
 	cd backend && .venv/bin/intraday-trade-spy-backtest \
 	    --config $(CONFIG) \
-	    --data data/raw/$(DATA)
+	    --data data/raw/$(DATA) $(PUSH_FLAG)
 
 demo: ## Backtest with the permissive demo preset (cap=1500%, trades execute)
 	cd backend && .venv/bin/intraday-trade-spy-backtest \

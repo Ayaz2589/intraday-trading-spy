@@ -21,3 +21,9 @@ frontend/dist/
 frontend/.vite/
 frontend/coverage/
 frontend/*.tsbuildinfo
+
+# Cloud secrets and Supabase CLI state (Feature 005).
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.supabase/
