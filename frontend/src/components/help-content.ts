@@ -22,7 +22,19 @@ export type HelpContentKey =
   | "stop_loss"
   | "risk_per_trade"
   | "layout_mode"
-  | "show_rejections";
+  | "show_rejections"
+  | "mfa"
+  | "totp"
+  | "otp"
+  | "backup_codes"
+  | "session"
+  | "saved_config"
+  | "strategy_registry"
+  | "backtest_queue"
+  | "run_status"
+  | "cloud_push"
+  | "data_download_job"
+  | "connection_status";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -104,5 +116,65 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Show rejections on chart",
     description:
       "Marks every bar where the strategy emitted a signal that the risk manager blocked. Consecutive bars sharing the same rejection check collapse into one tag like 'Rej · ×N'. Helps answer 'why didn't this fire?' visually.",
+  },
+  mfa: {
+    title: "MFA (multi-factor authentication)",
+    description:
+      "A second proof of identity required at sign-in, on top of your email code. We use TOTP — a 6-digit code that rotates every 30 seconds in an authenticator app (Google Authenticator, 1Password, etc.). If someone guesses or phishes your email code, they still can't sign in without your phone.",
+  },
+  totp: {
+    title: "TOTP (time-based one-time password)",
+    description:
+      "The 6-digit code your authenticator app generates. It changes every 30 seconds based on a secret shared at enrollment. The server validates the current code in a ±30s window, so a slightly stale code still works.",
+  },
+  otp: {
+    title: "Email sign-in code",
+    description:
+      "A one-time, 6-digit code that Supabase emails to you to prove you control the inbox. It expires in 60 minutes. Enter it back into the sign-in form to start a session. No password is ever stored.",
+  },
+  backup_codes: {
+    title: "Backup codes",
+    description:
+      "Single-use codes to sign in if you lose your authenticator app. Save them somewhere offline (printout, password manager). Each works once, then is invalidated.",
+  },
+  session: {
+    title: "Session",
+    description:
+      "Your signed-in state. Lives in browser storage as an access token (good for ~1 hour) + a refresh token (used to renew silently). Signing out clears both. If you sign out in another tab, this tab signs out within a heartbeat too.",
+  },
+  saved_config: {
+    title: "Saved config",
+    description:
+      "A named bundle of strategy + risk knobs (`default`, custom names, etc.). Backtests reference a config by name so you can compare strategy parameter changes without losing prior runs.",
+  },
+  strategy_registry: {
+    title: "Strategy registry",
+    description:
+      "The list of strategies the backend will let you backtest. Each entry encodes its symbol (SPY-only in v1), direction (long-only in v1), and kind (rule-based in v1). Adding a strategy is a backend code + migration change — the UI just renders whatever is enabled.",
+  },
+  backtest_queue: {
+    title: "Backtest queue",
+    description:
+      "When you click Start Backtest the run is created with status `queued`. The backend picks it up and transitions it to `running` → `finished` (or `failed`). Refresh cadence speeds up while a run is active and slows down once it finishes.",
+  },
+  run_status: {
+    title: "Run status",
+    description:
+      "A run is one of four states: queued (waiting for the worker), running (executing the strategy bar-by-bar), finished (results ready), or failed (an error stopped the run; `failure_reason` explains why).",
+  },
+  cloud_push: {
+    title: "Cloud push",
+    description:
+      "Local CLI runs are uploaded to the same Supabase project so they appear in this web UI alongside backtests started here. The CLI flag is `--push-to-supabase`. Use it when you want your terminal experiment to share the same run history.",
+  },
+  data_download_job: {
+    title: "Data-download job",
+    description:
+      "A background task that fetches a historical date range from yfinance and stores it as a CSV in Supabase Storage. Once finished, that CSV is selectable as the data source for new backtests.",
+  },
+  connection_status: {
+    title: "Connection status",
+    description:
+      "A green dot means the backend API is reachable and its database connection is healthy. Red means a recent call to /healthz failed — usually a network blip or the API container being redeployed. Backtests may queue up until it returns.",
   },
 };

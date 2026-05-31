@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/auth/AuthProvider'
+import { MfaChallenge } from '@/components/auth/MfaChallenge'
 
 type SearchParams = { next?: string }
 
@@ -16,7 +17,6 @@ function MfaChallengePage() {
   const navigate = useNavigate()
   const { next } = Route.useSearch()
   const [factorId, setFactorId] = useState<string | null>(null)
-  const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -30,8 +30,7 @@ function MfaChallengePage() {
     })
   }, [auth, navigate])
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (code: string) => {
     if (!factorId) return
     setBusy(true)
     setError(null)
@@ -39,37 +38,29 @@ function MfaChallengePage() {
       await auth.challengeMfa(factorId, code)
       navigate({ to: next ?? '/runs' })
     } catch (err) {
-      setError(String(err))
+      setError(toMessage(err))
     } finally {
       setBusy(false)
     }
   }
 
-  if (!factorId) return <div className="p-8">Loading…</div>
+  if (!factorId) {
+    return (
+      <div className="p-8" data-testid="mfa-challenge-loading">
+        Loading…
+      </div>
+    )
+  }
 
   return (
-    <form onSubmit={submit} className="max-w-md mx-auto mt-16 p-6 border rounded-lg">
+    <div className="max-w-md mx-auto mt-16 p-6 border rounded-lg" data-testid="mfa-challenge-page">
       <h1 className="text-xl font-semibold mb-4">Two-factor code</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Enter the 6-digit code from your authenticator app.
-      </p>
-      <input
-        type="text"
-        inputMode="numeric"
-        placeholder="123456"
-        value={code}
-        onChange={e => setCode(e.target.value)}
-        required
-        className="w-full p-2 border rounded mb-2"
-      />
-      {error && <p className="text-sm text-destructive mb-2">{error}</p>}
-      <button
-        type="submit"
-        disabled={code.length < 6 || busy}
-        className="w-full p-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
-      >
-        {busy ? 'Verifying…' : 'Verify'}
-      </button>
-    </form>
+      <MfaChallenge onSubmit={onSubmit} pending={busy} error={error} />
+    </div>
   )
+}
+
+function toMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  return String(err)
 }
