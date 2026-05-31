@@ -16,6 +16,7 @@ import { Route as SignInMfaRouteImport } from './routes/sign-in/mfa'
 import { Route as SignInCallbackRouteImport } from './routes/sign-in/callback'
 import { Route as AuthenticatedRunsRouteImport } from './routes/_authenticated.runs'
 import { Route as AuthenticatedMfaEnrollRouteImport } from './routes/_authenticated.mfa-enroll'
+import { Route as AuthenticatedRunsRunIdRouteImport } from './routes/_authenticated.runs.$runId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -51,32 +52,40 @@ const AuthenticatedMfaEnrollRoute = AuthenticatedMfaEnrollRouteImport.update({
   path: '/mfa-enroll',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedRunsRunIdRoute = AuthenticatedRunsRunIdRouteImport.update({
+  id: '/$runId',
+  path: '/$runId',
+  getParentRoute: () => AuthenticatedRunsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/mfa-enroll': typeof AuthenticatedMfaEnrollRoute
-  '/runs': typeof AuthenticatedRunsRoute
+  '/runs': typeof AuthenticatedRunsRouteWithChildren
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/mfa': typeof SignInMfaRoute
   '/sign-in/': typeof SignInIndexRoute
+  '/runs/$runId': typeof AuthenticatedRunsRunIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/mfa-enroll': typeof AuthenticatedMfaEnrollRoute
-  '/runs': typeof AuthenticatedRunsRoute
+  '/runs': typeof AuthenticatedRunsRouteWithChildren
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/mfa': typeof SignInMfaRoute
   '/sign-in': typeof SignInIndexRoute
+  '/runs/$runId': typeof AuthenticatedRunsRunIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/mfa-enroll': typeof AuthenticatedMfaEnrollRoute
-  '/_authenticated/runs': typeof AuthenticatedRunsRoute
+  '/_authenticated/runs': typeof AuthenticatedRunsRouteWithChildren
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/mfa': typeof SignInMfaRoute
   '/sign-in/': typeof SignInIndexRoute
+  '/_authenticated/runs/$runId': typeof AuthenticatedRunsRunIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/sign-in/callback'
     | '/sign-in/mfa'
     | '/sign-in/'
+    | '/runs/$runId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
     | '/sign-in/callback'
     | '/sign-in/mfa'
     | '/sign-in'
+    | '/runs/$runId'
   id:
     | '__root__'
     | '/'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '/sign-in/callback'
     | '/sign-in/mfa'
     | '/sign-in/'
+    | '/_authenticated/runs/$runId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -165,17 +177,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMfaEnrollRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/runs/$runId': {
+      id: '/_authenticated/runs/$runId'
+      path: '/$runId'
+      fullPath: '/runs/$runId'
+      preLoaderRoute: typeof AuthenticatedRunsRunIdRouteImport
+      parentRoute: typeof AuthenticatedRunsRoute
+    }
   }
 }
 
+interface AuthenticatedRunsRouteChildren {
+  AuthenticatedRunsRunIdRoute: typeof AuthenticatedRunsRunIdRoute
+}
+
+const AuthenticatedRunsRouteChildren: AuthenticatedRunsRouteChildren = {
+  AuthenticatedRunsRunIdRoute: AuthenticatedRunsRunIdRoute,
+}
+
+const AuthenticatedRunsRouteWithChildren =
+  AuthenticatedRunsRoute._addFileChildren(AuthenticatedRunsRouteChildren)
+
 interface AuthenticatedRouteChildren {
   AuthenticatedMfaEnrollRoute: typeof AuthenticatedMfaEnrollRoute
-  AuthenticatedRunsRoute: typeof AuthenticatedRunsRoute
+  AuthenticatedRunsRoute: typeof AuthenticatedRunsRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMfaEnrollRoute: AuthenticatedMfaEnrollRoute,
-  AuthenticatedRunsRoute: AuthenticatedRunsRoute,
+  AuthenticatedRunsRoute: AuthenticatedRunsRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
