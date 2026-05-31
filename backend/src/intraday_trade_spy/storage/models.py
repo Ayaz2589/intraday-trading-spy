@@ -89,18 +89,33 @@ class StrategyRow(_Base):
 
 # ---------- configs ----------
 
-class ConfigParams(_Base):
-    """JSONB body of `configs.params`. Mirrors backend/config/config.yaml shape."""
+class ConfigParams(BaseModel):
+    """JSONB body of `configs.params`.
 
-    max_risk_per_trade: float = Field(gt=0, le=0.10)
-    max_daily_loss: float = Field(gt=0, le=0.50)
-    max_trades_per_day: int = Field(ge=1)
-    max_consecutive_losses: int = Field(ge=1)
-    cooldown_after_loss_minutes: int = Field(ge=0)
-    no_new_trades_cutoff: str  # "HH:MM" America/New_York
-    force_flat_time: str       # "HH:MM" America/New_York
-    opening_range_minutes: int = Field(ge=1, le=60)
-    position_value_cap: float = Field(gt=0)
+    Passthrough container for the `backend/config/config.yaml` shape. The
+    canonical structure is nested ({risk, strategy, market, ...}) — every
+    field is optional and unknown keys are preserved so the YAML's full
+    nested layout survives a round-trip through this model and the frontend
+    StrategyConfigCard can read e.g. `params.risk.account_value` directly.
+
+    The legacy flat fields below are retained as Optional only so old tests
+    that construct ConfigParams with flat-keyword arguments still work.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    # Legacy flat keys (Feature 005, pre-fix). Kept Optional for backward
+    # compatibility with existing tests. New code should pass the nested
+    # YAML structure verbatim via `extra="allow"`.
+    max_risk_per_trade: Optional[float] = None
+    max_daily_loss: Optional[float] = None
+    max_trades_per_day: Optional[int] = None
+    max_consecutive_losses: Optional[int] = None
+    cooldown_after_loss_minutes: Optional[int] = None
+    no_new_trades_cutoff: Optional[str] = None
+    force_flat_time: Optional[str] = None
+    opening_range_minutes: Optional[int] = None
+    position_value_cap: Optional[float] = None
 
 
 class ConfigRow(_Base):

@@ -8,8 +8,7 @@ import { PriceChart } from '@/components/price-chart'
 import { SessionPicker } from '@/components/session-picker'
 import { JournalTable } from '@/components/journal-table'
 import { buildMarkers } from '@/components/journal-markers'
-import { RejectionBreakdownCard } from '@/components/rejection-breakdown-card'
-import { StrategyConfigCard } from '@/components/strategy-config-card'
+import { humanize } from '@/lib/format'
 import { RunSummaryCards } from './RunSummaryCards'
 import { HelpTooltip } from '@/components/help-tooltip'
 import type { Bar, Run, Signal, Trade, UUID } from '@/api/types'
@@ -17,7 +16,6 @@ import type {
   BarView,
   JournalFilter,
   JournalRowView,
-  RunManifestView,
 } from '@/api/legacy-types'
 
 interface Props {
@@ -105,16 +103,17 @@ export function RunDetail({ runId }: Props) {
   const run = runQuery.data
   if (!run) return null
 
-  const legacyManifest = manifestQuery.data
-    ? adaptLegacyManifest(run, manifestQuery.data.config.params)
-    : null
-
   return (
     <div className="content" data-testid="run-detail" style={{ padding: 16, display: 'grid', gap: 12 }}>
-      <RunHeaderSimple run={run} />
+      <RunHeader run={run} />
       <RunSummaryCards run={run} />
-      {legacyManifest && <StrategyConfigCard manifest={legacyManifest} />}
-      <RejectionBreakdownCard
+      {manifestQuery.data && (
+        <ConfigStrip
+          params={manifestQuery.data.config.params}
+          strategyName={manifestQuery.data.strategy.display_name}
+        />
+      )}
+      <RejectionStrip
         breakdown={rejectionBreakdown}
         total={rejectedTotal}
         show={showRejections}
@@ -145,40 +144,6 @@ export function RunDetail({ runId }: Props) {
 }
 
 // ---------- Adapters ----------
-
-function adaptLegacyManifest(run: Run, configParams: Record<string, unknown>): RunManifestView {
-  return {
-    run_id: run.id,
-    run_started_at: run.started_at,
-    run_ended_at: run.finished_at,
-    code_version: run.app_version,
-    config_snapshot: configParams,
-    data_fingerprint: {
-      sha256: run.data_fingerprint,
-      bar_count: run.bar_count,
-      earliest_timestamp: '',
-      latest_timestamp: '',
-      session_count: 0,
-    },
-    summary: {
-      total_trades: run.summary.total_trades,
-      wins: 0,
-      losses: 0,
-      win_rate: run.summary.win_rate,
-      average_win_r: 0,
-      average_loss_r: 0,
-      average_r: 0,
-      total_r: 0,
-      profit_factor: null,
-      max_drawdown_r: 0,
-      best_trade_r: null,
-      worst_trade_r: null,
-      longest_consecutive_loss_streak: 0,
-      rejected_signal_count: run.summary.rejected_signals,
-      rejection_breakdown: {},
-    },
-  }
-}
 
 function computeSessionVwap(sessionBars: BarView[]): { time: string; value: number }[] {
   let cumPV = 0
@@ -296,24 +261,215 @@ function mapExitReason(r: Trade['exit_reason']): JournalRowView['exit_reason'] {
 
 // ---------- Sub-components ----------
 
-function RunHeaderSimple({ run }: { run: Run }) {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${MONTHS[m - 1]} ${d}, ${y}`
+}
+
+function formatDateRange(start: string, end: string): string {
+  if (start === end) return formatDate(start)
+  const [sy, sm, sd] = start.split('-').map(Number)
+  const [ey, em, ed] = end.split('-').map(Number)
+  if (sy === ey && sm === em) return `${MONTHS[sm - 1]} ${sd}–${ed}, ${sy}`
+  if (sy === ey) return `${MONTHS[sm - 1]} ${sd} → ${MONTHS[em - 1]} ${ed}, ${sy}`
+  return `${formatDate(start)} → ${formatDate(end)}`
+}
+
+const STATUS_TONE: Record<Run['status'], string> = {
+  queued: 'var(--muted, #9ca3af)',
+  running: 'var(--info, #2563eb)',
+  finished: 'var(--success, #16a34a)',
+  failed: 'var(--danger, #dc2626)',
+}
+
+function RunHeader({ run }: { run: Run }) {
+  const dateRange = formatDateRange(run.range_start, run.range_end)
+  const trades = run.summary.total_trades
   return (
-    <header style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <h1 className="text-xl font-semibold flex items-center gap-2">
-        Run {run.id.slice(0, 8)}…
+    <header
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        flexWrap: 'wrap',
+        gap: 12,
+      }}
+    >
+      <h1
+        className="text-xl font-semibold"
+        style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 8 }}
+      >
+        {dateRange} backtest
         <span
           data-testid="run-detail-status"
           data-status={run.status}
-          className="text-sm font-normal text-muted-foreground"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 600,
+            color: STATUS_TONE[run.status],
+            textTransform: 'capitalize',
+          }}
         >
-          ({run.status})
+          <span
+            aria-hidden
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: STATUS_TONE[run.status],
+            }}
+          />
+          {run.status}
         </span>
-        <HelpTooltip helpKey="run_status" />
       </h1>
-      <p className="text-xs text-muted-foreground" style={{ margin: 0 }}>
-        {run.range_start} → {run.range_end} · {run.bar_count} bars
-      </p>
+      <span
+        className="text-xs text-muted-foreground"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 'var(--fs-xs)',
+        }}
+      >
+        {trades} {trades === 1 ? 'trade' : 'trades'} · {run.bar_count} bars ·
+        <code className="mono" style={{ opacity: 0.7 }}>
+          {run.id.slice(0, 8)}
+        </code>
+        <HelpTooltip helpKey="run_status" />
+      </span>
     </header>
+  )
+}
+
+function RejectionStrip({
+  breakdown,
+  total,
+  show,
+  onToggle,
+}: {
+  breakdown: Record<string, number>
+  total: number
+  show: boolean
+  onToggle(): void
+}) {
+  const items = Object.entries(breakdown).sort(([, a], [, b]) => b - a)
+  if (total === 0) return null
+  return (
+    <section
+      data-testid="rejection-strip"
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '8px 14px',
+        padding: '8px 12px',
+        borderRadius: 'var(--r-sm)',
+        background: 'var(--surface-1)',
+        border: '1px solid var(--border)',
+        fontSize: 'var(--fs-xs)',
+      }}
+    >
+      <span
+        style={{
+          padding: '2px 8px',
+          borderRadius: 999,
+          background: 'rgba(245, 158, 11, 0.12)',
+          color: 'var(--warn, #d97706)',
+          fontWeight: 600,
+        }}
+      >
+        {total} rejected
+      </span>
+      {items.map(([reason, count]) => (
+        <span key={reason} style={{ display: 'inline-flex', gap: 4, alignItems: 'baseline' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{humanize(reason)}</span>
+          <span className="mono" style={{ fontWeight: 600 }}>
+            {count}
+          </span>
+        </span>
+      ))}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={show}
+        className={`btn btn-ghost btn-sm${show ? ' is-on' : ''}`}
+        style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)' }}
+      >
+        {show ? 'Hide on chart' : 'Show on chart'}
+      </button>
+    </section>
+  )
+}
+
+function ConfigStrip({
+  params,
+  strategyName,
+}: {
+  params: Record<string, unknown>
+  strategyName: string
+}) {
+  const risk = (params.risk as Record<string, unknown>) ?? {}
+  const strategy = (params.strategy as Record<string, unknown>) ?? {}
+  const vwap = (strategy.vwap_pullback as Record<string, unknown>) ?? {}
+  const stop = (vwap.stop as Record<string, unknown>) ?? {}
+  const target = (vwap.target as Record<string, unknown>) ?? {}
+  const or = (strategy.opening_range as Record<string, unknown>) ?? {}
+
+  const items: Array<{ label: string; value: string }> = []
+  const push = (label: string, value: unknown, format: (v: unknown) => string = String) => {
+    if (value == null) return
+    items.push({ label, value: format(value) })
+  }
+  push('Account', risk.account_value, v => `$${Number(v).toLocaleString()}`)
+  push('Risk/Trade', risk.max_risk_per_trade_pct, v => `${v}%`)
+  push('Cap', risk.max_position_value_pct, v => `${v}%`)
+  push('OR', or.minutes, v => `${v}min`)
+  push('R:R', target.risk_reward)
+  push('Stop', stop.buffer_pct, v => `${v}%`)
+  push('Max dist VWAP', vwap.max_distance_from_vwap_pct, v => `${v}%`)
+  push('Max consec losses', risk.max_consecutive_losses)
+
+  if (items.length === 0) return null
+
+  return (
+    <section
+      data-testid="config-strip"
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '8px 14px',
+        padding: '8px 12px',
+        borderRadius: 'var(--r-sm)',
+        background: 'var(--surface-1)',
+        border: '1px solid var(--border)',
+        fontSize: 'var(--fs-xs)',
+      }}
+    >
+      <span
+        style={{
+          padding: '2px 8px',
+          borderRadius: 999,
+          background: 'var(--accent-soft, rgba(37,99,235,0.12))',
+          color: 'var(--accent, #2563eb)',
+          fontWeight: 600,
+        }}
+      >
+        {strategyName}
+      </span>
+      {items.map(it => (
+        <span key={it.label} style={{ display: 'inline-flex', gap: 4, alignItems: 'baseline' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{it.label}</span>
+          <span className="mono" style={{ fontWeight: 600 }}>
+            {it.value}
+          </span>
+        </span>
+      ))}
+    </section>
   )
 }
 

@@ -374,23 +374,33 @@ def config_from_yaml(
     yaml_path: Path,
     mode: str = "backtest",
 ) -> ConfigRow:
-    """Helper: convert a local backend/config/config.yaml into a cloud ConfigRow."""
-    raw = yaml.safe_load(yaml_path.read_text())
-    risk = raw.get("risk", {})
-    market = raw.get("market", {})
-    indicators = raw.get("indicators", {})
+    """Convert a local backend/config/config.yaml into a cloud ConfigRow.
 
-    params = ConfigParams(
-        max_risk_per_trade=risk.get("max_risk_per_trade", 0.01),
-        max_daily_loss=risk.get("max_daily_loss", 0.02),
-        max_trades_per_day=risk.get("max_trades_per_day", 3),
-        max_consecutive_losses=risk.get("max_consecutive_losses", 2),
-        cooldown_after_loss_minutes=risk.get("cooldown_after_loss_minutes", 15),
-        no_new_trades_cutoff=market.get("no_new_trades_cutoff", "15:30"),
-        force_flat_time=market.get("force_flat_time", "15:55"),
-        opening_range_minutes=indicators.get("opening_range_minutes", 15),
-        position_value_cap=risk.get("position_value_cap", 50_000.0),
-    )
+    Pre-fix this helper FLATTENED the YAML's nested {risk, strategy, market}
+    sections into hardcoded top-level keys, AND read the wrong key names
+    (`max_risk_per_trade` rather than `max_risk_per_trade_pct`). Every
+    `--push-to-supabase` was silently overwriting configs.params with
+    that lossy flat shape — defaults masquerading as real values, and the
+    frontend's StrategyConfigCard rendering all "—" because it reads from
+    the nested keys.
+
+    Now we pass the YAML's full nested structure through unchanged. The
+    frontend (and any future consumers) can read `params.risk.account_value`,
+    `params.strategy.vwap_pullback.target.risk_reward`, etc. — same shape
+    as the canonical config.yaml. ConfigParams has `extra="allow"` so the
+    nested keys survive validation.
+    """
+    raw = yaml.safe_load(yaml_path.read_text())
+    # Pluck only the sections the strategy + risk + market UI cares about.
+    # Skips repo-only sections (`app`, `data`, `broker`, `cloud`, `api`,
+    # `retention`) so the cloud row doesn't accidentally surface paths or
+    # secrets-adjacent fields. Add sections here as the UI grows.
+    cloud_params = {
+        k: raw[k]
+        for k in ("risk", "strategy", "market", "indicators")
+        if k in raw
+    }
+    params = ConfigParams.model_validate(cloud_params)
 
     return ConfigRow(
         id=config_id,
