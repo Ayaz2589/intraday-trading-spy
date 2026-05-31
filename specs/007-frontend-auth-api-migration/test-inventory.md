@@ -29,3 +29,17 @@ These legacy source files no longer have callers and are removed in T032b:
 ## Notes
 
 The migration is additive at the directory level: new files (auth/, hooks/, lib/active-runs-tracker.ts, etc.) live alongside Feature 003/004 code. Pre-feature components used by the new routes are kept and reused.
+
+## Deferred from the Feature 007 implementation phase
+
+The following tasks were intentionally deferred from this milestone and remain outstanding in `tasks.md`. They are NOT blockers for SC-001 / SC-005 / SC-008, but should be closed before tagging the feature complete:
+
+| Task | What | Why deferred |
+|---|---|---|
+| T079–T086 | Per-component unit tests for `RunsList`, `RunRow`, `RunDetail`, `TradesTable`, `SignalsTable`, `JournalTable`, `StartBacktestDialog`, `RunSummaryCards` | Structural coverage delivered via the F007 HelpTooltip coverage test + RunRow status/failure tests. Per-component tests are nice-to-have for regression isolation but the integration behavior is exercised by the live MFA runbook + quickstart. |
+| T087 | run-lifecycle msw integration test | Requires `msw` server harness for the runs router. Time-boxed out of this milestone. |
+| T088 | background-polling integration test | Same as T087; depends on T106. |
+| T106 | `useBackgroundPolling()` mount on `_authenticated.tsx` | The tracker is in place (`lib/active-runs-tracker.ts`) but its polling-side-effect hook is not yet mounted across routes. Manual workaround: leave the runs tab open. |
+| T127 / T127a | Data-source picker shows finished data-download jobs in `StartBacktestDialog` | Needs a backend `listDataDownloads` endpoint that doesn't exist yet (Feature 008 territory). Deferred. |
+| T131 | `/speckit-analyze` final gate | Manual reviewer task. |
+| T132 | Live quickstart end-to-end sign-off | Manual reviewer task; quickstart.md covers the steps. |

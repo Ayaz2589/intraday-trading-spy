@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ThemeToggle } from './theme-toggle'
 import { ConnectionStatus } from './connection-status'
 import { SignOutMenu } from './auth/SignOutMenu'
+import { HelpTooltip } from './help-tooltip'
 
 interface Props {
   strategyLabel?: string
@@ -37,12 +38,27 @@ export function AuthenticatedTopbar({ strategyLabel, configLabel }: Props) {
         >
           Runs
         </Link>
+        <Link
+          to="/strategies"
+          className="text-sm"
+          activeProps={{ style: { fontWeight: 600 } }}
+        >
+          Strategies
+        </Link>
+        <Link
+          to="/data"
+          className="text-sm"
+          activeProps={{ style: { fontWeight: 600 } }}
+        >
+          Data
+        </Link>
       </nav>
       <div className="tb-actions">
         <ConnectionStatus />
         <span className="tb-div" />
         <ThemeToggle />
         <span className="tb-div" />
+        <HelpTooltip helpKey="session" />
         <SignOutMenu />
       </div>
     </header>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStartBacktest } from '@/hooks/useStartBacktest'
+import { useStrategies } from '@/hooks/useStrategies'
 import { HelpTooltip } from '@/components/help-tooltip'
 
 interface Props {
@@ -10,9 +11,17 @@ interface Props {
 
 export function StartBacktestDialog({ open, onClose, onStarted }: Props) {
   const mutation = useStartBacktest()
+  const strategiesQuery = useStrategies()
   const [configName, setConfigName] = useState('default')
+  const [strategyKey, setStrategyKey] = useState<string>('')
   const [dataCsvPath, setDataCsvPath] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  const strategies = strategiesQuery.data ?? []
+  // Default the strategy picker once strategies load.
+  if (!strategyKey && strategies.length > 0) {
+    setStrategyKey(strategies[0].key)
+  }
 
   if (!open) return null
 
@@ -62,6 +71,28 @@ export function StartBacktestDialog({ open, onClose, onStarted }: Props) {
         <h2 id="start-backtest-title" className="text-lg font-semibold mb-4">
           Start backtest
         </h2>
+        <label className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+          Strategy
+          <HelpTooltip helpKey="strategy_registry" />
+        </label>
+        <select
+          value={strategyKey}
+          onChange={e => setStrategyKey(e.target.value)}
+          aria-label="Strategy"
+          className="w-full p-2 border rounded mb-3"
+          data-testid="strategy-picker"
+        >
+          {strategies.map(s => (
+            <option key={s.key} value={s.key}>
+              {s.display_name}
+            </option>
+          ))}
+          {strategies.length === 0 && (
+            <option value="" disabled>
+              Loading strategies…
+            </option>
+          )}
+        </select>
         <label className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
           Saved config
           <HelpTooltip helpKey="saved_config" />

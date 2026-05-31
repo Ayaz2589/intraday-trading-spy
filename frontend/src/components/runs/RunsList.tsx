@@ -1,4 +1,5 @@
 import { useRuns, flattenRuns } from '@/hooks/useRuns'
+import { HelpTooltip } from '@/components/help-tooltip'
 import { RunRow } from './RunRow'
 
 interface Props {
@@ -35,7 +36,10 @@ export function RunsList({ onStartBacktest }: Props) {
   if (runs.length === 0) {
     return (
       <div className="p-8 text-center" data-testid="runs-list-empty">
-        <h2 className="text-lg font-semibold mb-2">No runs yet</h2>
+        <h2 className="text-lg font-semibold mb-2 inline-flex items-center gap-2">
+          No runs yet
+          <HelpTooltip helpKey="backtest_queue" />
+        </h2>
         <p className="text-sm text-muted-foreground mb-4">
           Start your first backtest to see results here.
         </p>
@@ -47,6 +51,10 @@ export function RunsList({ onStartBacktest }: Props) {
         >
           Start backtest
         </button>
+        <p className="text-xs text-muted-foreground mt-4 inline-flex items-center gap-1">
+          Or push CLI runs with <code>--push-to-supabase</code>
+          <HelpTooltip helpKey="cloud_push" />
+        </p>
       </div>
     )
   }
@@ -68,7 +76,10 @@ export function RunsList({ onStartBacktest }: Props) {
         }}
       >
         <span>Started</span>
-        <span>Status</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          Status
+          <HelpTooltip helpKey="backtest_queue" />
+        </span>
         <span style={{ textAlign: 'right' }}>Trades</span>
         <span style={{ textAlign: 'right' }}>PnL</span>
       </div>

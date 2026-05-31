@@ -14,6 +14,7 @@
 - [specs/004-design-system-adoption/plan.md](specs/004-design-system-adoption/plan.md) — implemented
 - [specs/005-supabase-data-layer/plan.md](specs/005-supabase-data-layer/plan.md) — implemented (MVP scope shipped; US2/US3/Polish deferred)
 - [specs/006-fastapi-service-expansion/plan.md](specs/006-fastapi-service-expansion/plan.md) — implemented end-to-end against live Supabase (8 integration test tasks deferred)
+- [specs/007-frontend-auth-api-migration/plan.md](specs/007-frontend-auth-api-migration/plan.md) — 120/135 tasks complete; per-component unit tests + integration tests + data-source picker deferred (see test-inventory.md)
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
