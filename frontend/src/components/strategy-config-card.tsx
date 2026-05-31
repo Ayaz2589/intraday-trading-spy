@@ -1,5 +1,5 @@
 import { humanize } from "@/lib/format";
-import type { RunManifestView } from "@/api/types";
+import type { RunManifestView } from "@/api/legacy-types";
 
 type Risk = {
   account_value?: number;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildMarkers } from "./journal-markers";
-import type { JournalRowView } from "@/api/types";
+import type { JournalRowView } from "@/api/legacy-types";
 
 const baseRow: JournalRowView = {
   row_seq: 0,

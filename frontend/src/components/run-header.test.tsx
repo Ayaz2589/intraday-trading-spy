@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { RunHeader } from "./run-header";
-import type { RunManifestView } from "@/api/types";
+import type { RunManifestView } from "@/api/legacy-types";
 
 const manifest: RunManifestView = {
   run_id: "20260528-220714-7697908e",

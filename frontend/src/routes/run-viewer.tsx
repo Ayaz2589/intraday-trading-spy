@@ -12,7 +12,7 @@ import {
   fetchSummary,
   fetchManifest,
   fetchBars,
-} from "@/api/client";
+} from "@/api/legacy-client";
 import { AppShell } from "@/components/app-shell";
 import { Topbar } from "@/components/topbar";
 import { Skeleton } from "@/components/skeleton";
@@ -35,7 +35,7 @@ import type {
   RunManifestView,
   RunSummaryView,
   SummaryMetricsView,
-} from "@/api/types";
+} from "@/api/legacy-types";
 
 const sessionDate = (iso: string) => iso.slice(0, 10);
 

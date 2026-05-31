@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { SummaryMetricsCard } from "./summary-metrics-card";
-import type { SummaryMetricsView } from "@/api/types";
+import type { SummaryMetricsView } from "@/api/legacy-types";
 
 const summary: SummaryMetricsView = {
   total_trades: 4,

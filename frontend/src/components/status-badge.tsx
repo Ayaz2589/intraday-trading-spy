@@ -1,5 +1,5 @@
 import { humanize } from "@/lib/format";
-import type { JournalRowView } from "@/api/types";
+import type { JournalRowView } from "@/api/legacy-types";
 
 // StatusBadge — design's `.badge` + `.badge-dot` styling.
 // Mapping per contracts/components.md:

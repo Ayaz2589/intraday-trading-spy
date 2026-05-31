@@ -1,40 +1,27 @@
 import { useState } from "react";
-import { Play, Trash2, Trash } from "lucide-react";
+import { Trash2, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { runBacktest, deleteRun, deleteAllRuns } from "@/api/client";
-import { fireToast } from "@/lib/toast-controller";
+import { deleteRun, deleteAllRuns } from "@/api/legacy-client";
+import { ConfirmDialog } from "./confirm-dialog";
+import { runIdHash } from "@/lib/format";
 
-type Busy = null | "run" | "delete" | "delete_all";
+type Busy = null | "delete" | "delete_all";
+type Pending = null | "delete-current" | "delete-all";
 
 export function RunActions({
   currentRunId,
-  onNewRun,
   onCleared,
 }: {
   currentRunId: string | null;
-  onNewRun: (newRunId: string) => void;
   onCleared: () => void;
 }) {
   const [busy, setBusy] = useState<Busy>(null);
+  const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRun = async () => {
-    setBusy("run");
-    setError(null);
-    fireToast("New backtest queued…");
-    try {
-      const { run_id } = await runBacktest();
-      onNewRun(run_id);
-    } catch (e) {
-      setError(`Backtest failed: ${(e as Error).message}`);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleDeleteCurrent = async () => {
+  const performDeleteCurrent = async () => {
     if (!currentRunId) return;
-    if (!window.confirm(`Delete run ${currentRunId}?`)) return;
+    setPending(null);
     setBusy("delete");
     setError(null);
     try {
@@ -47,9 +34,8 @@ export function RunActions({
     }
   };
 
-  const handleDeleteAll = async () => {
-    if (!window.confirm("Delete ALL backtest runs? This cannot be undone."))
-      return;
+  const performDeleteAll = async () => {
+    setPending(null);
     setBusy("delete_all");
     setError(null);
     try {
@@ -66,17 +52,8 @@ export function RunActions({
     <div className="flex items-center gap-2">
       <Button
         size="sm"
-        onClick={handleRun}
-        disabled={busy !== null}
-        aria-label="New backtest"
-      >
-        <Play className="h-4 w-4 mr-1" />
-        {busy === "run" ? "Running…" : "New backtest"}
-      </Button>
-      <Button
-        size="sm"
         variant="outline"
-        onClick={handleDeleteCurrent}
+        onClick={() => currentRunId && setPending("delete-current")}
         disabled={busy !== null || !currentRunId}
         aria-label="Delete this run"
       >
@@ -86,7 +63,7 @@ export function RunActions({
       <Button
         size="sm"
         variant="destructive"
-        onClick={handleDeleteAll}
+        onClick={() => setPending("delete-all")}
         disabled={busy !== null}
         aria-label="Delete all runs"
       >
@@ -98,6 +75,28 @@ export function RunActions({
           {error}
         </span>
       )}
+      <ConfirmDialog
+        open={pending === "delete-current"}
+        title="Delete this run"
+        message={
+          currentRunId
+            ? `Run ${runIdHash(currentRunId)} will be permanently removed. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={performDeleteCurrent}
+        onCancel={() => setPending(null)}
+      />
+      <ConfirmDialog
+        open={pending === "delete-all"}
+        title="Delete all runs"
+        message="Every backtest run will be permanently removed. This cannot be undone."
+        confirmLabel="Delete all"
+        variant="destructive"
+        onConfirm={performDeleteAll}
+        onCancel={() => setPending(null)}
+      />
     </div>
   );
 }

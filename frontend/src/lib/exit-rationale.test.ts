@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { exitRationale } from "./exit-rationale";
-import type { JournalRowView } from "@/api/types";
+import type { JournalRowView } from "@/api/legacy-types";
 
 const baseRow: JournalRowView = {
   row_seq: 0,

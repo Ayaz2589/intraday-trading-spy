@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, it, expect } from "vitest";
 import { RunsSidebar } from "./runs-sidebar";
-import type { RunSummaryView } from "@/api/types";
+import type { RunSummaryView } from "@/api/legacy-types";
 
 function makeRun(
   run_id: string,

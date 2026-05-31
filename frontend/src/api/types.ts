@@ -1,90 +1,124 @@
-export type JournalRowView = {
-  row_seq: number;
-  timestamp: string;
-  status:
-    | "emitted"
-    | "approved"
-    | "rejected"
-    | "executed"
-    | "exited"
-    | "force_flat"
-    | "lockout";
-  setup: string | null;
-  direction: "long" | null;
-  planned_entry: number | null;
-  stop_loss: number | null;
-  take_profit: number | null;
-  quantity: number | null;
-  planned_risk_dollars: number | null;
-  actual_entry: number | null;
-  actual_exit: number | null;
-  exit_reason: "stop" | "target" | "force_flat" | null;
-  realized_pnl: number | null;
-  realized_r: number | null;
-  vwap: number | null;
-  or_high: number | null;
-  or_low: number | null;
-  distance_from_vwap_pct: number | null;
-  prior_bar_close: number | null;
-  reason: string;
-  rejection_check: string | null;
-  same_bar_tiebreak: "none" | "stop_first" | null;
-};
+/**
+ * Response types matching Feature 006's contracts/endpoints.md.
+ *
+ * NOTE: Constitution V — `live_auto_enabled` is deliberately NOT in any
+ * response type. The backend doesn't include it; the UI can't render it.
+ *
+ * Legacy types from Feature 003/004 (RunSummaryView, JournalRowView,
+ * BarView, RunManifestView, etc.) live in `legacy-types.ts` until the
+ * pre-feature components are migrated.
+ */
 
-export type SummaryMetricsView = {
-  total_trades: number;
-  wins: number;
-  losses: number;
-  win_rate: number;
-  average_win_r: number;
-  average_loss_r: number;
-  average_r: number;
-  total_r: number;
-  profit_factor: number | null;
-  max_drawdown_r: number;
-  best_trade_r: number | null;
-  worst_trade_r: number | null;
-  longest_consecutive_loss_streak: number;
-  rejected_signal_count: number;
-  rejection_breakdown: Record<string, number>;
-};
+export type UUID = string
 
-export type RunSummaryView = {
-  run_id: string;
-  started_at: string;
-  summary: SummaryMetricsView;
-};
+export type RunStatus = 'queued' | 'running' | 'finished' | 'failed'
 
-export type BarView = {
-  symbol: "SPY";
-  timestamp: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-};
+export type RunSummary = {
+  pnl: string
+  win_rate: number
+  sharpe: number
+  max_drawdown: string
+  total_trades: number
+  total_signals: number
+  rejected_signals: number
+}
 
-export type RunManifestView = {
-  run_id: string;
-  run_started_at: string;
-  run_ended_at: string;
-  code_version: string;
-  config_snapshot: Record<string, unknown>;
-  data_fingerprint: {
-    sha256: string;
-    bar_count: number;
-    earliest_timestamp: string;
-    latest_timestamp: string;
-    session_count: number;
-  };
-  summary: SummaryMetricsView;
-};
+export type Run = {
+  id: UUID
+  started_at: string
+  finished_at: string
+  status: RunStatus
+  range_start: string
+  range_end: string
+  bar_count: number
+  summary: RunSummary
+  data_fingerprint: string
+  app_version: string
+}
 
-export type JournalFilter =
-  | "all"
-  | "executed"
-  | "exited"
-  | "rejected"
-  | "lockout"
-  | "force_flat";
+export type RunListResponse = { runs: Run[]; next_cursor: string | null }
+export type RunStatusResponse = {
+  status: RunStatus
+  status_updated_at: string
+  failure_reason: string | null
+}
+
+export type Trade = {
+  id: UUID
+  direction: 'LONG'
+  quantity: string
+  entry_at: string
+  entry_price: string
+  stop_price: string
+  target_price: string
+  exit_at: string
+  exit_price: string
+  exit_reason: 'target' | 'stop' | 'force_flat' | 'timeout' | 'other'
+  pnl: string
+  r_multiple: string
+}
+
+export type TradeListResponse = { trades: Trade[]; next_cursor: string | null }
+
+export type Signal = {
+  id: UUID
+  emitted_at: string
+  direction: 'LONG'
+  entry_price: string
+  stop_price: string | null
+  target_price: string | null
+  executed: boolean
+  rejection_reason: string | null
+  trade_id: UUID | null
+  indicator_context: Record<string, unknown>
+  reason_text: string
+}
+
+export type SignalListResponse = { signals: Signal[]; next_cursor: string | null }
+
+export type JournalEvent = {
+  id: UUID
+  occurred_at: string
+  kind: string
+  severity: 'info' | 'warning' | 'error'
+  message: string
+  details: Record<string, unknown>
+}
+
+export type JournalListResponse = { events: JournalEvent[]; next_cursor: string | null }
+
+export type Strategy = {
+  key: string
+  display_name: string
+  description: string
+  symbol: 'SPY'
+  direction: 'LONG'
+  kind: 'rule_based'
+  enabled: boolean
+}
+
+export type StrategyListResponse = { strategies: Strategy[] }
+
+export type StartBacktestRequest = { config_name: string; data_csv_path?: string }
+export type StartBacktestResponse = { run_id: UUID; status: 'queued' }
+
+export type StartDataDownloadRequest = { start_date: string; end_date: string }
+export type StartDataDownloadResponse = { job_id: UUID; status: 'queued' }
+
+export type DataDownloadJob = {
+  id: UUID
+  start_date: string
+  end_date: string
+  status: RunStatus
+  storage_path: string | null
+  status_updated_at: string
+  failure_reason: string | null
+}
+
+export type HealthResponse = { status: 'ok'; db: 'ok' | 'unreachable' }
+
+export type ApiErrorBody = {
+  error: string
+  message: string
+  [key: string]: unknown
+}

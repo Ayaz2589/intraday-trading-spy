@@ -1,6 +1,5 @@
 import { RunActions } from "./run-actions";
-import { PresetPicker } from "./preset-picker";
-import { RiskKnobs } from "./risk-knobs";
+import { ConfigureRunMenu } from "./configure-run-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { SegmentedControl } from "./segmented-control";
 import { HelpTooltip } from "./help-tooltip";
@@ -56,14 +55,12 @@ export function Topbar({
         <span className="brand-tick mono">SPY · 5m</span>
       </div>
       <div className="tb-actions">
+        <ConfigureRunMenu onNewRun={onRunChange} />
+        <span className="tb-div" />
         <RunActions
           currentRunId={currentRunId}
-          onNewRun={onRunChange}
           onCleared={onCleared ?? (() => {})}
         />
-        <span className="tb-div" />
-        <PresetPicker onNewRun={onRunChange} />
-        <RiskKnobs onNewRun={onRunChange} />
         {layout != null && onLayoutChange != null && (
           <>
             <span className="tb-div" />

@@ -8,7 +8,7 @@ import {
 import { StatusBadge } from "./status-badge";
 import { HelpTooltip } from "./help-tooltip";
 import { humanize, truncate } from "@/lib/format";
-import type { JournalFilter, JournalRowView } from "@/api/types";
+import type { JournalFilter, JournalRowView } from "@/api/legacy-types";
 
 const FILTERS: JournalFilter[] = [
   "all",

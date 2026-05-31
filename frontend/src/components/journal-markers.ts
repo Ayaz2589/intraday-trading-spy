@@ -1,4 +1,4 @@
-import type { JournalRowView } from "@/api/types";
+import type { JournalRowView } from "@/api/legacy-types";
 import type { ChartMarker } from "./price-chart";
 
 // Pill backgrounds use design tokens so the chart palette stays cohesive

@@ -1,4 +1,4 @@
-import type { RunManifestView } from "@/api/types";
+import type { RunManifestView } from "@/api/legacy-types";
 import { formatRunTitle, runIdHash } from "@/lib/format";
 
 // RunHeader — restyled per design handoff's .run-header block.

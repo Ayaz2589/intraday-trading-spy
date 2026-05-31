@@ -373,6 +373,13 @@ body {
 }
 .btn-danger-ghost { background: transparent; color: var(--loss); border-color: transparent; }
 .btn-danger-ghost:hover { background: var(--loss-soft); }
+.btn-danger {
+  background: var(--loss);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 14px -4px var(--loss);
+}
+.btn-danger:hover { background: color-mix(in srgb, var(--loss) 88%, white); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .i-play { font-size: 9px; }
 
@@ -928,6 +935,34 @@ table.trades thead th {
 .preset-desc { font-size: var(--fs-xs); color: var(--text-muted); }
 .preset-path { grid-column: 2; font-size: 10px; color: var(--text-faint); margin-top: 2px; }
 
+/* Configure & Run popover — consolidates Presets + Custom knobs into a
+   single tabbed menu. The strategy selector sits above the tabs since it
+   applies regardless of which tab the user picks. */
+.configure-run-pop { width: 420px; }
+.cfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+.cfg-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.cfg-row-control { width: 200px; }
+.cfg-tabs {
+  margin: var(--sp-3) var(--sp-5) var(--sp-2);
+  width: calc(100% - var(--sp-5) * 2);
+  justify-content: stretch;
+}
+.cfg-tabs button { flex: 1; }
+
 /* Knobs popover */
 .knobs-pop { width: 380px; }
 .knob-grid { padding: var(--sp-4) var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -1006,6 +1041,56 @@ table.trades thead th {
   background: var(--surface-2);
 }
 .knob-foot .btn-primary { flex: 1; justify-content: center; }
+
+/* ---------------- Confirm dialog ---------------- */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 14, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  animation: fade-in 0.15s var(--ease);
+}
+.dialog {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  animation: pop-in 0.16s var(--ease);
+}
+.dialog-head {
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+.dialog-title {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.dialog-body {
+  padding: var(--sp-4) var(--sp-5);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: var(--lh-normal);
+}
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 /* ---------------- Toast ---------------- */
 .toast {

@@ -1,5 +1,5 @@
 import { HelpTooltip } from "./help-tooltip";
-import type { SummaryMetricsView } from "@/api/types";
+import type { SummaryMetricsView } from "@/api/legacy-types";
 import type { HelpContentKey } from "./help-content";
 
 // SummaryMetricsCard — restyled per design handoff's .card + .summary-grid + .win-meter.

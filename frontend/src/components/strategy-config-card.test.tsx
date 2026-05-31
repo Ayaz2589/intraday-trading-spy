@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { StrategyConfigCard } from "./strategy-config-card";
-import type { RunManifestView } from "@/api/types";
+import type { RunManifestView } from "@/api/legacy-types";
 
 const baseManifest: RunManifestView = {
   run_id: "r1",

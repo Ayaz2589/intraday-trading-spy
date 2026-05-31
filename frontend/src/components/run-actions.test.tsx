@@ -9,38 +9,20 @@ beforeEach(() => {
 });
 
 describe("RunActions", () => {
-  it("clicking 'New backtest' POSTs and reports the new run id", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ run_id: "new-run-id" })),
-    );
-    const onNewRun = vi.fn();
-    render(
-      <MemoryRouter>
-        <RunActions currentRunId="r1" onNewRun={onNewRun} onCleared={() => {}} />
-      </MemoryRouter>,
-    );
-    await userEvent.click(screen.getByRole("button", { name: /new backtest/i }));
-    await waitFor(() =>
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/backtests/run",
-        expect.objectContaining({ method: "POST" }),
-      ),
-    );
-    expect(onNewRun).toHaveBeenCalledWith("new-run-id");
-  });
-
-  it("'Delete this run' confirms then deletes when accepted", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("'Delete this run' opens the in-app confirm dialog and deletes on Confirm", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ deleted: "r1" })),
     );
     const onCleared = vi.fn();
     render(
       <MemoryRouter>
-        <RunActions currentRunId="r1" onNewRun={() => {}} onCleared={onCleared} />
+        <RunActions currentRunId="r1" onCleared={onCleared} />
       </MemoryRouter>,
     );
     await userEvent.click(screen.getByRole("button", { name: /delete this run/i }));
+    // The custom dialog appears (alertdialog role) — no window.confirm fires.
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/runs/r1",
@@ -50,30 +32,34 @@ describe("RunActions", () => {
     expect(onCleared).toHaveBeenCalled();
   });
 
-  it("'Delete this run' does nothing when confirm is dismissed", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("'Delete this run' Cancel dismisses the dialog without calling the API", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(
       <MemoryRouter>
-        <RunActions currentRunId="r1" onNewRun={() => {}} onCleared={() => {}} />
+        <RunActions currentRunId="r1" onCleared={() => {}} />
       </MemoryRouter>,
     );
     await userEvent.click(screen.getByRole("button", { name: /delete this run/i }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("'Delete all runs' confirms then deletes everything", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("'Delete all runs' confirms via the in-app dialog then deletes everything", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ deleted_count: 5 })),
     );
     const onCleared = vi.fn();
     render(
       <MemoryRouter>
-        <RunActions currentRunId={null} onNewRun={() => {}} onCleared={onCleared} />
+        <RunActions currentRunId={null} onCleared={onCleared} />
       </MemoryRouter>,
     );
     await userEvent.click(screen.getByRole("button", { name: /delete all runs/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /delete all$/i }),
+    );
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/runs",
@@ -86,7 +72,7 @@ describe("RunActions", () => {
   it("'Delete this run' is disabled when currentRunId is null", () => {
     render(
       <MemoryRouter>
-        <RunActions currentRunId={null} onNewRun={() => {}} onCleared={() => {}} />
+        <RunActions currentRunId={null} onCleared={() => {}} />
       </MemoryRouter>,
     );
     expect(

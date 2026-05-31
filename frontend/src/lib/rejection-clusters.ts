@@ -1,4 +1,4 @@
-import type { BarView, JournalRowView } from "@/api/types";
+import type { BarView, JournalRowView } from "@/api/legacy-types";
 
 // Collapse consecutive same-reason rejection rows into clusters. A cluster
 // is a maximal run of contiguous bars sharing one rejection_check.

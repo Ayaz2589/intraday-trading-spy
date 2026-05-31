@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { entryRationale } from "./entry-rationale";
-import type { BarView, JournalRowView } from "@/api/types";
+import type { BarView, JournalRowView } from "@/api/legacy-types";
 
 const baseRow: JournalRowView = {
   row_seq: 0,

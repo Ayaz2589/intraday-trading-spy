@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { findSwingPivots } from "./swing-pivots";
-import type { BarView } from "@/api/types";
+import type { BarView } from "@/api/legacy-types";
 
 function bar(
   i: number,

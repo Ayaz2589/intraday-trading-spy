@@ -1,4 +1,4 @@
-import type { BarView, JournalRowView } from "@/api/types";
+import type { BarView, JournalRowView } from "@/api/legacy-types";
 
 // One row of "why" data. The component renders these as a checklist.
 export interface TriggerCheck {

@@ -1,4 +1,4 @@
-import type { JournalRowView } from "@/api/types";
+import type { JournalRowView } from "@/api/legacy-types";
 
 type ExitReason = "target" | "stop" | "force_flat";
 

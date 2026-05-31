@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { fetchRuns } from "@/api/client";
+import { fetchRuns } from "@/api/legacy-client";
 import { AppShell } from "@/components/app-shell";
 import { Topbar } from "@/components/topbar";
 import { RunsSidebar } from "@/components/runs-sidebar";
 import { useSidebarMode } from "@/lib/sidebar-mode";
-import type { RunSummaryView } from "@/api/types";
+import type { RunSummaryView } from "@/api/legacy-types";
 
 export function Root() {
   const navigate = useNavigate();

@@ -1,110 +1,124 @@
-import type {
-  RunSummaryView,
-  JournalRowView,
-  BarView,
-  RunManifestView,
-  SummaryMetricsView,
-} from "./types";
+/**
+ * Typed FastAPI fetch wrapper (Feature 007).
+ *
+ * Replaces the legacy static-server client (now at `legacy-client.ts`).
+ * Handles Authorization header attachment, error mapping, and refresh-retry
+ * on 401. Every API call in the new app goes through this wrapper.
+ */
+import { ENV } from '@/env'
+import { getSupabase } from '@/auth/supabase-client'
+import { SessionExpiredError } from '@/auth/refresh-retry'
+import type { ApiErrorBody } from './types'
 
-type FetchOpts = { signal?: AbortSignal };
-
-async function get<T>(path: string, opts?: FetchOpts): Promise<T> {
-  const res = await fetch(path, { signal: opts?.signal });
-  if (res.status === 404) {
-    const body = await res.json().catch(() => ({ error: "not_found" }));
-    const err: Error & { code?: string } = new Error(
-      body?.error ?? "not_found",
-    );
-    err.code = body?.error ?? "not_found";
-    throw err;
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: ApiErrorBody | string,
+    message?: string
+  ) {
+    super(message ?? `API error ${status}`)
+    this.name = 'ApiError'
   }
-  if (!res.ok) throw new Error(`http_${res.status}`);
-  return (await res.json()) as T;
 }
 
-export const fetchRuns = (opts?: FetchOpts) =>
-  get<RunSummaryView[]>("/api/runs", opts);
+export class NotFoundError extends ApiError {
+  constructor(public readonly path: string, body: ApiErrorBody | string = '') {
+    super(404, body, `Resource not found: ${path}`)
+    this.name = 'NotFoundError'
+  }
+}
 
-export const fetchJournal = (id: string, opts?: FetchOpts) =>
-  get<JournalRowView[]>(`/api/runs/${id}/journal`, opts);
+export class ValidationError extends ApiError {
+  constructor(body: ApiErrorBody | string) {
+    super(400, body, 'Request validation failed')
+    this.name = 'ValidationError'
+  }
+}
 
-export const fetchSummary = (id: string, opts?: FetchOpts) =>
-  get<SummaryMetricsView>(`/api/runs/${id}/summary`, opts);
+export class RateLimitedError extends ApiError {
+  constructor(body: ApiErrorBody) {
+    super(429, body, body.message ?? 'Rate limited')
+    this.name = 'RateLimitedError'
+  }
+}
 
-export const fetchManifest = (id: string, opts?: FetchOpts) =>
-  get<RunManifestView>(`/api/runs/${id}/manifest`, opts);
+export class ServiceUnavailableError extends ApiError {
+  constructor(body: ApiErrorBody | string) {
+    super(503, body, 'Service unavailable')
+    this.name = 'ServiceUnavailableError'
+  }
+}
 
-export const fetchBars = (id: string, opts?: FetchOpts) =>
-  get<BarView[]>(`/api/runs/${id}/bars`, opts);
+type RequestOptions = {
+  method?: 'GET' | 'POST' | 'DELETE'
+  body?: unknown
+  searchParams?: Record<string, string | number | boolean | undefined>
+  noAuth?: boolean
+}
 
-async function send<T>(
-  method: "POST" | "DELETE",
+async function readJson(response: Response): Promise<ApiErrorBody | string> {
+  const text = await response.text()
+  if (!text) return ''
+  try {
+    return JSON.parse(text) as ApiErrorBody
+  } catch {
+    return text
+  }
+}
+
+let _retrying401 = false
+
+async function getAccessToken(): Promise<string | null> {
+  const supabase = getSupabase()
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
+
+export async function apiRequest<T>(
   path: string,
-  body?: unknown,
-  opts?: FetchOpts,
+  options: RequestOptions = {}
 ): Promise<T> {
-  const init: RequestInit = { method, signal: opts?.signal };
-  if (body !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
-    init.body = JSON.stringify(body);
+  const url = new URL(path, ENV.API_BASE_URL)
+  if (options.searchParams) {
+    for (const [k, v] of Object.entries(options.searchParams)) {
+      if (v !== undefined) url.searchParams.set(k, String(v))
+    }
   }
-  const res = await fetch(path, init);
-  if (!res.ok) {
-    const respBody = await res
-      .json()
-      .catch(() => ({ error: `http_${res.status}` }));
-    const err: Error & { code?: string } = new Error(
-      respBody?.error ?? `http_${res.status}`,
-    );
-    err.code = respBody?.error ?? `http_${res.status}`;
-    throw err;
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
+  if (!options.noAuth) {
+    const token = await getAccessToken()
+    if (!token) throw new SessionExpiredError('no session')
+    headers.Authorization = `Bearer ${token}`
   }
-  return (await res.json()) as T;
+
+  const response = await fetch(url, {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  })
+
+  if (response.ok) return (await response.json()) as T
+
+  const body = await readJson(response)
+
+  if (response.status === 401 && !_retrying401 && !options.noAuth) {
+    _retrying401 = true
+    try {
+      const supabase = getSupabase()
+      const { error } = await supabase.auth.refreshSession()
+      if (error) throw new SessionExpiredError(error)
+      return await apiRequest<T>(path, options)
+    } finally {
+      _retrying401 = false
+    }
+  }
+  if (response.status === 401) throw new SessionExpiredError(body)
+  if (response.status === 404) throw new NotFoundError(path, body)
+  if (response.status === 400 || response.status === 422) throw new ValidationError(body)
+  if (response.status === 429) throw new RateLimitedError(body as ApiErrorBody)
+  if (response.status === 503) throw new ServiceUnavailableError(body)
+
+  throw new ApiError(response.status, body)
 }
-
-export type ConfigOverrides = Record<string, Record<string, unknown>>;
-
-export type ConfigSummary = { name: string; path: string };
-
-export type DatasetSummary = {
-  path: string;
-  name: string;
-  start: string | null;
-  end: string | null;
-  bar_count: number | null;
-  session_count: number | null;
-};
-
-export const fetchConfig = (opts?: FetchOpts) =>
-  get<Record<string, unknown>>("/api/config", opts);
-
-export const fetchConfigs = (opts?: FetchOpts) =>
-  get<ConfigSummary[]>("/api/configs", opts);
-
-export const fetchDatasets = (opts?: FetchOpts) =>
-  get<DatasetSummary[]>("/api/datasets", opts);
-
-export const runBacktest = (
-  overrides?: ConfigOverrides,
-  opts?: FetchOpts,
-) =>
-  send<{ run_id: string }>(
-    "POST",
-    "/api/backtests/run",
-    overrides ? { overrides } : {},
-    opts,
-  );
-
-export const runBacktestWithConfig = (configPath: string, opts?: FetchOpts) =>
-  send<{ run_id: string }>(
-    "POST",
-    "/api/backtests/run",
-    { config_path: configPath },
-    opts,
-  );
-
-export const deleteRun = (id: string, opts?: FetchOpts) =>
-  send<{ deleted: string }>("DELETE", `/api/runs/${id}`, undefined, opts);
-
-export const deleteAllRuns = (opts?: FetchOpts) =>
-  send<{ deleted_count: number }>("DELETE", "/api/runs", undefined, opts);

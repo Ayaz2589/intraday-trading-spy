@@ -19,7 +19,7 @@ import { exitRationale, type ExitRationale } from "@/lib/exit-rationale";
 import { clusterRejections } from "@/lib/rejection-clusters";
 import { useCandleStyle, CANDLE_STYLES } from "@/lib/candle-style";
 import { createRejectionClusterOverlays } from "./rejection-cluster-overlay";
-import type { BarView, JournalRowView } from "@/api/types";
+import type { BarView, JournalRowView } from "@/api/legacy-types";
 
 // VWAP line thickness in px. The entry-dot radius scales off this so
 // the dot stays visually balanced with the line — too small and it
@@ -49,6 +49,7 @@ registerIndicator({
       key: "vwap",
       title: "VWAP: ",
       type: "line",
+      // @ts-expect-error klinecharts IndicatorFigureStylesCallback signature varies by version
       styles: () => ({
         color: "#f5a524",
         size: VWAP_LINE_SIZE,
@@ -514,6 +515,7 @@ export function PriceChart({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    // @ts-expect-error klinecharts Styles DeepPartial type does not allow our readonly literal
     const chart = init(container, { styles: buildChartStyles(theme, candleStyle) });
     if (!chart) return;
     chartRef.current = chart;
@@ -653,6 +655,7 @@ export function PriceChart({
 
   // Theme + candle-style — re-apply styles whenever either changes.
   useEffect(() => {
+    // @ts-expect-error klinecharts setStyles DeepPartial<Styles> mismatch with readonly literal
     chartRef.current?.setStyles(buildChartStyles(theme, candleStyle));
   }, [theme, candleStyle]);
 
@@ -1493,7 +1496,7 @@ function BarDetailsStrip({
   const bodyPct = range > 0 ? (bodyAbs / range) * 100 : 0;
   const upperPct = range > 0 ? (upperWick / range) * 100 : 0;
   const lowerPct = range > 0 ? (lowerWick / range) * 100 : 0;
-  const dollarVol = bar.close * bar.volume;
+  const dollarVol = bar.close * (bar.volume ?? 0);
   const distFromVwap =
     vwap != null ? ((bar.close - vwap) / vwap) * 100 : null;
   const change = prevClose != null ? bar.close - prevClose : null;
@@ -1543,7 +1546,7 @@ function BarDetailsStrip({
           <Row k="Range" v={range.toFixed(2)} />
         </Section>
         <Section title="Volume">
-          <Row k="Shares" v={bar.volume.toLocaleString()} />
+          <Row k="Shares" v={(bar.volume ?? 0).toLocaleString()} />
           <Row k="$ traded" v={formatDollar(dollarVol)} />
         </Section>
         <Section title="Indicators">

@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { RunSummaryView } from "@/api/types";
+import type { RunSummaryView } from "@/api/legacy-types";
 import { formatRunTitle, runIdHash } from "@/lib/format";
 
 // RunsSidebar — restyled per the design handoff's .sidebar block.

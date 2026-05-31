@@ -1,4 +1,4 @@
-import type { BarView } from "@/api/types";
+import type { BarView } from "@/api/legacy-types";
 
 // A bar qualifies as a swing high if its `high` is strictly greater
 // than the highs of every bar within `lookback` bars on either side

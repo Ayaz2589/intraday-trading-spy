@@ -140,3 +140,12 @@ api-dev: ## Start the Feature 006 HTTP API on localhost:8001 (sources .env)
 
 test-api-integration: ## Run Feature 006 API integration tests (Docker + Supabase CLI + SUPABASE_INTEGRATION=1)
 	cd backend && SUPABASE_INTEGRATION=1 .venv/bin/pytest -q -m integration tests/api/integration/
+
+dev: ## Feature 007: run backend API (:8001) + frontend Vite (:5173) in parallel
+	@( $(MAKE) api-dev & $(MAKE) ui-dev & wait )
+
+ui-test: ## Feature 007: run all frontend Vitest unit tests
+	cd frontend && npm test
+
+ui-test-integration: ## Feature 007: run opt-in frontend integration tests (needs FRONTEND_INTEGRATION=1)
+	cd frontend && FRONTEND_INTEGRATION=1 npm test

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { clusterRejections } from "./rejection-clusters";
-import type { BarView, JournalRowView } from "@/api/types";
+import type { BarView, JournalRowView } from "@/api/legacy-types";
 
 const baseBar: Omit<BarView, "timestamp"> = {
   symbol: "SPY",
