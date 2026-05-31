@@ -319,10 +319,26 @@ def _event_lockout(row: dict, *, user_id: UUID, run_id: UUID) -> JournalEventRow
 
 
 def _normalize_rejection_reason(check: str | None) -> str:
-    """Map engine's rejection_check strings to the DB CHECK list."""
+    """Map engine's rejection_check strings to the DB CHECK list.
+
+    The engine emits the `reason` field of `RiskDecision` (or strategy-side
+    rejection text) via the journal's `rejection_check` column. Mapping these
+    raw strings to the constitutional DB enum on `signals.rejection_reason`.
+    """
     if not check:
         return "other"
     mapping = {
+        # Risk manager reasons (backend/src/intraday_trade_spy/risk/manager.py)
+        "non_spy_symbol": "wrong_symbol",
+        "position_already_open": "duplicate_signal",
+        "daily_loss_limit_reached": "daily_loss_hit",
+        "max_trades_per_day_reached": "max_trades_hit",
+        "consecutive_losses_reached": "consecutive_loss_cap",
+        "cooldown_active": "cooldown_after_loss",
+        "no_new_trades_after": "no_new_trades_cutoff",
+        "position_size_zero": "position_size_cap",
+        "position_value_exceeds_cap": "position_size_cap",
+        # Legacy / alternate spellings (kept for forward compat)
         "no_stop_loss": "missing_stop",
         "no_take_profit": "missing_target",
         "wrong_symbol": "wrong_symbol",

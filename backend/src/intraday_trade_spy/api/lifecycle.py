@@ -144,8 +144,11 @@ def _run_backtest_task(
         storage_client.update_run_status(run_id=run_id, status="running")
         _log.info("backtest %s: started", run_id)
 
+        import json
         from intraday_trade_spy.backtest.engine import BacktestEngine
+        from intraday_trade_spy.backtest.manifest import write_run_yaml
         from intraday_trade_spy.config import load_config
+        from intraday_trade_spy.journal.exporter import write_journal_csv
         from intraday_trade_spy.storage.push import gather_run_outputs
 
         cfg = load_config("config/config.yaml")
@@ -154,7 +157,17 @@ def _run_backtest_task(
         out_dir.mkdir(parents=True, exist_ok=True)
         engine = BacktestEngine(cfg)
         result = engine.run(csv_path=csv_path, output_dir=out_dir)
+
+        # Persist the local outputs (same as the CLI's run_backtest.py main()).
+        # gather_run_outputs() reads from these files to construct the cloud payload.
         run_dir = out_dir / result.run.run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        write_journal_csv(result.journal_rows, run_dir / "journal.csv")
+        (run_dir / "summary.json").write_text(
+            json.dumps(result.summary.model_dump(), indent=2, sort_keys=True, ensure_ascii=False)
+            + "\n"
+        )
+        write_run_yaml(result.run, run_dir / "run.yaml")
 
         payload = gather_run_outputs(
             run_dir,
