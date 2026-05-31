@@ -75,6 +75,39 @@ the chart overlay.
 
 ---
 
+## 4. Time travel (point-in-time state reconstruction)
+
+**What it is:** Jump to any arbitrary timestamp in any historical SPY
+session and reconstruct the *full* market state exactly as it existed at
+that moment — bars so far, every indicator (VWAP, opening range, EMAs,
+trend label), open positions, risk-manager state, and the journal up to
+that point — with **no lookahead** beyond the selected time. A
+date/time picker or a scrubbable timeline lets the user "rewind the
+world" to, say, 11:15 ET on a given day.
+
+**Why it teaches trends:** It lets users study any decision point on its
+own terms and confront lookahead bias directly — they only ever see what
+the system actually knew at time *T*, never the future. This is the
+honest way to learn "what would I have done here?"
+
+**Relationship to idea 2:** Time travel is the *engine* the replay mode
+sits on. Sequential replay is repeatedly advancing the "now" pointer one
+bar at a time; time travel is jumping the pointer to an arbitrary
+timestamp. Building the point-in-time reconstruction first makes the
+replay mode mostly a UI layer on top.
+
+**Reuses existing code:** The backtest engine
+(`backend/src/intraday_trade_spy/backtest/engine.py`) already processes
+bars sequentially and produces the signal/decision/journal stream;
+reconstructing state at time *T* means running deterministically up to
+*T* and snapshotting. The loader's per-session `session_date` and the
+existing indicators give the inputs.
+
+**Effort:** Medium. Care needed to guarantee determinism and strictly
+forbid lookahead in the snapshot.
+
+---
+
 ## Suggested sequencing
 
 Ideas **1** and **2** reinforce each other: the trend-state label gives
@@ -82,3 +115,8 @@ users the vocabulary, and the replay mode makes them practice applying
 it. Together they form the sharpest expression of "an app that teaches
 you to find intraday trends." Idea **3** layers on top once the chart
 and indicator surface exist.
+
+Idea **4** (time travel) is best built *before or alongside* idea **2**,
+since point-in-time reconstruction is the foundation the replay mode
+runs on. Build the no-lookahead state snapshot first, then sequential
+replay becomes a thin UI layer over it.
