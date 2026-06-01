@@ -1,6 +1,6 @@
 # Deployment Runbook — Live App (Feature 008)
 
-How to take `intraday-trade-spy` from the repo to a working live app, and how
+How to take `intraday-trading-spy` from the repo to a working live app, and how
 to operate it. Three services, deployed in this order:
 
 ```
@@ -26,13 +26,13 @@ function without Supabase, so provision them bottom-up.
 ## 2. Fly.io (FastAPI backend)
 
 Deploy artifacts already live in `backend/`: `Dockerfile`, `fly.toml`
-(app `intraday-trade-spy`, region `iad`, health check on `/healthz`).
+(app `intraday-trading-spy`, region `iad`, health check on `/healthz`).
 
 One-time:
 
 ```bash
 cd backend
-flyctl apps create intraday-trade-spy
+flyctl apps create intraday-trading-spy
 
 # Runtime secrets (never commit these):
 flyctl secrets set \
@@ -56,7 +56,7 @@ Deploy:
   Actions). Trigger manually anytime via the workflow's "Run workflow" button.
 - **Manual:** `cd backend && flyctl deploy --remote-only`.
 
-Verify: `curl https://intraday-trade-spy.fly.dev/healthz` → `200` with
+Verify: `curl https://intraday-trading-spy.fly.dev/healthz` → `200` with
 `{"status":"ok","db":"ok"}`. A `503` with `db:"unreachable"` means the Supabase
 secrets are missing or wrong — Fly's health check (and the runbook) gate on this.
 
@@ -76,7 +76,7 @@ Environment variables (Project → Settings → Environment Variables):
 |---|---|
 | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | the **publishable** key (`sb_publishable_…`) — never service_role |
-| `VITE_API_BASE_URL` | the Fly URL, e.g. `https://intraday-trade-spy.fly.dev` |
+| `VITE_API_BASE_URL` | the Fly URL, e.g. `https://intraday-trading-spy.fly.dev` |
 
 `frontend/src/env.ts` throws at build time in production if the two Supabase
 vars are missing. Deploy auto-runs on push to the production branch.
@@ -88,9 +88,9 @@ start a backtest → view results.
 
 ## Operations
 
-- **Backend logs:** `flyctl logs -a intraday-trade-spy`.
+- **Backend logs:** `flyctl logs -a intraday-trading-spy`.
 - **Frontend logs/analytics:** Vercel dashboard → project → Logs / Analytics.
-- **Rollback backend:** `flyctl releases -a intraday-trade-spy` then
+- **Rollback backend:** `flyctl releases -a intraday-trading-spy` then
   `flyctl deploy --image <previous-image>`, or `flyctl releases rollback`.
 - **Rollback frontend:** Vercel dashboard → Deployments → promote a previous one.
 - **Rotate a leaked service_role key:** rotate in Supabase, then

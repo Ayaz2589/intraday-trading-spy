@@ -1,7 +1,7 @@
 # Deploys the FastAPI backend to Fly.io.
 #
 # Setup (one-time):
-#   1. Create the Fly app:        flyctl apps create intraday-trade-spy
+#   1. Create the Fly app:        flyctl apps create intraday-trading-spy
 #   2. Set runtime secrets:       flyctl secrets set \
 #        SUPABASE_URL=...  SUPABASE_SERVICE_ROLE_KEY=...  SUPABASE_USER_ID=... \
 #        CORS_ALLOW_ORIGINS=https://<your-app>.vercel.app \
