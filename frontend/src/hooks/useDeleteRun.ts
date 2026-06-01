@@ -1,20 +1,89 @@
-import { useMutation } from '@tanstack/react-query'
-import { deleteRun, deleteAllRuns } from '@/api/runs'
-import { useInvalidateRuns } from './useRuns'
-import type { UUID } from '@/api/types'
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query'
+import { deleteRun, deleteAllRuns, setRunFavorite } from '@/api/runs'
+import { runsQueryKey } from './useRuns'
+import type { Run, RunListResponse, UUID } from '@/api/types'
+
+type RunsCache = InfiniteData<RunListResponse>
+
+/** Snapshot the current cache, cancel any in-flight refetches, apply the
+ *  optimistic edit, and return the snapshot so onError can roll back if
+ *  the mutation fails. Canceling is critical — without it, the 5-second
+ *  refetchInterval can land an in-flight response AFTER the optimistic
+ *  edit and silently restore the deleted/un-favorited row. */
+async function withOptimistic(
+  client: ReturnType<typeof useQueryClient>,
+  mutate: (cache: RunsCache) => RunsCache,
+): Promise<RunsCache | undefined> {
+  await client.cancelQueries({ queryKey: runsQueryKey() })
+  const prev = client.getQueryData<RunsCache>(runsQueryKey())
+  if (prev) client.setQueryData<RunsCache>(runsQueryKey(), mutate(prev))
+  return prev
+}
+
+function withoutRun(cache: RunsCache, runId: UUID): RunsCache {
+  return {
+    ...cache,
+    pages: cache.pages.map(page => ({
+      ...page,
+      runs: page.runs.filter(r => r.id !== runId),
+    })),
+  }
+}
+
+function withAllRunsCleared(cache: RunsCache): RunsCache {
+  return {
+    ...cache,
+    pages: cache.pages.map(page => ({ ...page, runs: [], next_cursor: null })),
+  }
+}
+
+function withRunPatch(cache: RunsCache, runId: UUID, patch: Partial<Run>): RunsCache {
+  return {
+    ...cache,
+    pages: cache.pages.map(page => ({
+      ...page,
+      runs: page.runs.map(r => (r.id === runId ? { ...r, ...patch } : r)),
+    })),
+  }
+}
 
 export function useDeleteRun() {
-  const invalidate = useInvalidateRuns()
+  const client = useQueryClient()
   return useMutation({
     mutationFn: (runId: UUID) => deleteRun(runId),
-    onSuccess: () => invalidate(),
+    onMutate: (runId: UUID) =>
+      withOptimistic(client, cache => withoutRun(cache, runId)),
+    onError: (_err, _runId, ctx) => {
+      if (ctx) client.setQueryData(runsQueryKey(), ctx)
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: runsQueryKey() }),
   })
 }
 
 export function useDeleteAllRuns() {
-  const invalidate = useInvalidateRuns()
+  const client = useQueryClient()
   return useMutation({
     mutationFn: () => deleteAllRuns(),
-    onSuccess: () => invalidate(),
+    onMutate: () => withOptimistic(client, cache => withAllRunsCleared(cache)),
+    onError: (_err, _vars, ctx) => {
+      if (ctx) client.setQueryData(runsQueryKey(), ctx)
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: runsQueryKey() }),
+  })
+}
+
+export function useToggleFavorite() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { id: UUID; is_favorite: boolean }) =>
+      setRunFavorite(vars.id, vars.is_favorite),
+    onMutate: (vars) =>
+      withOptimistic(client, cache =>
+        withRunPatch(cache, vars.id, { is_favorite: vars.is_favorite }),
+      ),
+    onError: (_err, _vars, ctx) => {
+      if (ctx) client.setQueryData(runsQueryKey(), ctx)
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: runsQueryKey() }),
   })
 }

@@ -40,11 +40,20 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        // App shell pinned to viewport — topbar + side nav don't scroll
+        // with main. Only the <main> region scrolls (overflow: auto).
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       <AuthenticatedTopbar />
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         <SideNav />
-        <main style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           <Outlet />
         </main>
       </div>

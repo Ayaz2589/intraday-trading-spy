@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useDeleteRun } from '@/hooks/useDeleteRun'
+import { useDeleteRun, useToggleFavorite } from '@/hooks/useDeleteRun'
 import type { Run, RunStatus } from '@/api/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -38,11 +38,18 @@ interface Props {
 export function RunMiniCard({ run, active }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const deleteRun = useDeleteRun()
+  const toggleFavorite = useToggleFavorite()
 
   const openConfirm = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setConfirmOpen(true)
+  }
+
+  const onToggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleFavorite.mutate({ id: run.id, is_favorite: !run.is_favorite })
   }
 
   return (
@@ -112,6 +119,29 @@ export function RunMiniCard({ run, active }: Props) {
           </span>
           <span className="mono">PnL {run.summary.pnl}</span>
         </div>
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-label={run.is_favorite ? 'Unfavorite run' : 'Favorite run'}
+          data-testid={`run-mini-card-favorite-${run.id}`}
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 22,
+            background: 'transparent',
+            border: 'none',
+            color: run.is_favorite ? '#f5a524' : 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: 12,
+            padding: 2,
+            lineHeight: 1,
+            opacity: run.is_favorite ? 1 : active ? 0.7 : 0,
+            transition: 'opacity 80ms ease',
+          }}
+          title={run.is_favorite ? 'Unfavorite' : 'Favorite'}
+        >
+          {run.is_favorite ? '★' : '☆'}
+        </button>
         <button
           type="button"
           onClick={openConfirm}

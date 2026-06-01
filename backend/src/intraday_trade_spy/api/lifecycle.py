@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
@@ -78,6 +79,166 @@ def _get_max_concurrent_downloads() -> int:
         return DEFAULT_MAX_CONCURRENT_DOWNLOADS_PER_USER
 
 
+class BarsUnavailableError(RuntimeError):
+    """No bars could be produced for the requested range — propagated to
+    failure_reason so the run-detail UI can explain why instead of showing
+    a cryptic engine crash."""
+
+
+# yfinance's 5-minute intraday history is capped to ~60 calendar days. Any
+# request older than that returns zero rows and we have nothing to backtest.
+YFINANCE_5M_LOOKBACK_DAYS = 60
+
+
+def materialize_bars_csv(
+    *,
+    storage_client: SupabaseStorageClient,
+    start: date,
+    end: date,
+) -> Path:
+    """Return a CSV path containing OHLC bars for [start, end].
+
+    Cache-first strategy:
+      1. Query the shared `bars` cache for the full range.
+      2. Compute which weekdays are missing.
+      3. For missing days within the yfinance 60-day lookback window, fetch
+         them and upsert into the cache. Days older than 60 days that aren't
+         already cached can't be reached — we proceed with whatever bars we
+         have (partial coverage > hard failure).
+      4. If `bars` is still empty entirely, raise BarsUnavailableError.
+
+    Output CSV matches `Downloader._normalize`'s shape:
+        symbol,timestamp,open,high,low,close,volume
+    """
+    today = date.today()
+    cutoff = today - timedelta(days=YFINANCE_5M_LOOKBACK_DAYS)
+
+    bars = storage_client.list_bars(range_start=str(start), range_end=str(end))
+    have_dates = {b["bar_start"][:10] for b in bars}
+    expected_dates = {
+        (start + timedelta(days=i)).isoformat()
+        for i in range((end - start).days + 1)
+        if (start + timedelta(days=i)).weekday() < 5  # Mon-Fri only
+    }
+    missing = sorted(expected_dates - have_dates)
+    fetchable_missing = [d for d in missing if date.fromisoformat(d) >= cutoff]
+    unreachable_missing = [d for d in missing if date.fromisoformat(d) < cutoff]
+
+    if fetchable_missing:
+        _log.info(
+            "materialize_bars_csv: fetching %d missing day(s) from yfinance",
+            len(fetchable_missing),
+        )
+        _fetch_and_cache_range(
+            storage_client=storage_client,
+            start=date.fromisoformat(fetchable_missing[0]),
+            end=date.fromisoformat(fetchable_missing[-1]),
+        )
+        bars = storage_client.list_bars(range_start=str(start), range_end=str(end))
+        have_dates = {b["bar_start"][:10] for b in bars}
+
+    if not bars:
+        if not expected_dates:
+            raise BarsUnavailableError(
+                "Selected range contains no weekdays — markets are closed on "
+                "weekends. Pick a range with at least one Mon–Fri."
+            )
+        if unreachable_missing and not fetchable_missing:
+            raise BarsUnavailableError(
+                f"No SPY bars cached for {start} → {end}. yfinance only serves "
+                f"intraday 5m bars for the last {YFINANCE_5M_LOOKBACK_DAYS} days, "
+                f"and we don't have these dates archived locally yet. Pick a more "
+                f"recent range or run a smaller backtest within the last "
+                f"{YFINANCE_5M_LOOKBACK_DAYS} days first to start building the archive."
+            )
+        raise BarsUnavailableError(
+            f"No SPY bars available for {start} → {end}. yfinance returned no "
+            f"data — common causes: holiday-only range or a future date."
+        )
+
+    if unreachable_missing:
+        _log.info(
+            "materialize_bars_csv: %d unreachable day(s) skipped (outside 60d window, not cached)",
+            len(unreachable_missing),
+        )
+
+    out = Path(tempfile.mkstemp(suffix="_bars.csv")[1])
+    import csv as _csv
+    with out.open("w", newline="") as f:
+        writer = _csv.DictWriter(
+            f, fieldnames=["symbol", "timestamp", "open", "high", "low", "close", "volume"]
+        )
+        writer.writeheader()
+        for b in bars:
+            writer.writerow(
+                {
+                    "symbol": "SPY",
+                    "timestamp": b["bar_start"],
+                    "open": b["open"],
+                    "high": b["high"],
+                    "low": b["low"],
+                    "close": b["close"],
+                    "volume": b["volume"],
+                }
+            )
+    return out
+
+
+def _fetch_and_cache_range(
+    *,
+    storage_client: SupabaseStorageClient,
+    start: date,
+    end: date,
+) -> None:
+    """Download yfinance bars for [start, end] and upsert to the cache."""
+    from intraday_trade_spy.data.downloader import (
+        Downloader,
+        DownloadRequest,
+        NoBarsFetchedError,
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tf:
+        tmp = Path(tf.name)
+    try:
+        try:
+            Downloader().fetch(
+                DownloadRequest(
+                    start=start,
+                    end=end,
+                    timeframe="5m",
+                    out=tmp,
+                    force=True,
+                    show_progress=False,
+                )
+            )
+        except NoBarsFetchedError:
+            # Weekend / holiday range with no data — leave the cache as-is.
+            return
+
+        import csv as _csv
+
+        with tmp.open() as f:
+            reader = _csv.DictReader(f)
+            rows = [
+                {
+                    "bar_start": r["timestamp"],
+                    "open": r["open"],
+                    "high": r["high"],
+                    "low": r["low"],
+                    "close": r["close"],
+                    "volume": r["volume"],
+                    "source": "yfinance",
+                }
+                for r in reader
+                if r.get("symbol") == "SPY"
+            ]
+        for i in range(0, len(rows), 1000):
+            storage_client.upsert_bars(rows[i : i + 1000])
+    finally:
+        tmp.unlink(missing_ok=True)
+        tmp.with_suffix(tmp.suffix + ".fetch.yaml").unlink(missing_ok=True)
+
+
 def start_backtest(
     *,
     user_id: UUID,
@@ -85,6 +246,8 @@ def start_backtest(
     data_csv_path: Optional[str],
     storage_client: SupabaseStorageClient,
     background_tasks: BackgroundTasks,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ) -> UUID:
     """Validate, reserve a slot, insert the queued row, enqueue the task.
 
@@ -101,14 +264,19 @@ def start_backtest(
     _reserve_slot(user_id, run_id, cap)
 
     started_at = datetime.now(timezone.utc).isoformat()
+    # Use the caller's requested range as the placeholder so the UI's
+    # pending-state header reads correctly. The finalize step overwrites
+    # these with the actual range derived from the engine's bars.
+    placeholder_start = start_date.isoformat() if start_date else "2026-01-01"
+    placeholder_end = end_date.isoformat() if end_date else "2026-01-01"
     try:
         storage_client.insert_queued_run(
             run_id=run_id,
             config_id=UUID(config["id"]),
             strategy_id=UUID(strategy_id),
             started_at=started_at,
-            range_start="2026-01-01",
-            range_end="2026-01-01",
+            range_start=placeholder_start,
+            range_end=placeholder_end,
             bar_count=1,
             data_fingerprint="pending",
             app_version="api-0.2.0",
@@ -125,6 +293,8 @@ def start_backtest(
         strategy_id=UUID(strategy_id),
         data_csv_path=data_csv_path,
         storage_client=storage_client,
+        start_date=start_date,
+        end_date=end_date,
     )
     return run_id
 
@@ -137,6 +307,8 @@ def _run_backtest_task(
     strategy_id: UUID,
     data_csv_path: Optional[str],
     storage_client: SupabaseStorageClient,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ) -> None:
     """BackgroundTask body. Transitions queued → running → finished (via atomic
     finalize) or → failed. Always releases the active-runs slot."""
@@ -152,7 +324,14 @@ def _run_backtest_task(
         from intraday_trade_spy.storage.push import gather_run_outputs
 
         cfg = load_config("config/config.yaml")
-        csv_path = Path(data_csv_path) if data_csv_path else Path(cfg.data.csv_path)
+        if start_date is not None and end_date is not None:
+            csv_path = materialize_bars_csv(
+                storage_client=storage_client, start=start_date, end=end_date
+            )
+        elif data_csv_path:
+            csv_path = Path(data_csv_path)
+        else:
+            csv_path = Path(cfg.data.csv_path)
         out_dir = Path(cfg.data.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         engine = BacktestEngine(cfg)

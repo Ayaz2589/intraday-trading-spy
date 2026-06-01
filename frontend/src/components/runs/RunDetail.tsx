@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRun } from '@/hooks/useRun'
 import { useRunBars } from '@/hooks/useRunBars'
 import { useRunManifest } from '@/hooks/useRunManifest'
@@ -8,6 +9,7 @@ import { PriceChart } from '@/components/price-chart'
 import { SessionPicker } from '@/components/session-picker'
 import { JournalTable } from '@/components/journal-table'
 import { buildMarkers } from '@/components/journal-markers'
+import { Skeleton } from '@/components/skeleton'
 import { humanize } from '@/lib/format'
 import { RunSummaryCards } from './RunSummaryCards'
 import { HelpTooltip } from '@/components/help-tooltip'
@@ -32,10 +34,24 @@ export function RunDetail({ runId }: Props) {
   const barsQuery = useRunBars(runId)
   const signalsQuery = useRunSignals(runId)
   const tradesQuery = useRunTrades(runId)
+  const queryClient = useQueryClient()
 
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [showRejections, setShowRejections] = useState(false)
   const [filter, setFilter] = useState<JournalFilter>('all')
+
+  // Child queries (bars/signals/trades) don't poll on their own. When the run
+  // transitions queued/running → finished, force a refetch so the skeletons
+  // swap out for real data immediately instead of waiting for the next mount.
+  const runStatus = runQuery.data?.status
+  useEffect(() => {
+    if (runStatus === 'finished') {
+      queryClient.invalidateQueries({ queryKey: ['runs', 'detail', runId] })
+      queryClient.invalidateQueries({ queryKey: ['runs', 'signals', runId] })
+      queryClient.invalidateQueries({ queryKey: ['runs', 'trades', runId] })
+      queryClient.invalidateQueries({ queryKey: ['runs', 'journal', runId] })
+    }
+  }, [runStatus, runId, queryClient])
 
   const bars: BarView[] = useMemo(
     () => (barsQuery.data?.bars ?? []).map(adaptBar),
@@ -103,43 +119,136 @@ export function RunDetail({ runId }: Props) {
   const run = runQuery.data
   if (!run) return null
 
+  const isPending = run.status === 'queued' || run.status === 'running'
+
   return (
     <div className="content" data-testid="run-detail" style={{ padding: 16, display: 'grid', gap: 12 }}>
       <RunHeader run={run} />
-      <RunSummaryCards run={run} />
-      {manifestQuery.data && (
-        <ConfigStrip
-          params={manifestQuery.data.config.params}
-          strategyName={manifestQuery.data.strategy.display_name}
-        />
-      )}
-      <RejectionStrip
-        breakdown={rejectionBreakdown}
-        total={rejectedTotal}
-        show={showRejections}
-        onToggle={() => setShowRejections(v => !v)}
-      />
-      {bars.length === 0 ? (
-        <div className="p-8 text-sm text-muted-foreground">
-          {barsQuery.isLoading ? 'Loading bars…' : 'No bar data available for this run.'}
-        </div>
+      {isPending ? (
+        <PendingSkeleton status={run.status} />
       ) : (
-        <RunChart
-          bars={bars}
-          journal={journalRows}
-          sessions={sessions}
-          selectedSession={selectedSession}
-          onSessionChange={setSelectedSession}
-          showRejections={showRejections}
-          onToggleRejections={() => setShowRejections(v => !v)}
+        <>
+          <RunSummaryCards run={run} />
+          {manifestQuery.data && (
+            <ConfigStrip
+              params={manifestQuery.data.config.params}
+              strategyName={manifestQuery.data.strategy.display_name}
+            />
+          )}
+          <RejectionStrip
+            breakdown={rejectionBreakdown}
+            total={rejectedTotal}
+            show={showRejections}
+            onToggle={() => setShowRejections(v => !v)}
+          />
+          {bars.length === 0 ? (
+            <div className="p-8 text-sm text-muted-foreground">
+              {barsQuery.isLoading ? 'Loading bars…' : 'No bar data available for this run.'}
+            </div>
+          ) : (
+            <RunChart
+              bars={bars}
+              journal={journalRows}
+              sessions={sessions}
+              selectedSession={selectedSession}
+              onSessionChange={setSelectedSession}
+              showRejections={showRejections}
+              onToggleRejections={() => setShowRejections(v => !v)}
+            />
+          )}
+        </>
+      )}
+      {!isPending && (
+        <JournalTable
+          rows={journalRows}
+          filter={filter}
+          onFilterChange={setFilter}
         />
       )}
-      <JournalTable
-        rows={journalRows}
-        filter={filter}
-        onFilterChange={setFilter}
-      />
     </div>
+  )
+}
+
+function PendingSkeleton({ status }: { status: 'queued' | 'running' }) {
+  return (
+    <div data-testid="run-pending" style={{ display: 'grid', gap: 12 }}>
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 10px',
+          borderRadius: 'var(--r-sm)',
+          background: 'color-mix(in srgb, var(--info, #2563eb) 14%, transparent)',
+          color: 'var(--info, #2563eb)',
+          fontSize: 'var(--fs-xs)',
+          fontWeight: 600,
+          width: 'fit-content',
+        }}
+      >
+        <Spinner />
+        {status === 'queued' ? 'Queued — waiting to start' : 'Running backtest…'}
+      </div>
+      {/* Summary cards row */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+        }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
+            <Skeleton width="50%" height={10} />
+            <div style={{ marginTop: 8 }}>
+              <Skeleton width="70%" height={18} />
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Config strip placeholder */}
+      <Skeleton width="100%" height={36} rounded="sm" />
+      {/* Chart placeholder */}
+      <div
+        style={{
+          padding: 12,
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-md)',
+          display: 'grid',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} width={42} height={20} rounded="sm" />
+          ))}
+        </div>
+        <Skeleton width="100%" height={420} />
+      </div>
+      {/* Journal placeholder */}
+      <div style={{ display: 'grid', gap: 6 }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} width="100%" height={20} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Spinner() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+        border: '1.5px solid currentColor',
+        borderRightColor: 'transparent',
+        display: 'inline-block',
+        animation: 'spin 700ms linear infinite',
+      }}
+    />
   )
 }
 
@@ -291,56 +400,79 @@ function RunHeader({ run }: { run: Run }) {
     <header
       style={{
         display: 'flex',
-        alignItems: 'baseline',
-        flexWrap: 'wrap',
-        gap: 12,
+        flexDirection: 'column',
+        gap: 6,
       }}
     >
-      <h1
-        className="text-xl font-semibold"
-        style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 8 }}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
       >
-        {dateRange} backtest
+        <h1
+          className="text-xl font-semibold"
+          style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 8 }}
+        >
+          {dateRange} backtest
+          <span
+            data-testid="run-detail-status"
+            data-status={run.status}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 'var(--fs-xs)',
+              fontWeight: 600,
+              color: STATUS_TONE[run.status],
+              textTransform: 'capitalize',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: STATUS_TONE[run.status],
+              }}
+            />
+            {run.status}
+          </span>
+        </h1>
         <span
-          data-testid="run-detail-status"
-          data-status={run.status}
+          className="text-xs text-muted-foreground"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 4,
+            gap: 6,
             fontSize: 'var(--fs-xs)',
-            fontWeight: 600,
-            color: STATUS_TONE[run.status],
-            textTransform: 'capitalize',
           }}
         >
-          <span
-            aria-hidden
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: STATUS_TONE[run.status],
-            }}
-          />
-          {run.status}
+          {trades} {trades === 1 ? 'trade' : 'trades'} · {run.bar_count} bars ·
+          <code className="mono" style={{ opacity: 0.7 }}>
+            {run.id.slice(0, 8)}
+          </code>
+          <HelpTooltip helpKey="run_status" />
         </span>
-      </h1>
-      <span
-        className="text-xs text-muted-foreground"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 'var(--fs-xs)',
-        }}
-      >
-        {trades} {trades === 1 ? 'trade' : 'trades'} · {run.bar_count} bars ·
-        <code className="mono" style={{ opacity: 0.7 }}>
-          {run.id.slice(0, 8)}
-        </code>
-        <HelpTooltip helpKey="run_status" />
-      </span>
+      </div>
+      {run.status === 'failed' && run.failure_reason && (
+        <div
+          data-testid="run-detail-failure-reason"
+          style={{
+            padding: '8px 12px',
+            borderRadius: 'var(--r-sm)',
+            background: 'color-mix(in srgb, var(--danger, #dc2626) 12%, transparent)',
+            color: 'var(--danger, #dc2626)',
+            fontSize: 'var(--fs-xs)',
+            border: '1px solid color-mix(in srgb, var(--danger, #dc2626) 30%, transparent)',
+          }}
+        >
+          <strong style={{ fontWeight: 600 }}>Run failed:</strong> {run.failure_reason}
+        </div>
+      )}
     </header>
   )
 }

@@ -59,3 +59,7 @@ export function deleteRun(runId: UUID): Promise<{ deleted: string }> {
 export function deleteAllRuns(): Promise<{ deleted_count: number }> {
   return apiRequest<{ deleted_count: number }>('/api/runs', { method: 'DELETE' })
 }
+
+export function setRunFavorite(runId: UUID, is_favorite: boolean): Promise<Run> {
+  return apiRequest<Run>(`/api/runs/${runId}`, { method: 'PATCH', body: { is_favorite } })
+}

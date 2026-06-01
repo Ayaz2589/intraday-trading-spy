@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from intraday_trade_spy.api.routers import (
     backtests,
+    bars,
     configs,
     data,
     health,
@@ -53,7 +54,9 @@ def _cors_origin_regex() -> str | None:
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """Startup hook: run the stale-runs sweep so any rows left in `running`
-    by a prior crash get reaped (FR-015)."""
+    by a prior crash get reaped (FR-015). Also best-effort top-up the bars
+    cache with the last ~5 trading days so the archive keeps growing past
+    yfinance's 60-day window even if the cron operator forgets a day."""
     try:
         from intraday_trade_spy.api.lifecycle import sweep_stale_runs
 
@@ -62,7 +65,40 @@ async def _lifespan(app: FastAPI):
             _log.warning("startup: reaped %d stale running runs", sweeped)
     except Exception as exc:
         _log.warning("startup sweep failed: %s", exc)
+
+    # Skip the bars catch-up in test/CI (no real Supabase + no real network).
+    if os.environ.get("STARTUP_BARS_REFRESH", "1") != "0":
+        try:
+            _startup_bars_refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.info("startup bars refresh skipped: %s", exc)
     yield
+
+
+def _startup_bars_refresh() -> None:
+    """Top-up the shared bars cache with the last few trading days.
+
+    Idempotent: ON CONFLICT (bar_start, source) DO NOTHING on the upsert.
+    Errors are swallowed by the caller so a yfinance hiccup never blocks
+    the server from coming up.
+    """
+    from datetime import date as _d, timedelta as _td
+    from intraday_trade_spy.storage import SupabaseStorageClient
+
+    url = os.environ.get("SUPABASE_URL")
+    service_role_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    user_id = os.environ.get("SUPABASE_USER_ID")
+    if not (url and service_role_key and user_id):
+        return
+
+    client = SupabaseStorageClient(url=url, service_role_key=service_role_key, user_id=user_id)
+    end = _d.today()
+    start = end - _td(days=5)
+    from intraday_trade_spy.api.routers.bars import _fetch_range_into_cache
+
+    inserted = _fetch_range_into_cache(client, start, end).inserted
+    if inserted:
+        _log.info("startup bars refresh: cached %d new bars (%s → %s)", inserted, start, end)
 
 
 def create_app() -> FastAPI:
@@ -89,6 +125,7 @@ def create_app() -> FastAPI:
     app.include_router(strategies.router, prefix="/api")
     app.include_router(data.router, prefix="/api")
     app.include_router(configs.router, prefix="/api")
+    app.include_router(bars.router, prefix="/api")
 
     # NOTE: Feature 003's static-file endpoints continue to live in
     # `intraday_trade_spy.api.static_server:app` and are served via the

@@ -494,6 +494,21 @@ class SupabaseStorageClient:
             raise CloudPushError(f"list_strategies failed: {exc}") from exc
         return response.data or []
 
+    def update_run_favorite(self, *, run_id, user_id, is_favorite: bool) -> dict:
+        try:
+            response = (
+                self._client.table("runs")
+                .update({"is_favorite": is_favorite})
+                .eq("id", str(run_id))
+                .eq("user_id", str(user_id))
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"update_run_favorite failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("update_run_favorite returned no row")
+        return response.data[0]
+
     def delete_run(self, *, run_id, user_id) -> None:
         """Delete a single run. ON DELETE CASCADE handles signals/trades/journal_events."""
         try:
@@ -538,6 +553,33 @@ class SupabaseStorageClient:
         except Exception as exc:
             raise CloudPushError(f"list_bars failed: {exc}") from exc
         return response.data or []
+
+    def bars_coverage(self) -> dict:
+        """Return the earliest and latest cached bar_start, or {earliest: None, latest: None}.
+        Two cheap targeted queries instead of MIN/MAX (PostgREST doesn't expose aggregates by default)."""
+        try:
+            earliest = (
+                self._client.table("bars")
+                .select("bar_start")
+                .order("bar_start", desc=False)
+                .limit(1)
+                .execute()
+            )
+            latest = (
+                self._client.table("bars")
+                .select("bar_start")
+                .order("bar_start", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"bars_coverage failed: {exc}") from exc
+        e_rows = earliest.data or []
+        l_rows = latest.data or []
+        return {
+            "earliest": e_rows[0]["bar_start"] if e_rows else None,
+            "latest": l_rows[0]["bar_start"] if l_rows else None,
+        }
 
     def upsert_bars(self, rows: list[dict]) -> int:
         """Insert/upsert bars. Each row must have: bar_start (ISO 8601 str or datetime),

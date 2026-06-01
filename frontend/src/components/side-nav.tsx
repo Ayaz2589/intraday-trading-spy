@@ -10,7 +10,13 @@ export function SideNav() {
   const { mode, toggle } = useSidebarMode()
   const collapsed = mode === 'collapsed'
   const runsQuery = useRuns()
-  const runs = flattenRuns(runsQuery.data)
+  const allRuns = flattenRuns(runsQuery.data)
+  // Favorites sort to the top; the list returned by useRuns is already
+  // newest-first, so within each group recency is preserved.
+  const runs = [
+    ...allRuns.filter(r => r.is_favorite),
+    ...allRuns.filter(r => !r.is_favorite),
+  ]
   const matchRoute = useMatchRoute()
   const currentRun = matchRoute({ to: '/runs/$runId', fuzzy: false }) as
     | { runId: string }
@@ -68,7 +74,21 @@ export function SideNav() {
         </button>
       </div>
 
-      {!collapsed && (
+      {collapsed ? (
+        // Collapsed rail: icon-only nav so the user can still jump to
+        // the runs list (auto-routes to most recent) and trash everything.
+        <div
+          data-testid="side-nav-icon-rail"
+          style={{ flex: 1, padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}
+        >
+          <IconLink
+            to="/runs"
+            label="Runs"
+            icon="◴"
+            badge={runs.length > 0 ? runs.length : undefined}
+          />
+        </div>
+      ) : (
         <div
           data-testid="side-nav-runs-list"
           style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 4px' }}
@@ -97,44 +117,48 @@ export function SideNav() {
           gap: 4,
         }}
       >
-        <Link
-          to="/data"
-          data-testid="side-nav-link-data"
-          activeProps={{ style: { background: 'var(--surface-2)', fontWeight: 600 } }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '8px 10px',
-            borderRadius: 'var(--r-sm)',
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--text)',
-            textDecoration: 'none',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-          }}
-          title={collapsed ? 'Data' : undefined}
-        >
-          <span aria-hidden style={{ fontSize: 16, lineHeight: 1, width: 18, textAlign: 'center' }}>≣</span>
-          {!collapsed && <span>Data</span>}
-        </Link>
-        {!collapsed && runs.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setConfirmDeleteAllOpen(true)}
-            data-testid="side-nav-delete-all"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--danger, #dc2626)',
-              fontSize: 'var(--fs-xs)',
-              padding: '6px 10px',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            Delete all runs
-          </button>
-        )}
+        {runs.length > 0 &&
+          (collapsed ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteAllOpen(true)}
+              data-testid="side-nav-delete-all"
+              aria-label="Delete all runs"
+              title="Delete all runs"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--danger, #dc2626)',
+                padding: '8px 10px',
+                borderRadius: 'var(--r-sm)',
+                cursor: 'pointer',
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              🗑
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteAllOpen(true)}
+              data-testid="side-nav-delete-all"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--danger, #dc2626)',
+                fontSize: 'var(--fs-xs)',
+                padding: '6px 10px',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              Delete all runs
+            </button>
+          ))}
       </div>
 
       <ConfirmDialog
@@ -151,5 +175,60 @@ export function SideNav() {
         onCancel={() => setConfirmDeleteAllOpen(false)}
       />
     </aside>
+  )
+}
+
+function IconLink({
+  to,
+  label,
+  icon,
+  badge,
+}: {
+  to: '/runs'
+  label: string
+  icon: string
+  badge?: number
+}) {
+  return (
+    <Link
+      to={to}
+      data-testid={`side-nav-icon-${to.slice(1)}`}
+      activeProps={{ style: { background: 'var(--surface-2)', color: 'var(--text)' } }}
+      title={label}
+      aria-label={label}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '10px 0',
+        borderRadius: 'var(--r-sm)',
+        color: 'var(--text-muted)',
+        textDecoration: 'none',
+      }}
+    >
+      <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>
+        {icon}
+      </span>
+      {badge != null && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 6,
+            background: 'var(--accent, #2563eb)',
+            color: 'white',
+            fontSize: 9,
+            fontWeight: 700,
+            padding: '1px 5px',
+            borderRadius: 999,
+            lineHeight: 1.2,
+          }}
+        >
+          {badge}
+        </span>
+      )}
+    </Link>
   )
 }

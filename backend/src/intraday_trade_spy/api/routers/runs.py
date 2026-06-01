@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
+from pydantic import BaseModel, ConfigDict
 
 from intraday_trade_spy.api import errors
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
@@ -149,6 +150,26 @@ def list_bars(
         range_end=str(run["range_end"]),
     )
     return BarListResponse(bars=[BarView.model_validate(r) for r in rows])
+
+
+class RunPatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    is_favorite: bool
+
+
+@router.patch("/runs/{run_id}", response_model=RunView)
+def patch_run(
+    run_id: UUID,
+    body: RunPatchRequest = Body(...),
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> RunView:
+    if storage_client.get_run(run_id=run_id, user_id=user_id) is None:
+        errors.raise_not_found(f"run {run_id} not found")
+    updated = storage_client.update_run_favorite(
+        run_id=run_id, user_id=user_id, is_favorite=body.is_favorite
+    )
+    return RunView(**updated)
 
 
 @router.delete("/runs/{run_id}")

@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import './styles/globals.css'
+import 'react-day-picker/dist/style.css'
 
 const router = createRouter({
   routeTree,

@@ -37,6 +37,8 @@ def start_backtest_endpoint(
             data_csv_path=body.data_csv_path,
             storage_client=storage_client,
             background_tasks=background_tasks,
+            start_date=body.start_date,
+            end_date=body.end_date,
         )
     except ConfigNotFoundError:
         errors.raise_config_not_found(body.config_name)

@@ -172,6 +172,7 @@ class RunRow(_Base):
     summary: RunSummary
     data_fingerprint: str
     app_version: str
+    is_favorite: bool = False
     created_at: datetime = Field(default_factory=_utcnow)
 
     @model_validator(mode="after")

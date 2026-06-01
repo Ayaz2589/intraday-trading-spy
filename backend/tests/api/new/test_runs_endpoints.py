@@ -257,6 +257,31 @@ def test_invalid_cursor_returns_400(unit_client):
     assert r.json()["detail"]["error"] == "invalid_cursor"
 
 
+def test_patch_run_favorite_404_when_not_found(unit_client, stub_storage_client):
+    stub_storage_client.get_run.return_value = None
+    r = unit_client.patch(f"/api/runs/{uuid4()}", json={"is_favorite": True})
+    assert r.status_code == 404
+
+
+def test_patch_run_favorite_updates_flag(unit_client, stub_storage_client):
+    from uuid import UUID
+    TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")
+
+    run = _make_run_row(uuid4(), TEST_USER_ID)
+    stub_storage_client.get_run.return_value = run
+    updated = {**run, "is_favorite": True}
+    stub_storage_client.update_run_favorite.return_value = updated
+
+    r = unit_client.patch(f"/api/runs/{run['id']}", json={"is_favorite": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["is_favorite"] is True
+
+    called = stub_storage_client.update_run_favorite.call_args.kwargs
+    assert called["run_id"] == UUID(run["id"])
+    assert called["is_favorite"] is True
+
+
 def test_delete_run_404_when_not_found(unit_client, stub_storage_client):
     stub_storage_client.get_run.return_value = None
     r = unit_client.delete(f"/api/runs/{uuid4()}")

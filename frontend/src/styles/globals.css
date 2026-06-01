@@ -1166,3 +1166,23 @@ table.trades thead th {
   .stat-row { grid-template-columns: 1fr; }
   .stat-row > .card:last-child { grid-column: auto; }
 }
+
+/* react-day-picker — bind to the app's color tokens so the calendar
+   inherits the surrounding popover theme in both light and dark mode. */
+.rdp-root {
+  --rdp-accent-color: var(--accent, #2563eb);
+  --rdp-accent-background-color: color-mix(in srgb, var(--accent, #2563eb) 18%, transparent);
+  --rdp-background-color: var(--surface);
+  --rdp-day-font: var(--fs-xs);
+  --rdp-day_button-height: 32px;
+  --rdp-day_button-width: 32px;
+  --rdp-day_button-border-radius: var(--r-sm);
+  --rdp-weekday-text-color: var(--text-muted);
+  --rdp-range_middle-background-color: var(--rdp-accent-background-color);
+  color: var(--text);
+}
+.rdp-month_caption { font-size: var(--fs-sm); font-weight: 600; }
+.rdp-day_button:hover { background: var(--surface-2); }
+.rdp-day_button:disabled { color: var(--text-faint, #94a3b8); opacity: 0.4; }
+.rdp-chevron { fill: var(--text-muted); }
+.rdp-nav button:hover { background: var(--surface-2); }

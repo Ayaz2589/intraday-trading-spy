@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CalendarField } from '@/components/calendar-field'
+import { useBarsCoverage } from '@/hooks/useBarsCoverage'
 import { useConfigs, useUpdateConfig } from '@/hooks/useConfigs'
 import { useStartBacktest } from '@/hooks/useStartBacktest'
 import { useStrategies } from '@/hooks/useStrategies'
@@ -69,14 +71,59 @@ function knobsFromConfig(config: Config | undefined): KnobValues {
   }
 }
 
+function toIso(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+function todayIso(): string {
+  return toIso(new Date())
+}
+
+// yfinance only serves intraday 5m bars for the last ~60 days, but our
+// shared bars cache can extend the reachable window: any date we've
+// archived in the past stays usable forever. The picker's min becomes
+// the older of (today - 60d) and the earliest cached bar.
+const MAX_LOOKBACK_DAYS = 60
+function yfinanceFloorIso(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - MAX_LOOKBACK_DAYS)
+  return toIso(d)
+}
+function minPickable(earliestCached: string | null | undefined): string {
+  const floor = yfinanceFloorIso()
+  if (!earliestCached) return floor
+  return earliestCached < floor ? earliestCached : floor
+}
+
+/** Monday → Friday of the calendar week containing today, end clamped to today. */
+function currentWeekRange(): { start: string; end: string } {
+  const now = new Date()
+  const dow = now.getDay() // 0 Sun .. 6 Sat
+  // Days back to Monday (Sun-rolled to previous Mon).
+  const daysBack = dow === 0 ? 6 : dow - 1
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - daysBack)
+  const friday = new Date(monday)
+  friday.setDate(monday.getDate() + 4)
+  const end = friday < now ? friday : now
+  return { start: toIso(monday), end: toIso(end) }
+}
+
 export function StrategyConfigDropdown() {
   const configsQuery = useConfigs()
   const strategiesQuery = useStrategies()
+  const coverageQuery = useBarsCoverage()
   const update = useUpdateConfig()
   const startBacktest = useStartBacktest()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
+  const initialRange = useMemo(() => currentWeekRange(), [])
+  const [rangeStart, setRangeStart] = useState(initialRange.start)
+  const [rangeEnd, setRangeEnd] = useState(initialRange.end)
 
   const configs = configsQuery.data?.configs ?? []
   const strategies = strategiesQuery.data ?? []
@@ -130,7 +177,11 @@ export function StrategyConfigDropdown() {
     setRunError(null)
     try {
       await update.mutateAsync({ id: config.id, params: buildParams(knobs, enabledSetup) })
-      const response = await startBacktest.mutateAsync({ config_name: config.name })
+      const response = await startBacktest.mutateAsync({
+        config_name: config.name,
+        start_date: rangeStart,
+        end_date: rangeEnd,
+      })
       setOpen(false)
       navigate({ to: '/runs/$runId', params: { runId: response.run_id } })
     } catch (err) {
@@ -261,6 +312,46 @@ export function StrategyConfigDropdown() {
               onChange={v => onChange('max_distance_from_vwap_pct', v)}
             />
           )}
+        </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: '1px solid var(--border)',
+          }}
+        >
+          <Label>Backtest date range</Label>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <CalendarField
+              value={rangeStart}
+              onChange={setRangeStart}
+              min={minPickable(coverageQuery.data?.earliest)}
+              max={rangeEnd}
+              ariaLabel="Backtest start date"
+              testid="backtest-range-start"
+            />
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>→</span>
+            <CalendarField
+              value={rangeEnd}
+              onChange={setRangeEnd}
+              min={rangeStart}
+              max={todayIso()}
+              ariaLabel="Backtest end date"
+              testid="backtest-range-end"
+            />
+          </div>
+          <p
+            style={{
+              marginTop: 4,
+              fontSize: 'var(--fs-xs)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            {coverageQuery.data?.earliest
+              ? `Cached history goes back to ${coverageQuery.data.earliest}. yfinance auto-fills the last 60 days on run.`
+              : 'yfinance serves 5m intraday data for the last 60 days. Missing days auto-download on run.'}
+          </p>
         </div>
 
         {(update.isError || runError) && (

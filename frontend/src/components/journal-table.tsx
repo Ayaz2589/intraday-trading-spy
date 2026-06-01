@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -9,6 +9,8 @@ import { StatusBadge } from "./status-badge";
 import { HelpTooltip } from "./help-tooltip";
 import { humanize, truncate } from "@/lib/format";
 import type { JournalFilter, JournalRowView } from "@/api/legacy-types";
+
+const TRADES_OPEN_KEY = "isb-trades-open";
 
 const FILTERS: JournalFilter[] = [
   "all",
@@ -165,7 +167,18 @@ export function JournalTable({
   const visible =
     filter === "all" ? rows : rows.filter((r) => r.status === filter);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [tableOpen, setTableOpen] = useState(true);
+  const [tableOpen, setTableOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem(TRADES_OPEN_KEY);
+    return stored === null ? true : stored === "true";
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(TRADES_OPEN_KEY, String(tableOpen));
+    } catch {
+      // localStorage write can throw in private mode / quota — ignore.
+    }
+  }, [tableOpen]);
   const toggleExpand = (rowSeq: number) =>
     setExpanded((prev) => {
       const next = new Set(prev);

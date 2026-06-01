@@ -35,6 +35,12 @@ class _ResponseBase(BaseModel):
 class StartBacktestRequest(_Base):
     config_name: str = Field(min_length=1, max_length=200)
     data_csv_path: Optional[str] = None
+    # Optional explicit date range. When supplied, the lifecycle materializes
+    # a CSV from the shared bars cache (auto-fetching from yfinance for any
+    # missing trading days) and uses that as the backtest input — overriding
+    # both `data_csv_path` and the YAML's default `data.csv_path`.
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -48,6 +54,14 @@ class StartBacktestRequest(_Base):
                 f"forbidden fields not accepted from clients (constitution I/II/V): {sorted(intersect)}"
             )
         return data
+
+    @model_validator(mode="after")
+    def _range_valid(self) -> "StartBacktestRequest":
+        if (self.start_date is None) != (self.end_date is None):
+            raise ValueError("start_date and end_date must be supplied together")
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("end_date must be >= start_date")
+        return self
 
 
 class StartDataDownloadRequest(_Base):
@@ -102,6 +116,8 @@ class RunView(_ResponseBase):
     summary: RunSummaryView
     data_fingerprint: str
     app_version: str
+    is_favorite: bool = False
+    failure_reason: Optional[str] = None
 
 
 class RunListResponse(_ResponseBase):
