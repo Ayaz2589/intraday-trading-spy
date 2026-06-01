@@ -133,19 +133,14 @@ export function StrategyConfigDropdown() {
     [configs],
   )
   const initialKnobs = useMemo(() => knobsFromConfig(config), [config])
-  const initialStrategyId = config?.strategy_id ?? strategies[0]?.key ?? ''
 
   const [knobs, setKnobs] = useState<KnobValues>(initialKnobs)
-  const [strategyId, setStrategyId] = useState(initialStrategyId)
   const [saved, setSaved] = useState(false)
 
   // Re-sync local state when the config arrives / changes.
   useEffect(() => {
     setKnobs(initialKnobs)
   }, [initialKnobs])
-  useEffect(() => {
-    setStrategyId(initialStrategyId)
-  }, [initialStrategyId])
 
   const enabledSetup =
     (get(config?.params, ['strategy', 'enabled_setup']) as string | undefined) ??

@@ -119,13 +119,14 @@ export function RunDetail({ runId }: Props) {
   const run = runQuery.data
   if (!run) return null
 
-  const isPending = run.status === 'queued' || run.status === 'running'
+  const pendingStatus =
+    run.status === 'queued' || run.status === 'running' ? run.status : null
 
   return (
     <div className="content" data-testid="run-detail" style={{ padding: 16, display: 'grid', gap: 12 }}>
       <RunHeader run={run} />
-      {isPending ? (
-        <PendingSkeleton status={run.status} />
+      {pendingStatus ? (
+        <PendingSkeleton status={pendingStatus} />
       ) : (
         <>
           <RunSummaryCards run={run} />
@@ -158,7 +159,7 @@ export function RunDetail({ runId }: Props) {
           )}
         </>
       )}
-      {!isPending && (
+      {!pendingStatus && (
         <JournalTable
           rows={journalRows}
           filter={filter}
