@@ -32,6 +32,8 @@ const baseRun: Run = {
   },
   data_fingerprint: 'fp123',
   app_version: '0.1.0',
+  is_favorite: false,
+  failure_reason: null,
 }
 
 describe('<RunRow />', () => {

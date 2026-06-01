@@ -2,7 +2,7 @@
 # Feature 006 ships the file; Feature 008 wires it up + sets secrets.
 # See specs/006-fastapi-service-expansion/quickstart.md §11.
 
-app = "intraday-trade-spy"   # NOTE: Feature 008 will pin this to the chosen Fly app name
+app = "intraday-trading-spy"   # NOTE: Feature 008 will pin this to the chosen Fly app name
 primary_region = "iad"        # us-east-1 — close to typical Supabase regions
 
 [build]

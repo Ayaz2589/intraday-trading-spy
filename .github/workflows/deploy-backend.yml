@@ -1,0 +1,41 @@
+# Deploys the FastAPI backend to Fly.io.
+#
+# Setup (one-time):
+#   1. Create the Fly app:        flyctl apps create intraday-trading-spy
+#   2. Set runtime secrets:       flyctl secrets set \
+#        SUPABASE_URL=...  SUPABASE_SERVICE_ROLE_KEY=...  SUPABASE_USER_ID=... \
+#        CORS_ALLOW_ORIGINS=https://<your-app>.vercel.app \
+#        CORS_ALLOW_ORIGIN_REGEX='^https://<your-app>(-[a-z0-9-]+)?\.vercel\.app$'
+#   3. Mint a deploy token:       flyctl tokens create deploy -x 999999h
+#   4. Add it to GitHub:          repo → Settings → Secrets → Actions → FLY_API_TOKEN
+#
+# After that, this workflow deploys on every push to `main` that touches
+# backend/, and can be run manually from any branch via "Run workflow".
+name: deploy-backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {}
+
+# Never run two deploys at once; cancel the older in-flight run.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        working-directory: ./backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only --config fly.toml --dockerfile Dockerfile
