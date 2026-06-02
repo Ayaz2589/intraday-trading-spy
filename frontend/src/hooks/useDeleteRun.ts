@@ -56,6 +56,11 @@ export function useDeleteRun() {
     onError: (_err, _runId, ctx) => {
       if (ctx) client.setQueryData(runsQueryKey(), ctx)
     },
+    onSuccess: (_data, runId) => {
+      // Drop the deleted run's detail cache so it can never render stale data
+      // (e.g. if the user navigates back to /runs/<deletedId>).
+      client.removeQueries({ queryKey: ['runs', 'detail', runId] })
+    },
     onSettled: () => client.invalidateQueries({ queryKey: runsQueryKey() }),
   })
 }
