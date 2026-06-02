@@ -98,10 +98,7 @@ vi.mock('@/hooks/useRunSignals', () => ({
 }))
 
 const FEATURE_007_KEYS = [
-  'mfa',
-  'totp',
   'otp',
-  'backup_codes',
   'session',
   'saved_config',
   'strategy_registry',
@@ -122,8 +119,6 @@ describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
     const { DataDownloadForm } = await import('./data/DataDownloadForm')
     const { SignInForm } = await import('./auth/SignInForm')
     const { OtpCodeForm } = await import('./auth/OtpCodeForm')
-    const { MfaChallenge } = await import('./auth/MfaChallenge')
-    const { MfaEnrollment } = await import('./auth/MfaEnrollment')
     const { RunsList } = await import('./runs/RunsList')
 
     const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
@@ -138,11 +133,6 @@ describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
         <DataDownloadForm onStarted={() => {}} />
         <SignInForm onSubmit={() => {}} />
         <OtpCodeForm email="x@y.z" onSubmit={() => {}} />
-        <MfaChallenge onSubmit={() => {}} />
-        <MfaEnrollment
-          enrollment={{ factorId: 'f', qrCodeUrl: 'data:img', secret: 'X' }}
-          onConfirm={() => {}}
-        />
       </QueryClientProvider>
     )
     render(tree)

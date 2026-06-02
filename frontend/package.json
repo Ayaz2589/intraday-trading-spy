@@ -24,7 +24,6 @@
     "clsx": "^2.1.0",
     "klinecharts": "^10.0.0-beta2",
     "lucide-react": "^0.460.0",
-    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.0.0",

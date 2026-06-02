@@ -23,10 +23,7 @@ export type HelpContentKey =
   | "risk_per_trade"
   | "layout_mode"
   | "show_rejections"
-  | "mfa"
-  | "totp"
   | "otp"
-  | "backup_codes"
   | "session"
   | "saved_config"
   | "strategy_registry"
@@ -117,25 +114,10 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Marks every bar where the strategy emitted a signal that the risk manager blocked. Consecutive bars sharing the same rejection check collapse into one tag like 'Rej · ×N'. Helps answer 'why didn't this fire?' visually.",
   },
-  mfa: {
-    title: "MFA (multi-factor authentication)",
-    description:
-      "A second proof of identity required at sign-in, on top of your email code. We use TOTP — a 6-digit code that rotates every 30 seconds in an authenticator app (Google Authenticator, 1Password, etc.). If someone guesses or phishes your email code, they still can't sign in without your phone.",
-  },
-  totp: {
-    title: "TOTP (time-based one-time password)",
-    description:
-      "The 6-digit code your authenticator app generates. It changes every 30 seconds based on a secret shared at enrollment. The server validates the current code in a ±30s window, so a slightly stale code still works.",
-  },
   otp: {
     title: "Email sign-in code",
     description:
-      "A one-time, 6-digit code that Supabase emails to you to prove you control the inbox. It expires in 60 minutes. Enter it back into the sign-in form to start a session. No password is ever stored.",
-  },
-  backup_codes: {
-    title: "Backup codes",
-    description:
-      "Single-use codes to sign in if you lose your authenticator app. Save them somewhere offline (printout, password manager). Each works once, then is invalidated.",
+      "A one-time, 8-digit code that Supabase emails to you to prove you control the inbox. It expires in 60 minutes. Enter it back into the sign-in form to start a session. No password is ever stored.",
   },
   session: {
     title: "Session",
