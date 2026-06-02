@@ -256,6 +256,36 @@ class SupabaseStorageClient:
         except Exception as exc:
             raise CloudPushError(f"update_run_status failed: {exc}") from exc
 
+    def set_run_spec_hash(self, *, run_id, spec_hash: str) -> None:
+        """Best-effort: stamp a run with its dedup spec hash. No-ops if the
+        `spec_hash` column doesn't exist yet (migration 0091 not applied), so
+        run creation keeps working pre-migration."""
+        try:
+            self._client.table("runs").update({"spec_hash": spec_hash}).eq(
+                "id", str(run_id)
+            ).execute()
+        except Exception:  # noqa: BLE001 — column may not exist yet; dedup is optional
+            pass
+
+    def find_finished_run_by_spec(self, *, spec_hash: str):
+        """Return the id of the most recent FINISHED run for the current user
+        with this spec hash, or None. Returns None (skips dedup) if the
+        `spec_hash` column doesn't exist yet."""
+        try:
+            response = (
+                self._client.table("runs")
+                .select("id")
+                .eq("user_id", self.user_id)
+                .eq("spec_hash", spec_hash)
+                .eq("status", "finished")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception:  # noqa: BLE001 — column may not exist yet; skip dedup
+            return None
+        return response.data[0]["id"] if response.data else None
+
     def get_config_by_name(self, name: str):
         """Fetch a config row owned by the current user by name, or None."""
         try:

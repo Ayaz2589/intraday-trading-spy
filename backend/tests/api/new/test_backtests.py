@@ -108,3 +108,24 @@ def test_post_backtests_401_without_auth():
 def test_post_backtests_rejects_missing_config_name(unit_client):
     r = unit_client.post("/api/backtests", json={})
     assert r.status_code == 422
+
+
+def test_post_backtests_dedups_identical_completed_run(unit_client, stub_storage_client):
+    """An identical, already-finished backtest over a COMPLETED range returns
+    the existing run instead of creating a duplicate."""
+    stub_storage_client.get_config_by_name.return_value = {
+        "id": str(uuid4()),
+        "strategy_id": str(uuid4()),
+        "name": "default",
+        "params": {},
+    }
+    existing_id = str(uuid4())
+    stub_storage_client.find_finished_run_by_spec.return_value = existing_id
+
+    r = unit_client.post(
+        "/api/backtests",
+        json={"config_name": "default", "start_date": "2020-01-02", "end_date": "2020-01-03"},
+    )
+    assert r.status_code == 202
+    assert r.json()["run_id"] == existing_id
+    stub_storage_client.insert_queued_run.assert_not_called()

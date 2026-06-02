@@ -18,12 +18,20 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 from fastapi import BackgroundTasks
 
+from intraday_trade_spy.run_spec import compute_spec_hash
 from intraday_trade_spy.storage import SupabaseStorageClient
 
 _log = logging.getLogger(__name__)
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _today_et() -> date:
+    return datetime.now(_ET).date()
 
 DEFAULT_MAX_CONCURRENT_RUNS_PER_USER = 5
 DEFAULT_MAX_CONCURRENT_DOWNLOADS_PER_USER = 3
@@ -259,6 +267,24 @@ def start_backtest(
         raise ConfigNotFoundError(config_name)
 
     strategy_id = config["strategy_id"]
+
+    # Dedup: an identical, already-finished backtest over a COMPLETED range
+    # returns the existing run instead of recomputing/duplicating. Gated on a
+    # completed range (range_end < today ET) because only then is the bar data
+    # frozen — a range touching today may have changed since the prior run, so
+    # those always re-run (the unique index still dedups them at finalize).
+    spec_hash = compute_spec_hash(
+        strategy_id=strategy_id,
+        params=config.get("params") or {},
+        symbol="SPY",
+        range_start=start_date,
+        range_end=end_date,
+    )
+    if start_date and end_date and end_date < _today_et():
+        existing = storage_client.find_finished_run_by_spec(spec_hash=spec_hash)
+        if existing is not None:
+            return UUID(existing)
+
     cap = _get_max_concurrent_runs()
     run_id = uuid4()
     _reserve_slot(user_id, run_id, cap)
@@ -284,6 +310,9 @@ def start_backtest(
     except Exception:
         _release_slot(user_id, run_id)
         raise
+
+    # Stamp the dedup spec hash (best-effort; no-op pre-migration).
+    storage_client.set_run_spec_hash(run_id=run_id, spec_hash=spec_hash)
 
     background_tasks.add_task(
         _run_backtest_task,
