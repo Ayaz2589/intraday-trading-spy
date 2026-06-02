@@ -20,7 +20,7 @@ export function SignInForm({ onSubmit, pending, error, initialEmail = '' }: Prop
   return (
     <form onSubmit={handle} data-testid="signin-form">
       <p className="text-sm text-muted-foreground mb-4">
-        Enter your email — we'll send a 6-digit sign-in code.
+        Enter your email — we'll send an 8-digit sign-in code.
         <HelpTooltip helpKey="otp" />
       </p>
       <input
