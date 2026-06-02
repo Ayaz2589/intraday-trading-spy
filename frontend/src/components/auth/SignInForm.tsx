@@ -18,8 +18,8 @@ export function SignInForm({ onSubmit, pending, error, initialEmail = '' }: Prop
   }
 
   return (
-    <form onSubmit={handle} data-testid="signin-form">
-      <p className="text-sm text-muted-foreground mb-4">
+    <form onSubmit={handle} data-testid="signin-form" className="auth-form">
+      <p className="auth-intro">
         Enter your email — we'll send an 8-digit sign-in code.
         <HelpTooltip helpKey="otp" />
       </p>
@@ -29,18 +29,18 @@ export function SignInForm({ onSubmit, pending, error, initialEmail = '' }: Prop
         value={email}
         required
         onChange={e => setEmail(e.target.value)}
-        className="w-full p-2 border rounded mb-2"
+        className="field"
         aria-label="Email"
       />
       {error && (
-        <p role="alert" className="text-sm text-destructive mb-2">
+        <p role="alert" className="auth-error">
           {error}
         </p>
       )}
       <button
         type="submit"
         disabled={!email || pending}
-        className="w-full p-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
+        className="btn btn-primary btn-block"
       >
         {pending ? 'Sending…' : 'Send sign-in code'}
       </button>

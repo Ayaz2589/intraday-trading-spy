@@ -1155,6 +1155,85 @@ table.trades thead th {
   margin: 0;
 }
 
+/* ============================================================
+   AUTH SCREEN (project addition — NOT in the design handoff)
+   Sign-in flow chrome + a reusable token-driven text input. The
+   handoff has no auth surface and no generic input (only the
+   specialized .knob-field), so these extend the system in its own
+   token idiom. Consumed by components/auth/AuthScreen, SignInForm,
+   OtpCodeForm.
+   ============================================================ */
+.auth-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-8) var(--sp-4);
+  background: var(--bg-app);
+}
+.auth-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: 400px;
+}
+.auth-brand { display: flex; justify-content: center; }
+.auth-brand .brand-mark { font-size: 24px; }
+.auth-brand .brand-name { font-size: var(--fs-lg); }
+.auth-card { padding: var(--sp-6); }
+.auth-title {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--sp-4);
+}
+
+/* Stage forms share a vertical rhythm. */
+.auth-form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.auth-intro {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+.auth-intro strong { color: var(--text); font-weight: 600; }
+
+/* Generic full-width text input (the system only had .knob-field). */
+.field {
+  display: block;
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+.field::placeholder { color: var(--text-faint); }
+.field:focus {
+  outline: none;
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field.mono { letter-spacing: 0.18em; }
+
+/* Full-width button modifier (composes with .btn / .btn-primary / .btn-ghost). */
+.btn-block { width: 100%; justify-content: center; }
+
+.auth-error {
+  font-size: var(--fs-sm);
+  color: var(--loss);
+  margin: 0;
+}
+.auth-foot {
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  margin: 0;
+}
+
 /* ---------------- Responsive ---------------- */
 @media (max-width: 1180px) {
   .stat-row { grid-template-columns: 1fr 1fr; }

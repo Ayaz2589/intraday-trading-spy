@@ -23,8 +23,8 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
   const normalize = (value: string) => value.replace(/\s+/g, '').slice(0, 8)
 
   return (
-    <form onSubmit={handle} data-testid="otp-code-form">
-      <p className="text-sm text-muted-foreground mb-4">
+    <form onSubmit={handle} data-testid="otp-code-form" className="auth-form">
+      <p className="auth-intro">
         Check your inbox at <strong>{email}</strong> for an 8-digit code.
       </p>
       <input
@@ -35,18 +35,18 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
         value={code}
         required
         onChange={e => setCode(normalize(e.target.value))}
-        className="w-full p-2 border rounded mb-2"
+        className="field mono"
         aria-label="Sign-in code"
       />
       {error && (
-        <p role="alert" className="text-sm text-destructive mb-2">
+        <p role="alert" className="auth-error">
           {error}
         </p>
       )}
       <button
         type="submit"
         disabled={code.length < 8 || pending}
-        className="w-full p-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
+        className="btn btn-primary btn-block"
       >
         {pending ? 'Verifying…' : 'Verify code'}
       </button>
@@ -54,7 +54,7 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
         <button
           type="button"
           onClick={onUseDifferentEmail}
-          className="w-full p-2 mt-2 text-sm text-muted-foreground"
+          className="btn btn-ghost btn-block"
         >
           Use a different email
         </button>

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuth } from '@/auth/AuthProvider'
+import { AuthScreen } from '@/components/auth/AuthScreen'
 import { SignInForm } from '@/components/auth/SignInForm'
 import { OtpCodeForm } from '@/components/auth/OtpCodeForm'
 
@@ -50,8 +51,7 @@ function SignInPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-16 p-6 border rounded-lg" data-testid="signin-page">
-      <h1 className="text-xl font-semibold mb-4">Sign in</h1>
+    <AuthScreen title="Sign in" testId="signin-page">
       {stage === 'email' && (
         <SignInForm onSubmit={sendCode} pending={busy} error={error} initialEmail={email} />
       )}
@@ -67,7 +67,7 @@ function SignInPage() {
           }}
         />
       )}
-    </div>
+    </AuthScreen>
   )
 }
 
