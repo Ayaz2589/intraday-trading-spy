@@ -1500,8 +1500,14 @@ function BarDetailsRow({
         display: "flex",
         flexWrap: "wrap",
         alignItems: "baseline",
+        alignContent: "flex-start",
         gap: "8px 14px",
         fontFamily: "var(--mono)",
+        // Fixed height so the chart card doesn't grow/shrink as the bar-details
+        // strip gains/loses its journal row (e.g. while the replay playhead
+        // crosses bars with trade events). Rare busy bars scroll internally.
+        height: 64,
+        overflowY: "auto",
       }}
     >
       <span style={{ color: "var(--text-muted)" }}>
