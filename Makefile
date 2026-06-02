@@ -42,7 +42,7 @@ PUSH_FLAG := $(if $(PUSH),--push-to-supabase,)
 
 .PHONY: help install test test-slow test-integration test-api-integration backtest backtest-real demo download \
         download-clean lint clean-runs prune-runs venv \
-        ui-install ui-dev ui-build ui-server api-dev
+        ui-install ui-dev ui-build ui-server api-dev docker-up docker-down
 
 help: ## Show this help
 	@echo "intraday-trade-spy task runner"
@@ -149,3 +149,9 @@ ui-test: ## Feature 007: run all frontend Vitest unit tests
 
 ui-test-integration: ## Feature 007: run opt-in frontend integration tests (needs FRONTEND_INTEGRATION=1)
 	cd frontend && FRONTEND_INTEGRATION=1 npm test
+
+docker-up: ## Start the Dockerized dev stack (backend :8001 + frontend :5173, hot reload)
+	docker compose up --build
+
+docker-down: ## Stop and remove the Dockerized dev stack
+	docker compose down
