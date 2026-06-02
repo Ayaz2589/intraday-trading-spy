@@ -1,0 +1,26 @@
+# Local-dev image for the FastAPI backend — hot reload via bind-mounted source.
+# Production uses ./Dockerfile (deployed to Fly); this file is dev-only and is
+# referenced by ../docker-compose.yml. watchfiles is added explicitly because
+# the project pins plain `uvicorn` (no [standard] extra), which --reload needs.
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Editable install needs the package source present at build time; the compose
+# bind-mount then overlays /app/src with live host source for hot reload.
+COPY pyproject.toml /app/
+COPY src /app/src
+
+RUN pip install --upgrade pip && pip install -e ".[dev]" watchfiles
+
+EXPOSE 8001
+
+CMD ["uvicorn", "intraday_trade_spy.api.app:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
