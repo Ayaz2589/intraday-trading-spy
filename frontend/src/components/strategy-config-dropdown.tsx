@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { subscribe, getSnapshot } from '@/lib/strategy-menu-controller'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalendarField } from '@/components/calendar-field'
 import { useBarsCoverage } from '@/hooks/useBarsCoverage'
@@ -121,6 +122,14 @@ export function StrategyConfigDropdown() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
+
+  // Let other surfaces (e.g. the runs empty-state CTA) request that this
+  // launcher open. Each request bumps the snapshot counter; open on bump.
+  const openRequest = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  useEffect(() => {
+    if (openRequest > 0) setOpen(true)
+  }, [openRequest])
+
   const initialRange = useMemo(() => currentWeekRange(), [])
   const [rangeStart, setRangeStart] = useState(initialRange.start)
   const [rangeEnd, setRangeEnd] = useState(initialRange.end)
