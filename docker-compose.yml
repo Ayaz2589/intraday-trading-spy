@@ -1,0 +1,46 @@
+# Local development stack. One command — `docker compose up --build` — runs the
+# backend API (:8001, hot reload) and the frontend Vite dev server (:5173, HMR),
+# both talking to the remote Supabase configured in backend/.env + frontend/.env.
+#
+# Production is NOT built from this file: the backend ships via backend/Dockerfile
+# + fly.toml, and the frontend deploys to Vercel.
+#
+# The browser runs on the host and calls VITE_API_BASE_URL=http://localhost:8001
+# (in frontend/.env) → the published backend port, so no container DNS is needed.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    env_file:
+      - ./backend/.env
+    environment:
+      # Uncomment if --reload misses edits (no native fs events through the mount):
+      # WATCHFILES_FORCE_POLLING: "1"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/config:/app/config
+      - ./backend/db:/app/db
+
+  frontend:
+    image: node:20-bookworm-slim
+    working_dir: /app
+    depends_on:
+      - backend
+    environment:
+      # Uncomment if Vite HMR misses edits:
+      # CHOKIDAR_USEPOLLING: "true"
+      NODE_ENV: development
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  frontend_node_modules:
