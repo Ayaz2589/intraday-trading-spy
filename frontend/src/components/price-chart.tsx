@@ -370,6 +370,10 @@ export function PriceChart({
   // sizes bars to fill the container; subsequent loads (day-tab / run
   // switch) preserve the user's current zoom.
   const hasAutoFittedRef = useRef(false);
+  // Tracks whether the previous data load was in replay mode, so that when
+  // replay ends we re-fit the full bar set instead of preserving the tiny
+  // barSpace / large right-offset that replay left behind.
+  const wasReplayRef = useRef(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { theme } = useTheme();
   const { style: candleStyle, setStyle: setCandleStyle } = useCandleStyle();
@@ -675,17 +679,20 @@ export function PriceChart({
           chart.setBarSpace(fitted);
           chart.setOffsetRightDistance(Math.max(2, (fitBarCount - bars.length) * fitted + 2));
           hasAutoFittedRef.current = true;
+          wasReplayRef.current = true;
         }
-      } else if (!hasAutoFittedRef.current) {
-        // 70px reserves room for the y-axis labels on the right. Skip the
-        // fit until the container actually has width — on a client-side mount
-        // clientWidth can be 0, which would lock in a bad bar width and leave
-        // the chart looking empty. The ResizeObserver below finishes the fit
-        // once a real width is measured.
+      } else if (!hasAutoFittedRef.current || wasReplayRef.current) {
+        // First fit, OR returning from replay — fit to the full bar set and
+        // reset the right offset. (Replay left a tiny barSpace / large offset
+        // that must not be preserved, else the chart looks crammed to the left.)
+        // 70px reserves room for the y-axis labels on the right; skip until the
+        // container actually has width (a 0-width mount would lock in a bad fit).
         if (available > 0) {
           const fitted = Math.max(4, Math.min(30, available / bars.length));
           chart.setBarSpace(fitted);
+          chart.setOffsetRightDistance(28);
           hasAutoFittedRef.current = true;
+          wasReplayRef.current = false;
         }
       } else {
         chart.setBarSpace(previousBarSpace);

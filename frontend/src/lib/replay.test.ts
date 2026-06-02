@@ -17,6 +17,7 @@ const st = (over: Partial<ReplayState> = {}): ReplayState => ({
   isPlaying: false,
   speed: 1,
   direction: 1,
+  active: false,
   ...over,
 })
 
@@ -63,8 +64,14 @@ describe('nextSpeed', () => {
 })
 
 describe('initialReplayState', () => {
-  it('starts fully revealed and paused', () => {
-    expect(initialReplayState(10)).toEqual({ cursor: 9, isPlaying: false, speed: 1, direction: 1 })
+  it('starts fully revealed, paused, and inactive', () => {
+    expect(initialReplayState(10)).toEqual({
+      cursor: 9,
+      isPlaying: false,
+      speed: 1,
+      direction: 1,
+      active: false,
+    })
   })
 })
 
@@ -113,8 +120,19 @@ describe('replayReducer', () => {
     const next = replayReducer(st({ cursor: 5, speed: 2, direction: -1 }), { type: 'FAST_FORWARD' }, 10)
     expect(next).toMatchObject({ direction: 1, speed: 4, isPlaying: true })
   })
-  it('RESET returns to fully-revealed paused state', () => {
-    expect(replayReducer(st({ cursor: 2, isPlaying: true, speed: 8, direction: -1 }), { type: 'RESET' }, 10))
-      .toEqual({ cursor: 9, isPlaying: false, speed: 1, direction: 1 })
+  it('RESET returns to fully-revealed, paused, inactive state', () => {
+    expect(replayReducer(st({ cursor: 2, isPlaying: true, speed: 8, direction: -1, active: true }), { type: 'RESET' }, 10))
+      .toEqual({ cursor: 9, isPlaying: false, speed: 1, direction: 1, active: false })
+  })
+
+  it('engaging the timeline sets active; RESET clears it', () => {
+    expect(replayReducer(st(), { type: 'PLAY' }, 10).active).toBe(true)
+    expect(replayReducer(st(), { type: 'STEP', dir: -1 }, 10).active).toBe(true)
+    expect(replayReducer(st(), { type: 'SCRUB', cursor: 3 }, 10).active).toBe(true)
+    expect(replayReducer(st(), { type: 'REVERSE' }, 10).active).toBe(true)
+    expect(replayReducer(st(), { type: 'FAST_FORWARD' }, 10).active).toBe(true)
+    // PAUSE keeps active (still mid-replay); RESET clears it.
+    expect(replayReducer(st({ active: true, isPlaying: true }), { type: 'PAUSE' }, 10).active).toBe(true)
+    expect(replayReducer(st({ active: true }), { type: 'RESET' }, 10).active).toBe(false)
   })
 })

@@ -21,6 +21,10 @@ export interface ReplayState {
   isPlaying: boolean
   speed: Speed
   direction: Direction
+  // True once the user engages the timeline (play/step/scrub/reverse/ff).
+  // While false the chart shows the full session — replay only kicks in on
+  // explicit interaction, and a RESET returns to this state.
+  active: boolean
 }
 
 export function clampCursor(cursor: number, count: number): number {
@@ -48,7 +52,7 @@ export function nextSpeed(speed: Speed): Speed {
 }
 
 export function initialReplayState(count: number): ReplayState {
-  return { cursor: clampCursor(count - 1, count), isPlaying: false, speed: 1, direction: 1 }
+  return { cursor: clampCursor(count - 1, count), isPlaying: false, speed: 1, direction: 1, active: false }
 }
 
 export type ReplayAction =
@@ -68,27 +72,27 @@ export function replayReducer(state: ReplayState, action: ReplayAction, count: n
     case 'PLAY': {
       // Starting from a terminal bound restarts from the opposite end.
       if (isAtBound(state.cursor, state.direction, count)) {
-        return { ...state, isPlaying: true, cursor: state.direction === 1 ? 0 : clampCursor(count - 1, count) }
+        return { ...state, isPlaying: true, active: true, cursor: state.direction === 1 ? 0 : clampCursor(count - 1, count) }
       }
-      return { ...state, isPlaying: true }
+      return { ...state, isPlaying: true, active: true }
     }
     case 'PAUSE':
       return { ...state, isPlaying: false }
     case 'TOGGLE':
       return replayReducer(state, { type: state.isPlaying ? 'PAUSE' : 'PLAY' }, count)
     case 'STEP':
-      return { ...state, isPlaying: false, cursor: advanceCursor(state.cursor, action.dir, count) }
+      return { ...state, isPlaying: false, active: true, cursor: advanceCursor(state.cursor, action.dir, count) }
     case 'SCRUB':
-      return { ...state, isPlaying: false, cursor: clampCursor(action.cursor, count) }
+      return { ...state, isPlaying: false, active: true, cursor: clampCursor(action.cursor, count) }
     case 'SET_SPEED':
       return { ...state, speed: action.speed }
     case 'REVERSE': {
       const atStart = isAtBound(state.cursor, -1, count)
-      return { ...state, isPlaying: true, direction: -1, cursor: atStart ? clampCursor(count - 1, count) : state.cursor }
+      return { ...state, isPlaying: true, active: true, direction: -1, cursor: atStart ? clampCursor(count - 1, count) : state.cursor }
     }
     case 'FAST_FORWARD': {
       const atEnd = isAtBound(state.cursor, 1, count)
-      return { ...state, isPlaying: true, direction: 1, speed: nextSpeed(state.speed), cursor: atEnd ? 0 : state.cursor }
+      return { ...state, isPlaying: true, active: true, direction: 1, speed: nextSpeed(state.speed), cursor: atEnd ? 0 : state.cursor }
     }
     case 'TICK': {
       const next = advanceCursor(state.cursor, state.direction, count)

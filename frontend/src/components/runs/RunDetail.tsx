@@ -115,7 +115,12 @@ export function RunDetail({ runId }: Props) {
     replayDispatch({ type: 'RESET' })
   }, [selectedSession, sessionBars.length, replayDispatch])
 
-  const cursor = clampCursor(replay.cursor, sessionBars.length)
+  // Until the user engages the timeline, show the full session (cursor pinned
+  // to the last bar) — the chart loads fully finished and only "replays" on
+  // explicit interaction.
+  const cursor = replay.active
+    ? clampCursor(replay.cursor, sessionBars.length)
+    : Math.max(0, sessionBars.length - 1)
   const revealedBars = sessionBars.slice(0, cursor + 1)
   const cutoffMs =
     revealedBars.length > 0
@@ -135,7 +140,7 @@ export function RunDetail({ runId }: Props) {
   const liveSummary = useMemo(() => computeReplaySummary(revealedJournal), [revealedJournal])
   // Replay is "active" while playing or while the playhead isn't at the end;
   // that flag tells PriceChart to keep a stable candle width + follow the head.
-  const inReplay = replay.isPlaying || cursor < sessionBars.length - 1
+  const inReplay = replay.active && (replay.isPlaying || cursor < sessionBars.length - 1)
 
   if (runQuery.isLoading) {
     return (
