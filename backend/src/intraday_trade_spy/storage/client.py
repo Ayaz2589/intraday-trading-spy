@@ -287,13 +287,20 @@ class SupabaseStorageClient:
         return response.data[0]["id"] if response.data else None
 
     def get_config_by_name(self, name: str):
-        """Fetch a config row owned by the current user by name, or None."""
+        """Fetch a config row owned by the current user by name, or None.
+
+        Ordered by updated_at desc (then id) so selection stays deterministic
+        even in the window before the (user_id, name) unique index is enforced
+        in a legacy DB — the most recently edited config wins.
+        """
         try:
             response = (
                 self._client.table("configs")
                 .select("*")
                 .eq("user_id", self.user_id)
                 .eq("name", name)
+                .order("updated_at", desc=True)
+                .order("id", desc=True)
                 .limit(1)
                 .execute()
             )
