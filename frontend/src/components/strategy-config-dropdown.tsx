@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { subscribe, getSnapshot } from '@/lib/strategy-menu-controller'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalendarField } from '@/components/calendar-field'
+import { clampEnd, maxEndForStart, minIso, MAX_RANGE_DAYS } from '@/lib/date-range'
 import { useBarsCoverage } from '@/hooks/useBarsCoverage'
 import { useConfigs, useUpdateConfig } from '@/hooks/useConfigs'
 import { useStartBacktest } from '@/hooks/useStartBacktest'
@@ -329,9 +330,13 @@ export function StrategyConfigDropdown() {
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             <CalendarField
               value={rangeStart}
-              onChange={setRangeStart}
+              onChange={(s) => {
+                setRangeStart(s)
+                // Keep the end within the max window when the start moves.
+                setRangeEnd((prev) => clampEnd(s, prev))
+              }}
               min={minPickable(coverageQuery.data?.earliest)}
-              max={rangeEnd}
+              max={todayIso()}
               ariaLabel="Backtest start date"
               testid="backtest-range-start"
             />
@@ -340,7 +345,7 @@ export function StrategyConfigDropdown() {
               value={rangeEnd}
               onChange={setRangeEnd}
               min={rangeStart}
-              max={todayIso()}
+              max={minIso(todayIso(), maxEndForStart(rangeStart))}
               ariaLabel="Backtest end date"
               testid="backtest-range-end"
             />
@@ -353,8 +358,8 @@ export function StrategyConfigDropdown() {
             }}
           >
             {coverageQuery.data?.earliest
-              ? `Cached history goes back to ${coverageQuery.data.earliest}. yfinance auto-fills the last 60 days on run.`
-              : 'yfinance serves 5m intraday data for the last 60 days. Missing days auto-download on run.'}
+              ? `Cached history goes back to ${coverageQuery.data.earliest}. yfinance auto-fills the last 60 days on run. Max ${MAX_RANGE_DAYS}-day range.`
+              : `yfinance serves 5m intraday data for the last 60 days. Missing days auto-download on run. Max ${MAX_RANGE_DAYS}-day range.`}
           </p>
         </div>
 
