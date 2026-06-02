@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useRuns, flattenRuns } from '@/hooks/useRuns'
 import { RunsEmptyState } from '@/components/runs/RunsEmptyState'
+import { RunsLoadingSkeleton } from '@/components/runs/RunsLoadingSkeleton'
 import { openStrategyMenu } from '@/lib/strategy-menu-controller'
 
 export const Route = createFileRoute('/_authenticated/runs')({
@@ -12,15 +13,7 @@ function RunsLanding() {
   const runs = flattenRuns(runsQuery.data)
 
   if (runsQuery.isLoading) {
-    return (
-      <div
-        className="p-6 text-sm"
-        style={{ color: 'var(--text-muted)' }}
-        data-testid="runs-landing-loading"
-      >
-        Loading runs…
-      </div>
-    )
+    return <RunsLoadingSkeleton />
   }
 
   if (runs.length > 0) {
