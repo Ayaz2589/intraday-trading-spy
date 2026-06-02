@@ -22,6 +22,11 @@ def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
     all_r = [r.realized_r for r in completed if r.realized_r is not None]
     avg_r = sum(all_r) / len(all_r) if all_r else 0.0
     total_r = sum(all_r)
+    # Dollar PnL over the same completed set as total_r. Per-trade realized_pnl
+    # is computed by the engine; this is the aggregate the cloud summary's `pnl`
+    # field reads (via total_pnl_dollars) — previously never produced, so PnL
+    # always showed $0.
+    total_pnl_dollars = sum(r.realized_pnl for r in completed if r.realized_pnl is not None)
 
     pf: float | None = None
     if wins and losses:
@@ -59,6 +64,7 @@ def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
         average_loss_r=avg_loss_r,
         average_r=avg_r,
         total_r=total_r,
+        total_pnl_dollars=total_pnl_dollars,
         profit_factor=pf,
         max_drawdown_r=max_dd,
         best_trade_r=best,

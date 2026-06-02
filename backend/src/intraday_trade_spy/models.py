@@ -141,6 +141,7 @@ class SummaryMetrics(BaseModel):
     average_loss_r: float
     average_r: float
     total_r: float
+    total_pnl_dollars: float = 0.0
     profit_factor: float | None
     max_drawdown_r: float
     best_trade_r: float | None
