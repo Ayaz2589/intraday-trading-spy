@@ -1,5 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { humanize, truncate, formatRunTitle, runIdHash, formatSignedCurrency } from "./format";
+import {
+  humanize,
+  truncate,
+  formatRunTitle,
+  runIdHash,
+  formatSignedCurrency,
+  abbreviateSignedCurrency,
+} from "./format";
+
+describe("abbreviateSignedCurrency", () => {
+  it("abbreviates thousands with a k suffix", () => {
+    expect(abbreviateSignedCurrency(1240.5)).toBe("+$1.2k");
+    expect(abbreviateSignedCurrency(-12000)).toBe("-$12.0k");
+  });
+  it("rounds sub-thousand values to whole dollars", () => {
+    expect(abbreviateSignedCurrency(-340.2)).toBe("-$340");
+    expect(abbreviateSignedCurrency("560")).toBe("+$560");
+  });
+  it("shows zero without a sign", () => {
+    expect(abbreviateSignedCurrency(0)).toBe("$0");
+  });
+  it("falls back to the raw input when not numeric", () => {
+    expect(abbreviateSignedCurrency("n/a")).toBe("n/a");
+  });
+});
 
 describe("formatSignedCurrency", () => {
   it("formats a positive value with + and $", () => {

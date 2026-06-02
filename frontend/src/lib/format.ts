@@ -34,6 +34,20 @@ export function formatSignedCurrency(value: string | number): string {
   return `${sign}$${abs}`;
 }
 
+/**
+ * Compact signed currency for tight spaces (e.g. the collapsed sidebar rail):
+ * 1240.5 → "+$1.2k", -340 → "-$340", 0 → "$0". Non-numeric input is returned
+ * unchanged.
+ */
+export function abbreviateSignedCurrency(value: string | number): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  const body = abs >= 1000 ? `${(abs / 1000).toFixed(1)}k` : String(Math.round(abs));
+  return `${sign}$${body}`;
+}
+
 // Run IDs are formatted `YYYYMMDD-HHMMSS-<8-hex-hash>`. The hash makes
 // the id unique across same-minute runs but is unreadable. We render
 // the start time in the user's locale plus the hash separately as a

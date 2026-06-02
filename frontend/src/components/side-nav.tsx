@@ -4,7 +4,7 @@ import { useSidebarMode } from '@/lib/sidebar-mode'
 import { useRuns, flattenRuns } from '@/hooks/useRuns'
 import { useDeleteAllRuns } from '@/hooks/useDeleteRun'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { RunMiniCard } from '@/components/runs/RunMiniCard'
+import { RunMiniCard, CollapsedRunChip } from '@/components/runs/RunMiniCard'
 
 export function SideNav() {
   const { mode, toggle } = useSidebarMode()
@@ -75,18 +75,34 @@ export function SideNav() {
       </div>
 
       {collapsed ? (
-        // Collapsed rail: icon-only nav so the user can still jump to
-        // the runs list (auto-routes to most recent) and trash everything.
+        // Collapsed rail: a clickable, colored P&L chip per run so you can
+        // still scan and switch runs without expanding.
         <div
           data-testid="side-nav-icon-rail"
-          style={{ flex: 1, padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}
+          style={{ flex: 1, overflowY: 'auto', padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}
         >
-          <IconLink
-            to="/runs"
-            label="Runs"
-            icon="◴"
-            badge={runs.length > 0 ? runs.length : undefined}
-          />
+          {runsQuery.isLoading ? (
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', padding: 4 }}>…</span>
+          ) : runs.length === 0 ? (
+            <IconLink to="/runs" label="Runs" icon="◴" />
+          ) : (
+            <>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  textAlign: 'center',
+                  paddingBottom: 2,
+                }}
+              >
+                {runs.length}
+              </span>
+              {runs.map(run => (
+                <CollapsedRunChip key={run.id} run={run} active={run.id === currentRunId} />
+              ))}
+            </>
+          )}
         </div>
       ) : (
         <div

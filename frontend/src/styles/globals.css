@@ -1286,6 +1286,42 @@ table.trades thead th {
   color: var(--text);
 }
 
+/* ---------------- Run mini-card actions (favorite / delete) ---------------- */
+.run-card-btn {
+  position: absolute;
+  top: 6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--speed) var(--ease);
+}
+.run-card-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.run-card-fav { right: 30px; }
+.run-card-fav.is-fav {
+  color: #f5a524;
+  border-color: color-mix(in srgb, #f5a524 55%, transparent);
+  background: color-mix(in srgb, #f5a524 14%, transparent);
+}
+.run-card-fav:hover { color: #f5a524; }
+.run-card-del { right: 6px; }
+.run-card-del:hover {
+  background: var(--loss-soft);
+  border-color: transparent;
+  color: var(--loss);
+}
+
 /* ---------------- Responsive ---------------- */
 @media (max-width: 1180px) {
   .stat-row { grid-template-columns: 1fr 1fr; }
