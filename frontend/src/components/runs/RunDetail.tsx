@@ -11,6 +11,7 @@ import { JournalTable } from '@/components/journal-table'
 import { buildMarkers } from '@/components/journal-markers'
 import { Skeleton } from '@/components/skeleton'
 import { humanize } from '@/lib/format'
+import { resolveSession } from '@/lib/run-session'
 import { RunSummaryCards } from './RunSummaryCards'
 import { HelpTooltip } from '@/components/help-tooltip'
 import type { Bar, Run, Signal, Trade, UUID } from '@/api/types'
@@ -36,7 +37,7 @@ export function RunDetail({ runId }: Props) {
   const tradesQuery = useRunTrades(runId)
   const queryClient = useQueryClient()
 
-  const [selectedSession, setSelectedSession] = useState<string | null>(null)
+  const [pickedSession, setPickedSession] = useState<string | null>(null)
   const [showRejections, setShowRejections] = useState(false)
   const [filter, setFilter] = useState<JournalFilter>('all')
 
@@ -93,9 +94,11 @@ export function RunDetail({ runId }: Props) {
     [bars]
   )
 
-  useEffect(() => {
-    if (sessions.length > 0 && !selectedSession) setSelectedSession(sessions[0])
-  }, [sessions, selectedSession])
+  // Resolve the displayed session from the user's pick, falling back to the
+  // first session. Switching runs re-renders this view without remounting, so
+  // the pick can be a date from the previous run that doesn't exist in the new
+  // run's bars — which would filter the chart down to nothing (blank chart).
+  const selectedSession = resolveSession(sessions, pickedSession)
 
   if (runQuery.isLoading) {
     return (
@@ -152,7 +155,7 @@ export function RunDetail({ runId }: Props) {
               journal={journalRows}
               sessions={sessions}
               selectedSession={selectedSession}
-              onSessionChange={setSelectedSession}
+              onSessionChange={setPickedSession}
               showRejections={showRejections}
               onToggleRejections={() => setShowRejections(v => !v)}
             />
