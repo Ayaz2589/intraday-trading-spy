@@ -40,12 +40,8 @@ function SignInPage() {
     setBusy(true)
     setError(null)
     try {
-      const result = await auth.verifyOtp(email, code)
-      if (result.requiresMfa) {
-        navigate({ to: '/sign-in/mfa', search: { next: next ?? '/runs' } })
-      } else {
-        navigate({ to: next ?? '/runs' })
-      }
+      await auth.verifyOtp(email, code)
+      navigate({ to: next ?? '/runs' })
     } catch (err) {
       setError(toMessage(err))
     } finally {
