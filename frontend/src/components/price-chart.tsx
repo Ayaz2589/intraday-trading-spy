@@ -657,11 +657,17 @@ export function PriceChart({
     });
     if (bars.length > 0) {
       if (!hasAutoFittedRef.current) {
-        // 70px reserves room for the y-axis labels on the right.
+        // 70px reserves room for the y-axis labels on the right. Skip the
+        // fit until the container actually has width — on a client-side mount
+        // clientWidth can be 0, which would lock in a bad bar width and leave
+        // the chart looking empty. The ResizeObserver below finishes the fit
+        // once a real width is measured.
         const available = container.clientWidth - 70;
-        const fitted = Math.max(4, Math.min(30, available / bars.length));
-        chart.setBarSpace(fitted);
-        hasAutoFittedRef.current = true;
+        if (available > 0) {
+          const fitted = Math.max(4, Math.min(30, available / bars.length));
+          chart.setBarSpace(fitted);
+          hasAutoFittedRef.current = true;
+        }
       } else {
         chart.setBarSpace(previousBarSpace);
         chart.setOffsetRightDistance(previousOffsetRight);
@@ -685,8 +691,15 @@ export function PriceChart({
     const chart = chartRef.current;
     if (!container || !chart) return;
     const observer = new ResizeObserver(() => {
+      // Always let klinecharts re-measure its canvas. On a client-side mount
+      // (e.g. right after creating a backtest) the container can be 0-width at
+      // init(); without forcing a resize when it later gets real width, the
+      // chart stays blank until a full page reload.
+      chart.resize();
+      // One-time bar-width auto-fit, once the container has a real width.
       if (hasAutoFittedRef.current || !bars.length) return;
       const available = container.clientWidth - 70;
+      if (available <= 0) return;
       const fitted = Math.max(4, Math.min(30, available / bars.length));
       chart.setBarSpace(fitted);
       hasAutoFittedRef.current = true;
