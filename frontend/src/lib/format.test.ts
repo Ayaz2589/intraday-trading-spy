@@ -1,5 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { humanize, truncate, formatRunTitle, runIdHash } from "./format";
+import { humanize, truncate, formatRunTitle, runIdHash, formatSignedCurrency } from "./format";
+
+describe("formatSignedCurrency", () => {
+  it("formats a positive value with + and $", () => {
+    expect(formatSignedCurrency(75.25)).toBe("+$75.25");
+  });
+  it("formats a negative value with - and $", () => {
+    expect(formatSignedCurrency(-60.25)).toBe("-$60.25");
+  });
+  it("formats zero without a sign", () => {
+    expect(formatSignedCurrency(0)).toBe("$0.00");
+  });
+  it("parses numeric strings (Decimal serialized as a string)", () => {
+    expect(formatSignedCurrency("0.0")).toBe("$0.00");
+    expect(formatSignedCurrency("1234.5")).toBe("+$1,234.50");
+  });
+  it("falls back to the raw input when not numeric", () => {
+    expect(formatSignedCurrency("n/a")).toBe("n/a");
+  });
+});
 
 describe("humanize", () => {
   it("converts snake_case to Title Case", () => {

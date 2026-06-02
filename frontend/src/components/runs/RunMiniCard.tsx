@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useDeleteRun, useToggleFavorite } from '@/hooks/useDeleteRun'
+import { formatSignedCurrency } from '@/lib/format'
 import type { Run, RunStatus } from '@/api/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -117,7 +118,19 @@ export function RunMiniCard({ run, active }: Props) {
           <span>
             {run.summary.total_trades} {run.summary.total_trades === 1 ? 'trade' : 'trades'}
           </span>
-          <span className="mono">PnL {run.summary.pnl}</span>
+          <span
+            className="mono"
+            style={{
+              color:
+                Number(run.summary.pnl) > 0
+                  ? 'var(--profit)'
+                  : Number(run.summary.pnl) < 0
+                    ? 'var(--loss)'
+                    : undefined,
+            }}
+          >
+            PnL {formatSignedCurrency(run.summary.pnl)}
+          </span>
         </div>
         <button
           type="button"

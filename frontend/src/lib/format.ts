@@ -17,6 +17,23 @@ export function truncate(s: string, max = 40): string {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
 }
 
+/**
+ * Format a dollar amount with a leading sign and thousands separators, e.g.
+ * 75.25 → "+$75.25", -60.25 → "-$60.25", 0 → "$0.00". Accepts a string
+ * (the API serializes PnL as a Decimal string). Non-numeric input is returned
+ * unchanged as a safe fallback.
+ */
+export function formatSignedCurrency(value: string | number): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  const abs = Math.abs(n).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${sign}$${abs}`;
+}
+
 // Run IDs are formatted `YYYYMMDD-HHMMSS-<8-hex-hash>`. The hash makes
 // the id unique across same-minute runs but is unreadable. We render
 // the start time in the user's locale plus the hash separately as a
