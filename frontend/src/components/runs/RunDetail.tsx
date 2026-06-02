@@ -198,7 +198,6 @@ export function RunDetail({ runId }: Props) {
                 onToggleRejections={() => setShowRejections(v => !v)}
                 fitBarCount={sessionBars.length}
                 replay={inReplay}
-                followLatest={inReplay}
               />
               <PlaybackControls
                 cursor={cursor}
@@ -675,7 +674,6 @@ function RunChart({
   onToggleRejections,
   fitBarCount,
   replay,
-  followLatest,
 }: {
   // `bars`/`journal` are already filtered to the selected session and sliced to
   // the replay playhead by RunDetail — RunChart just derives the chart inputs.
@@ -688,7 +686,6 @@ function RunChart({
   onToggleRejections(): void
   fitBarCount?: number
   replay?: boolean
-  followLatest?: boolean
 }) {
   if (!selectedSession || sessions.length === 0) return null
 
@@ -718,7 +715,6 @@ function RunChart({
         onToggleRejections={onToggleRejections}
         fitBarCount={fitBarCount}
         replay={replay}
-        followLatest={followLatest}
       />
     </div>
   )

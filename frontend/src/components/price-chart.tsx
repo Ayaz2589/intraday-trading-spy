@@ -347,7 +347,6 @@ export function PriceChart({
   onToggleRejections,
   replay = false,
   fitBarCount,
-  followLatest = false,
 }: {
   bars: BarView[];
   vwap: { time: string; value: number }[];
@@ -359,11 +358,10 @@ export function PriceChart({
   showRejections?: boolean;
   onToggleRejections?: () => void;
   // Replay mode: `bars` is a growing prefix of the session. Size candles to the
-  // full session length (`fitBarCount`) for a stable width, and scroll to the
-  // newest revealed bar (`followLatest`) instead of preserving the prior view.
+  // full session length (`fitBarCount`) for a stable width and left-anchor the
+  // revealed bars so the chart grows left→right as the playhead advances.
   replay?: boolean;
   fitBarCount?: number;
-  followLatest?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartCardRef = useRef<HTMLElement>(null);
@@ -668,11 +666,14 @@ export function PriceChart({
       const available = container.clientWidth - 70;
       if (replay && fitBarCount && fitBarCount > 0) {
         // Replay: size candles to the FULL session length so width stays
-        // constant as the prefix grows (rather than fitting to a 1-2 bar
-        // prefix). Don't preserve scroll — `followLatest` pins the newest bar.
+        // constant as the prefix grows, and left-anchor the revealed bars by
+        // reserving empty space on the right for the not-yet-revealed bars — so
+        // the chart fills left→right (the natural direction) as the playhead
+        // advances, instead of pinning the newest bar to the right edge.
         if (available > 0) {
           const fitted = Math.max(4, Math.min(30, available / fitBarCount));
           chart.setBarSpace(fitted);
+          chart.setOffsetRightDistance(Math.max(2, (fitBarCount - bars.length) * fitted + 2));
           hasAutoFittedRef.current = true;
         }
       } else if (!hasAutoFittedRef.current) {
@@ -690,11 +691,8 @@ export function PriceChart({
         chart.setBarSpace(previousBarSpace);
         chart.setOffsetRightDistance(previousOffsetRight);
       }
-      if (followLatest) {
-        chart.scrollToDataIndex(bars.length - 1);
-      }
     }
-  }, [bars, replay, fitBarCount, followLatest]);
+  }, [bars, replay, fitBarCount]);
 
   // Theme + candle-style — re-apply styles whenever either changes.
   useEffect(() => {
