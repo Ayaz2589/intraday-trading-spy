@@ -345,6 +345,9 @@ export function PriceChart({
   positionCapPct,
   showRejections = false,
   onToggleRejections,
+  replay = false,
+  fitBarCount,
+  followLatest = false,
 }: {
   bars: BarView[];
   vwap: { time: string; value: number }[];
@@ -355,6 +358,12 @@ export function PriceChart({
   positionCapPct: number;
   showRejections?: boolean;
   onToggleRejections?: () => void;
+  // Replay mode: `bars` is a growing prefix of the session. Size candles to the
+  // full session length (`fitBarCount`) for a stable width, and scroll to the
+  // newest revealed bar (`followLatest`) instead of preserving the prior view.
+  replay?: boolean;
+  fitBarCount?: number;
+  followLatest?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartCardRef = useRef<HTMLElement>(null);
@@ -656,13 +665,22 @@ export function PriceChart({
       getBars: ({ callback }) => callback(klineData, false),
     });
     if (bars.length > 0) {
-      if (!hasAutoFittedRef.current) {
+      const available = container.clientWidth - 70;
+      if (replay && fitBarCount && fitBarCount > 0) {
+        // Replay: size candles to the FULL session length so width stays
+        // constant as the prefix grows (rather than fitting to a 1-2 bar
+        // prefix). Don't preserve scroll — `followLatest` pins the newest bar.
+        if (available > 0) {
+          const fitted = Math.max(4, Math.min(30, available / fitBarCount));
+          chart.setBarSpace(fitted);
+          hasAutoFittedRef.current = true;
+        }
+      } else if (!hasAutoFittedRef.current) {
         // 70px reserves room for the y-axis labels on the right. Skip the
         // fit until the container actually has width — on a client-side mount
         // clientWidth can be 0, which would lock in a bad bar width and leave
         // the chart looking empty. The ResizeObserver below finishes the fit
         // once a real width is measured.
-        const available = container.clientWidth - 70;
         if (available > 0) {
           const fitted = Math.max(4, Math.min(30, available / bars.length));
           chart.setBarSpace(fitted);
@@ -672,8 +690,11 @@ export function PriceChart({
         chart.setBarSpace(previousBarSpace);
         chart.setOffsetRightDistance(previousOffsetRight);
       }
+      if (followLatest) {
+        chart.scrollToDataIndex(bars.length - 1);
+      }
     }
-  }, [bars]);
+  }, [bars, replay, fitBarCount, followLatest]);
 
   // Theme + candle-style — re-apply styles whenever either changes.
   useEffect(() => {

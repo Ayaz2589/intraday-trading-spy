@@ -12,6 +12,9 @@ import { buildMarkers } from '@/components/journal-markers'
 import { Skeleton } from '@/components/skeleton'
 import { humanize } from '@/lib/format'
 import { resolveSession } from '@/lib/run-session'
+import { useReplay, clampCursor } from '@/lib/replay'
+import { computeReplaySummary } from '@/lib/replay-summary'
+import { PlaybackControls } from '@/components/playback-controls'
 import { RunSummaryCards } from './RunSummaryCards'
 import { HelpTooltip } from '@/components/help-tooltip'
 import type { Bar, Run, Signal, Trade, UUID } from '@/api/types'
@@ -100,6 +103,40 @@ export function RunDetail({ runId }: Props) {
   // run's bars — which would filter the chart down to nothing (blank chart).
   const selectedSession = resolveSession(sessions, pickedSession)
 
+  // ---- Replay ----
+  // Bars for the selected session; the playhead (cursor) indexes into these.
+  const sessionBars = useMemo(
+    () => bars.filter(b => sessionDate(b.timestamp) === selectedSession),
+    [bars, selectedSession],
+  )
+  const { state: replay, dispatch: replayDispatch } = useReplay(sessionBars.length)
+  // Reset playback to fully-revealed when the session (or its bar count) changes.
+  useEffect(() => {
+    replayDispatch({ type: 'RESET' })
+  }, [selectedSession, sessionBars.length, replayDispatch])
+
+  const cursor = clampCursor(replay.cursor, sessionBars.length)
+  const revealedBars = sessionBars.slice(0, cursor + 1)
+  const cutoffMs =
+    revealedBars.length > 0
+      ? new Date(revealedBars[revealedBars.length - 1].timestamp).getTime()
+      : 0
+  // Journal rows revealed so far in the selected session (drives the chart
+  // markers, the journal table, and the live summary).
+  const revealedJournal = useMemo(
+    () =>
+      journalRows.filter(
+        r =>
+          sessionDate(r.timestamp) === selectedSession &&
+          new Date(r.timestamp).getTime() <= cutoffMs,
+      ),
+    [journalRows, selectedSession, cutoffMs],
+  )
+  const liveSummary = useMemo(() => computeReplaySummary(revealedJournal), [revealedJournal])
+  // Replay is "active" while playing or while the playhead isn't at the end;
+  // that flag tells PriceChart to keep a stable candle width + follow the head.
+  const inReplay = replay.isPlaying || cursor < sessionBars.length - 1
+
   if (runQuery.isLoading) {
     return (
       <div className="p-8" data-testid="run-detail-loading">
@@ -113,7 +150,7 @@ export function RunDetail({ runId }: Props) {
       <div className="p-8" data-testid="run-detail-not-found">
         <h2 className="text-lg font-semibold">Run not found</h2>
         <p className="text-sm text-muted-foreground">
-          This run doesn't exist or belongs to a different user.
+          This run does not exist or belongs to a different user.
         </p>
       </div>
     )
@@ -132,7 +169,7 @@ export function RunDetail({ runId }: Props) {
         <PendingSkeleton status={pendingStatus} />
       ) : (
         <>
-          <RunSummaryCards run={run} />
+          <RunSummaryCards summary={liveSummary} />
           {manifestQuery.data && (
             <ConfigStrip
               params={manifestQuery.data.config.params}
@@ -150,21 +187,40 @@ export function RunDetail({ runId }: Props) {
               {barsQuery.isLoading ? 'Loading bars…' : 'No bar data available for this run.'}
             </div>
           ) : (
-            <RunChart
-              bars={bars}
-              journal={journalRows}
-              sessions={sessions}
-              selectedSession={selectedSession}
-              onSessionChange={setPickedSession}
-              showRejections={showRejections}
-              onToggleRejections={() => setShowRejections(v => !v)}
-            />
+            <>
+              <RunChart
+                bars={revealedBars}
+                journal={revealedJournal}
+                sessions={sessions}
+                selectedSession={selectedSession}
+                onSessionChange={setPickedSession}
+                showRejections={showRejections}
+                onToggleRejections={() => setShowRejections(v => !v)}
+                fitBarCount={sessionBars.length}
+                replay={inReplay}
+                followLatest={inReplay}
+              />
+              <PlaybackControls
+                cursor={cursor}
+                count={sessionBars.length}
+                isPlaying={replay.isPlaying}
+                speed={replay.speed}
+                direction={replay.direction}
+                barTime={sessionBars[cursor]?.timestamp}
+                onToggle={() => replayDispatch({ type: 'TOGGLE' })}
+                onStep={d => replayDispatch({ type: 'STEP', dir: d })}
+                onScrub={c => replayDispatch({ type: 'SCRUB', cursor: c })}
+                onReverse={() => replayDispatch({ type: 'REVERSE' })}
+                onFastForward={() => replayDispatch({ type: 'FAST_FORWARD' })}
+                onReset={() => replayDispatch({ type: 'RESET' })}
+              />
+            </>
           )}
         </>
       )}
       {!pendingStatus && (
         <JournalTable
-          rows={journalRows}
+          rows={revealedJournal}
           filter={filter}
           onFilterChange={setFilter}
         />
@@ -617,7 +673,12 @@ function RunChart({
   onSessionChange,
   showRejections,
   onToggleRejections,
+  fitBarCount,
+  replay,
+  followLatest,
 }: {
+  // `bars`/`journal` are already filtered to the selected session and sliced to
+  // the replay playhead by RunDetail — RunChart just derives the chart inputs.
   bars: BarView[]
   journal: JournalRowView[]
   sessions: string[]
@@ -625,27 +686,18 @@ function RunChart({
   onSessionChange(s: string): void
   showRejections: boolean
   onToggleRejections(): void
+  fitBarCount?: number
+  replay?: boolean
+  followLatest?: boolean
 }) {
   if (!selectedSession || sessions.length === 0) return null
 
-  const sessionBars = bars.filter(b => sessionDate(b.timestamp) === selectedSession)
-  const sessionJournal = journal.filter(r => sessionDate(r.timestamp) === selectedSession)
-
-  // VWAP is a deterministic function of the bars themselves — typical price
-  // × volume, running sum, divided by running sum of volume, reset per
-  // session. Computing it here (instead of reading stale `indicator_context`
-  // from old signals) guarantees VWAP always matches the candles, even for
-  // legacy runs whose stored signals reference different (synthetic-fixture)
-  // prices than the cached bars.
-  const vwap = computeSessionVwap(sessionBars)
-
-  // Opening range: first 15 minutes of session bars. The strategy default
-  // is 15min; using a fixed window matches `backend/config/config.yaml`
-  // strategy.opening_range.minutes. Derived from bars (not stored signals)
-  // for the same reason as VWAP.
-  const or = computeOpeningRange(sessionBars, 15)
-
-  const markers = buildMarkers(sessionJournal, { showRejections })
+  // VWAP / opening-range / markers are derived from the (revealed) bars+journal,
+  // so they reveal progressively during replay. VWAP is cumulative and thus
+  // prefix-stable; the opening range forms then locks as bars are revealed.
+  const vwap = computeSessionVwap(bars)
+  const or = computeOpeningRange(bars, 15)
+  const markers = buildMarkers(journal, { showRejections })
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
@@ -655,15 +707,18 @@ function RunChart({
         onChange={onSessionChange}
       />
       <PriceChart
-        bars={sessionBars}
+        bars={bars}
         vwap={vwap}
         or={or}
         markers={markers}
-        journal={sessionJournal}
+        journal={journal}
         accountValue={25000}
         positionCapPct={100}
         showRejections={showRejections}
         onToggleRejections={onToggleRejections}
+        fitBarCount={fitBarCount}
+        replay={replay}
+        followLatest={followLatest}
       />
     </div>
   )

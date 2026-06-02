@@ -1,13 +1,15 @@
 import { Card } from '@/components/ui/card'
 import { formatSignedCurrency } from '@/lib/format'
-import type { Run } from '@/api/types'
+import type { RunSummary } from '@/api/types'
 
 interface Props {
-  run: Run
+  // The summary to display. Usually the run summary, but during replay it's a
+  // live summary recomputed from the revealed trades.
+  summary: RunSummary
 }
 
-export function RunSummaryCards({ run }: Props) {
-  const s = run.summary
+export function RunSummaryCards({ summary }: Props) {
+  const s = summary
   const winRatePct = (s.win_rate * 100).toFixed(1) + '%'
   const pnlNum = Number(s.pnl)
   const pnlColor =
