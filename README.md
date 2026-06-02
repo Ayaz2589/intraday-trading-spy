@@ -65,6 +65,35 @@ If you'd rather skip the Makefile, the console scripts are
 See `specs/001-backtest-mvp-spy-vwap-pullback/quickstart.md` for full
 details.
 
+## Local development with Docker
+
+Run the whole local app in containers — no Python venv or Node install
+needed, just Docker. One command brings up the backend API and the
+frontend dev server with hot reload:
+
+```bash
+make docker-up      # build + start: backend :8001 + frontend :5173 (hot reload)
+make docker-down    # stop + remove
+```
+
+(or `docker compose up --build` / `docker compose down` directly).
+
+- **Backend** — FastAPI on http://localhost:8001 via `uvicorn --reload`;
+  source is bind-mounted, so edits reload automatically.
+- **Frontend** — Vite dev server on http://localhost:5173 with HMR;
+  `node_modules` lives in a named volume (no host/container clashes).
+- Both read the **remote** Supabase project from `backend/.env` and
+  `frontend/.env` — copy the `.env.example` files and fill them in first.
+  The browser calls the API at `VITE_API_BASE_URL` (default
+  `http://localhost:8001`), so no extra wiring is needed.
+
+Run one-off backend commands inside the stack with, e.g.,
+`docker compose exec backend intraday-trade-spy-backtest --help`.
+
+This is a **development** stack only. Production builds from
+`backend/Dockerfile` (deployed to Fly.io) and the frontend deploys to
+Vercel — neither uses `docker-compose.yml`.
+
 ## Constitution
 
 `.specify/memory/constitution.md` defines the seven governing
