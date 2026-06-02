@@ -13,6 +13,7 @@ vi.mock("klinecharts", () => {
     getOffsetRightDistance: vi.fn(() => 28),
     setBarSpace: vi.fn(),
     getBarSpace: vi.fn(() => ({ bar: 8, halfBar: 4, halfGapBar: 0.5 })),
+    resize: vi.fn(),
     createIndicator: vi.fn(),
     createOverlay: vi.fn(),
     removeIndicator: vi.fn(),
