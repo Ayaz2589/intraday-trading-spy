@@ -13,7 +13,7 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (code.length < 6) return
+    if (code.length < 8) return
     await onSubmit(code)
   }
 
@@ -25,13 +25,13 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
   return (
     <form onSubmit={handle} data-testid="otp-code-form">
       <p className="text-sm text-muted-foreground mb-4">
-        Check your inbox at <strong>{email}</strong> for a 6-digit code.
+        Check your inbox at <strong>{email}</strong> for an 8-digit code.
       </p>
       <input
         type="text"
         inputMode="numeric"
         autoComplete="one-time-code"
-        placeholder="6-digit code"
+        placeholder="8-digit code"
         value={code}
         required
         onChange={e => setCode(normalize(e.target.value))}
@@ -45,7 +45,7 @@ export function OtpCodeForm({ email, onSubmit, onUseDifferentEmail, pending, err
       )}
       <button
         type="submit"
-        disabled={code.length < 6 || pending}
+        disabled={code.length < 8 || pending}
         className="w-full p-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
       >
         {pending ? 'Verifying…' : 'Verify code'}
