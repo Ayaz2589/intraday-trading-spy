@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HELP_CONTENT, type HelpContentKey } from "./help-content";
 
 describe("HELP_CONTENT", () => {
-  it("has every HelpContentKey covered (16 Feature 004 + 12 Feature 007 = 28 concepts)", () => {
+  it("has every HelpContentKey covered (16 Feature 004 + 9 Feature 007 = 25 concepts)", () => {
     const expected: HelpContentKey[] = [
       // Feature 004
       "vwap",
@@ -22,10 +22,7 @@ describe("HELP_CONTENT", () => {
       "layout_mode",
       "show_rejections",
       // Feature 007
-      "mfa",
-      "totp",
       "otp",
-      "backup_codes",
       "session",
       "saved_config",
       "strategy_registry",

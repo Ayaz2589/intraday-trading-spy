@@ -9,15 +9,6 @@ const mockSupabase = {
     })),
     signInWithOtp: vi.fn().mockResolvedValue({ error: null }),
     verifyOtp: vi.fn().mockResolvedValue({ error: null }),
-    mfa: {
-      enroll: vi.fn(),
-      challenge: vi.fn(),
-      verify: vi.fn(),
-      getAuthenticatorAssuranceLevel: vi.fn().mockResolvedValue({
-        data: { currentLevel: 'aal1', nextLevel: 'aal1' },
-      }),
-      listFactors: vi.fn().mockResolvedValue({ data: { all: [] } }),
-    },
     signOut: vi.fn().mockResolvedValue({}),
   },
 }
