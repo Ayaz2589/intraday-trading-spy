@@ -66,6 +66,15 @@ async def _lifespan(app: FastAPI):
     except Exception as exc:
         _log.warning("startup sweep failed: %s", exc)
 
+    try:
+        from intraday_trade_spy.api.validation_lifecycle import sweep_stale_studies
+
+        swept_studies = sweep_stale_studies()
+        if swept_studies:
+            _log.warning("startup: reaped %d stale running studies", swept_studies)
+    except Exception as exc:
+        _log.warning("startup study sweep failed: %s", exc)
+
     # Skip the bars catch-up in test/CI (no real Supabase + no real network).
     if os.environ.get("STARTUP_BARS_REFRESH", "1") != "0":
         try:

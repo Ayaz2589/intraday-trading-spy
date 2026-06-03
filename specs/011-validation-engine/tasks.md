@@ -51,15 +51,15 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 - [X] T013 [P] Failing test: `ValidationStudyRow` / `LockboxLedgerRow` models + `RunRow` study fields validate/serialize in `backend/tests/storage/test_models_payload.py`.
 - [X] T014 Add `ValidationStudyRow`, `LockboxLedgerRow` and `study_id`/`segment`/`window_index` to `RunRow` in `backend/src/intraday_trade_spy/storage/models.py`.
-- [ ] T015 Failing test: study CRUD (`create_study`, `get_study`, `list_studies`, `update_study_progress`, `finalize_study`), `list_runs_by_study`, and `insert_queued_run` carrying study tags in `backend/tests/storage/test_client_studies.py`.
-- [ ] T016 Implement study CRUD + study-tag threading (insert_queued_run / push payload) in `backend/src/intraday_trade_spy/storage/client.py`.
+- [X] T015 Failing test: study CRUD (`create_study`, `get_study`, `list_studies`, `update_study_progress`, `finalize_study`), `list_runs_by_study`, and `insert_queued_run` carrying study tags in `backend/tests/storage/test_client_studies.py`.
+- [X] T016 Implement study CRUD + study-tag threading (insert_queued_run / push payload) in `backend/src/intraday_trade_spy/storage/client.py`.
 
 ### Study orchestrator + background task (FR-004..006)
 
-- [ ] T017 Failing test: orchestrator loads bars once, runs N evaluations via `run_df`, persists tagged child runs, updates progress, and links a dedup-hit finished run instead of recomputing (SC-008) in `backend/tests/validation/test_study_orchestrator.py`.
-- [ ] T018 Implement `backend/src/intraday_trade_spy/validation/study.py` (load-once/slice, `run_evaluation(config, range, segment, window_index)` → child run + dedup link, progress updates).
-- [ ] T019 Failing test: `run_study_task` lifecycle (queued→running→finished and →failed with partial children intact) + stale-`running`-study sweep in `backend/tests/api/test_validation_lifecycle.py`.
-- [ ] T020 Implement `backend/src/intraday_trade_spy/api/validation_lifecycle.py` and extend the startup `sweep_stale_runs()` hook to also fail stale studies.
+- [X] T017 Failing test: orchestrator loads bars once, runs N evaluations via `run_df`, persists tagged child runs, updates progress, and links a dedup-hit finished run instead of recomputing (SC-008) in `backend/tests/validation/test_study_orchestrator.py`.
+- [X] T018 Implement `backend/src/intraday_trade_spy/validation/study.py` (load-once/slice, `run_evaluation(config, range, segment, window_index)` → child run + dedup link, progress updates).
+- [X] T019 Failing test: `run_study_task` lifecycle (queued→running→finished and →failed with partial children intact) + stale-`running`-study sweep in `backend/tests/api/test_validation_lifecycle.py`.
+- [X] T020 Implement `backend/src/intraday_trade_spy/api/validation_lifecycle.py` and extend the startup `sweep_stale_runs()` hook to also fail stale studies.
 
 ### API + frontend shell
 

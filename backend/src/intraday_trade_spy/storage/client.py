@@ -215,8 +215,15 @@ class SupabaseStorageClient:
         bar_count,
         data_fingerprint,
         app_version,
+        study_id=None,
+        segment: str | None = None,
+        window_index: int | None = None,
     ) -> str:
-        """Insert a runs row in status='queued'. Used by the API at request time."""
+        """Insert a runs row in status='queued'. Used by the API at request time.
+
+        Feature 011: optional study tags (study_id / segment / window_index) mark
+        the run as a child of a validation study. Set at queue time here; the
+        finalize RPC preserves them (so no RPC migration is needed)."""
         body = {
             "id": str(run_id),
             "user_id": self.user_id,
@@ -232,6 +239,12 @@ class SupabaseStorageClient:
             "app_version": app_version,
             "status": "queued",
         }
+        if study_id is not None:
+            body["study_id"] = str(study_id)
+        if segment is not None:
+            body["segment"] = segment
+        if window_index is not None:
+            body["window_index"] = int(window_index)
         try:
             response = self._client.table("runs").insert(body).execute()
         except Exception as exc:
@@ -904,6 +917,170 @@ class SupabaseStorageClient:
         except Exception as exc:
             raise CloudPushError(f"count_active_backfills failed: {exc}") from exc
         return response.count or 0
+
+    # ---------- Feature 011: validation studies ----------
+
+    def insert_validation_study(
+        self,
+        *,
+        study_id,
+        kind: str,
+        params: dict,
+        progress_total: int = 0,
+    ) -> str:
+        """Insert a validation_studies row in status='queued'."""
+        body = {
+            "id": str(study_id),
+            "user_id": self.user_id,
+            "kind": kind,
+            "status": "queued",
+            "params": params or {},
+            "progress_total": int(progress_total),
+        }
+        try:
+            response = self._client.table("validation_studies").insert(body).execute()
+        except Exception as exc:
+            raise CloudPushError(f"insert_validation_study failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("insert_validation_study returned no row")
+        return response.data[0]["id"]
+
+    def update_validation_study(
+        self,
+        *,
+        study_id,
+        status: str | None = None,
+        progress_completed: int | None = None,
+        result: dict | None = None,
+        failure_reason: str | None = None,
+    ) -> None:
+        """Update a study's status / progress / result. Stamps status_updated_at
+        whenever status changes (powers the stale-study sweep)."""
+        from datetime import datetime, timezone
+
+        body: dict = {}
+        if status is not None:
+            body["status"] = status
+            body["status_updated_at"] = datetime.now(timezone.utc).isoformat()
+        if progress_completed is not None:
+            body["progress_completed"] = int(progress_completed)
+        if result is not None:
+            body["result"] = result
+        if failure_reason is not None:
+            body["failure_reason"] = failure_reason[:1000]
+        if not body:
+            return
+        try:
+            (
+                self._client.table("validation_studies")
+                .update(body)
+                .eq("id", str(study_id))
+                .eq("user_id", self.user_id)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"update_validation_study failed: {exc}") from exc
+
+    def get_validation_study(self, *, study_id, user_id):
+        """Fetch a study row, or None if not found / owned by another user."""
+        try:
+            response = (
+                self._client.table("validation_studies")
+                .select("*")
+                .eq("id", str(study_id))
+                .eq("user_id", str(user_id))
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"get_validation_study failed: {exc}") from exc
+        return response.data[0] if response.data else None
+
+    def list_validation_studies(self, *, user_id, limit: int, cursor: str | None):
+        """List a user's studies newest-first. Returns a page with .studies +
+        .next_cursor (same cursor scheme as list_runs)."""
+        from intraday_trade_spy.api.pagination import decode_cursor, encode_cursor
+
+        q = (
+            self._client.table("validation_studies")
+            .select("*")
+            .eq("user_id", str(user_id))
+            .order("created_at", desc=True)
+            .order("id", desc=True)
+            .limit(limit + 1)
+        )
+        decoded = decode_cursor(cursor)
+        if decoded is not None:
+            created_at_str, _ = decoded
+            q = q.lt("created_at", created_at_str)
+        try:
+            response = q.execute()
+        except Exception as exc:
+            raise CloudPushError(f"list_validation_studies failed: {exc}") from exc
+
+        rows = response.data or []
+        next_cursor = None
+        if len(rows) > limit:
+            rows = rows[:limit]
+            last = rows[-1]
+            next_cursor = encode_cursor(last["created_at"], last["id"])
+
+        class _Page:
+            pass
+
+        page = _Page()
+        page.studies = rows
+        page.next_cursor = next_cursor
+        return page
+
+    def list_runs_by_study(self, *, study_id, user_id) -> list[dict]:
+        """All child runs of a study, ordered by window then segment (for
+        aggregation and drill-down)."""
+        try:
+            response = (
+                self._client.table("runs")
+                .select("*")
+                .eq("study_id", str(study_id))
+                .eq("user_id", str(user_id))
+                .order("window_index", desc=False)
+                .order("segment", desc=False)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"list_runs_by_study failed: {exc}") from exc
+        return response.data or []
+
+    def sweep_stale_studies(self, *, max_age_minutes: int = 15) -> int:
+        """Transition validation studies stuck in 'running' past the TTL to
+        'failed' (crash recovery). Mirrors sweep_stale_runs."""
+        from datetime import datetime, timedelta, timezone
+
+        threshold = (
+            datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+        ).isoformat()
+        try:
+            stale = (
+                self._client.table("validation_studies")
+                .select("id")
+                .eq("status", "running")
+                .lt("status_updated_at", threshold)
+                .execute()
+            )
+            ids = [row["id"] for row in (stale.data or [])]
+            for sid in ids:
+                (
+                    self._client.table("validation_studies")
+                    .update({
+                        "status": "failed",
+                        "status_updated_at": datetime.now(timezone.utc).isoformat(),
+                        "failure_reason": "Study interrupted by service restart",
+                    })
+                    .eq("id", sid)
+                    .execute()
+                )
+            return len(ids)
+        except Exception as exc:
+            raise CloudPushError(f"sweep_stale_studies failed: {exc}") from exc
 
     def sweep_stale_runs(self, *, max_age_minutes: int = 15) -> int:
         """Find runs stuck in `running` older than `max_age_minutes` and

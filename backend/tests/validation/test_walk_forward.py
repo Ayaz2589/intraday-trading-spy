@@ -70,7 +70,9 @@ def test_run_walk_forward_aggregates_gap_and_means():
     ])
     df = pd.DataFrame({"session_date": pd.Series([], dtype="object")})
 
-    res = run_walk_forward(df=df, segments=_segments(), wf=wf, evaluate=lambda _slice: next(seq))
+    res = run_walk_forward(
+        df=df, segments=_segments(), wf=wf, evaluate=lambda _slice, **kw: next(seq)
+    )
 
     assert isinstance(res, WalkForwardResult)
     assert len(res.windows) == 2

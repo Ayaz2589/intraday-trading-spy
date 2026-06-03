@@ -88,13 +88,13 @@ def run_walk_forward(
     results: list[WalkForwardWindowResult] = []
     for w in windows:
         ins = _window_metrics(
-            evaluate(_slice(df, w.train_start, w.train_end)),
+            evaluate(_slice(df, w.train_start, w.train_end), segment="train", window_index=w.index),
             segment="train",
             start=w.train_start,
             end=w.train_end,
         )
         oos = _window_metrics(
-            evaluate(_slice(df, w.oos_start, w.oos_end)),
+            evaluate(_slice(df, w.oos_start, w.oos_end), segment="validation", window_index=w.index),
             segment="validation",
             start=w.oos_start,
             end=w.oos_end,
