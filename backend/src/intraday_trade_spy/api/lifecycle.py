@@ -320,6 +320,7 @@ def start_backtest(
         user_id=user_id,
         config_id=UUID(config["id"]),
         strategy_id=UUID(strategy_id),
+        config_params=config.get("params") or {},
         data_csv_path=data_csv_path,
         storage_client=storage_client,
         start_date=start_date,
@@ -334,6 +335,7 @@ def _run_backtest_task(
     user_id: UUID,
     config_id: UUID,
     strategy_id: UUID,
+    config_params: Optional[dict] = None,
     data_csv_path: Optional[str],
     storage_client: SupabaseStorageClient,
     start_date: Optional[date] = None,
@@ -348,11 +350,25 @@ def _run_backtest_task(
         import json
         from intraday_trade_spy.backtest.engine import BacktestEngine
         from intraday_trade_spy.backtest.manifest import write_run_yaml
-        from intraday_trade_spy.config import load_config
+        from intraday_trade_spy.config import build_effective_config
         from intraday_trade_spy.journal.exporter import write_journal_csv
         from intraday_trade_spy.storage.push import gather_run_outputs
 
-        cfg = load_config("config/config.yaml")
+        # Run with the user's saved knobs (risk/strategy) merged over the base
+        # config.yaml — NOT the static defaults. This is what makes the UI knobs
+        # actually affect results.
+        cfg = build_effective_config(config_params)
+
+        # Record the effective knobs this run used so the detail view shows
+        # per-run config (not the shared, mutable live config) and the run stays
+        # reproducible. Best-effort; no-ops pre-migration 0092.
+        storage_client.set_run_config_snapshot(
+            run_id=run_id,
+            config_snapshot={
+                "risk": cfg.risk.model_dump(mode="json"),
+                "strategy": cfg.strategy.model_dump(mode="json"),
+            },
+        )
         if start_date is not None and end_date is not None:
             csv_path = materialize_bars_csv(
                 storage_client=storage_client, start=start_date, end=end_date

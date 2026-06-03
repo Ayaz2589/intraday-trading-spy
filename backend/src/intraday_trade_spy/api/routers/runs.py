@@ -210,7 +210,15 @@ def get_manifest(
     if config_row is None:
         errors.raise_not_found(f"config {run['config_id']} not found")
 
+    # Prefer the per-run config snapshot (the knobs this run actually executed
+    # with) over the shared, mutable live config. Legacy runs predating the
+    # snapshot fall back to the live config.
+    config_data = dict(config_row)
+    snapshot = run.get("config_snapshot")
+    if snapshot:
+        config_data["params"] = snapshot
+
     return RunManifestView(
         strategy=StrategyView(**strategy_row),
-        config=ConfigView(**config_row),
+        config=ConfigView(**config_data),
     )

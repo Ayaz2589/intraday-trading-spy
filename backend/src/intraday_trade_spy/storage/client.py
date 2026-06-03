@@ -267,6 +267,18 @@ class SupabaseStorageClient:
         except Exception:  # noqa: BLE001 — column may not exist yet; dedup is optional
             pass
 
+    def set_run_config_snapshot(self, *, run_id, config_snapshot: dict) -> None:
+        """Best-effort: stamp a run with the effective config it actually ran
+        with, so the run is a faithful, reproducible record and the UI can show
+        per-run knobs instead of the shared, mutable live config. No-ops if the
+        `config_snapshot` column doesn't exist yet (migration 0092 not applied)."""
+        try:
+            self._client.table("runs").update({"config_snapshot": config_snapshot}).eq(
+                "id", str(run_id)
+            ).execute()
+        except Exception:  # noqa: BLE001 — column may not exist yet; snapshot is optional
+            pass
+
     def find_finished_run_by_spec(self, *, spec_hash: str):
         """Return the id of the most recent FINISHED run for the current user
         with this spec hash, or None. Returns None (skips dedup) if the

@@ -206,6 +206,43 @@ def test_get_manifest_returns_strategy_and_config(unit_client, stub_storage_clie
     assert body["config"]["params"]["risk"]["account_value"] == 25000
 
 
+def test_get_manifest_prefers_per_run_config_snapshot(unit_client, stub_storage_client):
+    """When a run recorded the config it ran with, the manifest reflects that
+    snapshot — NOT the shared live config (which may have changed since)."""
+    from uuid import UUID
+    TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")
+
+    run = _make_run_row(uuid4(), TEST_USER_ID)
+    run["config_snapshot"] = {
+        "risk": {"account_value": 777, "max_risk_per_trade_pct": 0.5},
+        "strategy": {"enabled_setup": "vwap_pullback_long", "opening_range": {"minutes": 15}},
+    }
+    stub_storage_client.get_run.return_value = run
+    stub_storage_client.get_strategy_by_id.return_value = {
+        "id": run["strategy_id"],
+        "key": "vwap_pullback_long",
+        "display_name": "VWAP Pullback Long",
+        "description": "Buy SPY on first VWAP retest after breakout.",
+        "symbol": "SPY",
+        "direction": "LONG",
+        "kind": "rule_based",
+        "enabled": True,
+    }
+    # Live config has since been changed to a DIFFERENT account_value.
+    stub_storage_client.get_config_by_id.return_value = {
+        "id": run["config_id"],
+        "name": "default",
+        "mode": "backtest",
+        "timeframe": "5m",
+        "strategy_id": run["strategy_id"],
+        "params": {"risk": {"account_value": 25000}},
+    }
+
+    r = unit_client.get(f"/api/runs/{run['id']}/manifest")
+    assert r.status_code == 200
+    assert r.json()["config"]["params"]["risk"]["account_value"] == 777
+
+
 def test_list_bars_returns_ohlc_in_run_range(unit_client, stub_storage_client):
     from uuid import UUID
     TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")

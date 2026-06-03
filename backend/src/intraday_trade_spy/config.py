@@ -94,3 +94,30 @@ class Config(BaseModel):
 def load_config(path: str | Path) -> Config:
     raw = yaml.safe_load(Path(path).read_text())
     return Config.model_validate(raw)
+
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge `override` onto `base`. Nested dicts merge key-by-key;
+    any non-dict value (or a key absent from base) replaces wholesale."""
+    out = dict(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def build_effective_config(
+    params: dict | None, base_path: str | Path = "config/config.yaml"
+) -> Config:
+    """The config a backtest should actually run with: the user's saved knobs
+    (risk/strategy) deep-merged over the base config.yaml.
+
+    The base supplies everything the UI doesn't expose — session times
+    (`market`), data paths (`data`), broker settings — while the user's params
+    override the knobs they set. Empty/None params yield the base config.
+    """
+    base = yaml.safe_load(Path(base_path).read_text())
+    merged = _deep_merge(base, params or {})
+    return Config.model_validate(merged)

@@ -12,6 +12,7 @@ import { buildMarkers } from '@/components/journal-markers'
 import { Skeleton } from '@/components/skeleton'
 import { humanize } from '@/lib/format'
 import { resolveSession } from '@/lib/run-session'
+import { riskKnobsFromParams } from '@/lib/run-config'
 import { useReplay, clampCursor } from '@/lib/replay'
 import { computeReplaySummary } from '@/lib/replay-summary'
 import { PlaybackControls } from '@/components/playback-controls'
@@ -164,6 +165,12 @@ export function RunDetail({ runId }: Props) {
   const run = runQuery.data
   if (!run) return null
 
+  // Account value + position cap for the chart's sizing rationale come from the
+  // run's own config snapshot (falls back to defaults for legacy runs).
+  const { accountValue, positionCapPct } = riskKnobsFromParams(
+    manifestQuery.data?.config.params,
+  )
+
   const pendingStatus =
     run.status === 'queued' || run.status === 'running' ? run.status : null
 
@@ -203,6 +210,8 @@ export function RunDetail({ runId }: Props) {
                 onToggleRejections={() => setShowRejections(v => !v)}
                 fitBarCount={sessionBars.length}
                 replay={inReplay}
+                accountValue={accountValue}
+                positionCapPct={positionCapPct}
               />
               <PlaybackControls
                 cursor={cursor}
@@ -679,6 +688,8 @@ function RunChart({
   onToggleRejections,
   fitBarCount,
   replay,
+  accountValue,
+  positionCapPct,
 }: {
   // `bars`/`journal` are already filtered to the selected session and sliced to
   // the replay playhead by RunDetail — RunChart just derives the chart inputs.
@@ -691,6 +702,8 @@ function RunChart({
   onToggleRejections(): void
   fitBarCount?: number
   replay?: boolean
+  accountValue: number
+  positionCapPct: number
 }) {
   if (!selectedSession || sessions.length === 0) return null
 
@@ -714,8 +727,8 @@ function RunChart({
         or={or}
         markers={markers}
         journal={journal}
-        accountValue={25000}
-        positionCapPct={100}
+        accountValue={accountValue}
+        positionCapPct={positionCapPct}
         showRejections={showRejections}
         onToggleRejections={onToggleRejections}
         fitBarCount={fitBarCount}
