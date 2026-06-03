@@ -126,7 +126,11 @@ class BacktestEngine:
                         )
 
         ended = datetime.now(UTC)
-        summary = compute_summary(log.rows())
+        summary = compute_summary(
+            log.rows(),
+            account_value=self.cfg.risk.account_value,
+            metrics_config=self.cfg.metrics,
+        )
         run = build_run(
             csv_path=csv_path, cfg=self.cfg, summary=summary,
             started=started, ended=ended,

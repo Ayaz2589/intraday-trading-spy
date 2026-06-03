@@ -44,6 +44,40 @@ from intraday_trade_spy.storage.models import (
 )
 
 
+def build_cloud_summary(summary_data: dict, total_signals: int) -> RunSummary:
+    """Map a local summary.json dict → cloud RunSummary (JSONB headline metrics).
+
+    Feature 010: populates the real `sharpe` plus the new net-of-cost and
+    significance scalars. `max_drawdown` keeps its legacy R meaning (analyze
+    finding I1); the net `$`/`%` drawdowns are separate fields. Null metrics
+    from degenerate runs coerce to safe zeros.
+    """
+
+    def _f(key: str, default: float = 0.0) -> float:
+        v = summary_data.get(key)
+        return default if v is None else v
+
+    return RunSummary(
+        pnl=Decimal(str(_f("total_pnl_dollars"))),
+        win_rate=_f("win_rate"),
+        sharpe=_f("sharpe"),
+        max_drawdown=Decimal(str(_f("max_drawdown_r"))),  # legacy R, unchanged
+        total_trades=summary_data.get("total_trades", 0) or 0,
+        total_signals=total_signals,
+        rejected_signals=summary_data.get("rejected_signal_count", 0) or 0,
+        sortino=_f("sortino"),
+        expectancy=_f("expectancy_r"),
+        expectancy_dollars=Decimal(str(_f("expectancy_dollars"))),
+        max_drawdown_dollars=Decimal(str(_f("max_drawdown_dollars"))),
+        max_drawdown_pct=_f("max_drawdown_pct"),
+        total_fees=Decimal(str(_f("total_fees_dollars"))),
+        total_slippage=Decimal(str(_f("total_slippage_dollars"))),
+        low_confidence=bool(summary_data.get("low_confidence", False)),
+        win_rate_ci_low=_f("win_rate_ci_low"),
+        win_rate_ci_high=_f("win_rate_ci_high"),
+    )
+
+
 def gather_run_outputs(
     run_dir: Path,
     *,
@@ -80,15 +114,7 @@ def gather_run_outputs(
 
     cloud_run_id = run_uuid or uuid4()
 
-    cloud_summary = RunSummary(
-        pnl=Decimal(str(summary_data.get("total_pnl_dollars", 0.0))),
-        win_rate=summary_data.get("win_rate", 0.0),
-        sharpe=0.0,  # not in local summary; safe default
-        max_drawdown=Decimal(str(summary_data.get("max_drawdown_r", 0.0))),
-        total_trades=summary_data.get("total_trades", 0),
-        total_signals=_count_signals(journal_path),
-        rejected_signals=summary_data.get("rejected_signal_count", 0),
-    )
+    cloud_summary = build_cloud_summary(summary_data, _count_signals(journal_path))
 
     fp = run_yaml["data_fingerprint"]
     cloud_run = RunRow(

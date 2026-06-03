@@ -152,7 +152,12 @@ def main(argv: list[str] | None = None) -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
     write_journal_csv(result.journal_rows, run_dir / "journal.csv")
     (run_dir / "summary.json").write_text(
-        json.dumps(result.summary.model_dump(), indent=2, sort_keys=True, ensure_ascii=False)
+        # mode="json" serializes the Feature 010 equity-curve timestamps (and any
+        # other non-primitive types) to JSON-native values.
+        json.dumps(
+            result.summary.model_dump(mode="json"),
+            indent=2, sort_keys=True, ensure_ascii=False,
+        )
         + "\n"
     )
     write_run_yaml(result.run, run_dir / "run.yaml")

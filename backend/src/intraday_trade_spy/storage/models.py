@@ -150,10 +150,23 @@ class RunSummary(_Base):
     pnl: Decimal
     win_rate: float = Field(ge=0.0, le=1.0)
     sharpe: float
-    max_drawdown: Decimal
+    max_drawdown: Decimal  # legacy R units — unchanged (Feature 010 / I1)
     total_trades: int = Field(ge=0)
     total_signals: int = Field(ge=0)
     rejected_signals: int = Field(ge=0)
+    # ---- Feature 010 (honest backtest): new scalar headline metrics ----
+    # `max_drawdown` stays R; these are the net-of-cost $/% drawdowns + the
+    # edge-quality + significance figures. JSONB → additive, no migration.
+    sortino: float = 0.0
+    expectancy: float = 0.0
+    expectancy_dollars: Decimal = Decimal("0")
+    max_drawdown_dollars: Decimal = Decimal("0")
+    max_drawdown_pct: float = 0.0
+    total_fees: Decimal = Decimal("0")
+    total_slippage: Decimal = Decimal("0")
+    low_confidence: bool = False
+    win_rate_ci_low: float = 0.0
+    win_rate_ci_high: float = 0.0
 
 
 class RunRow(_Base):
