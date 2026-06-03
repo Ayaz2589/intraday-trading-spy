@@ -123,6 +123,32 @@ def test_get_study_200_and_404(unit_client, stub_storage_client):
     assert missing.status_code == 404
 
 
+def test_significance_404_for_unknown_run(unit_client, stub_storage_client):
+    stub_storage_client.get_run.return_value = None
+    resp = unit_client.post("/api/validation/significance", json={"run_id": str(uuid4())})
+    assert resp.status_code == 404
+
+
+def test_significance_happy(unit_client, monkeypatch):
+    from intraday_trade_spy.models import BootstrapCI, SignificanceResult
+
+    canned = SignificanceResult(
+        confidence=0.95,
+        bootstrap=[BootstrapCI(statistic="expectancy_dollars", point=1.2, low=-0.3, high=2.7)],
+        permutation_metric="total_net_pnl_dollars", observed=246.0,
+        p_value=0.03, alpha=0.05, significant=True,
+        bootstrap_iterations=1000, permutation_iterations=1000, seed=20260603,
+    )
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.routers.validation.run_significance_for_run",
+        lambda **kw: canned,
+    )
+    resp = unit_client.post("/api/validation/significance", json={"run_id": str(uuid4())})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["significant"] is True and body["p_value"] == 0.03
+
+
 def test_get_status(unit_client, stub_storage_client):
     row = _study_row(status="running", progress_completed=6)
     stub_storage_client.get_validation_study.return_value = row

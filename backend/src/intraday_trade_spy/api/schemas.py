@@ -299,6 +299,10 @@ class StartStudyResponse(_ResponseBase):
     planned_evaluations: int
 
 
+class SignificanceRequest(_Base):
+    run_id: UUID
+
+
 class ValidationStudyView(_ResponseBase):
     id: UUID
     kind: str

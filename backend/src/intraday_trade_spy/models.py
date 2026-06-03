@@ -275,3 +275,25 @@ class SensitivitySurface(BaseModel):
     axes: dict[str, list[float]]      # knob -> ordered value list
     points: list[SensitivityPoint]
     segment: Literal["train", "validation", "train_validation"]
+
+
+class BootstrapCI(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    statistic: str                    # expectancy_dollars | expectancy_r | sharpe
+    point: float | None
+    low: float | None
+    high: float | None
+
+
+class SignificanceResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    confidence: float
+    bootstrap: list[BootstrapCI]
+    permutation_metric: str
+    observed: float
+    p_value: float | None
+    alpha: float
+    significant: bool
+    bootstrap_iterations: int
+    permutation_iterations: int
+    seed: int

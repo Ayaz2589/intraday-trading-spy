@@ -120,14 +120,14 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 **Independent Test**: `POST /api/validation/significance` for a run_id returns CI + p-value + verdict; same seed → identical output; 0/1-trade run → undefined verdict, not an error (SC-004).
 
-- [ ] T045 [P] [US3] Failing test: seeded bootstrap CI determinism (expectancy_$/R, Sharpe) + degenerate 0/1-trade handling in `backend/tests/validation/test_significance.py`.
-- [ ] T046 [US3] Implement bootstrap CI in `backend/src/intraday_trade_spy/validation/significance.py` (`numpy.random.default_rng(seed)`, percentile CI) + `BootstrapCI`/`SignificanceResult` models in `models.py`.
-- [ ] T047 [P] [US3] Failing test: random-entry null respects clock (no entry after `no_new_trades_after`, no overlap with open position, no overnight) + seeded determinism in `backend/tests/validation/test_random_entry.py`.
-- [ ] T048 [US3] Implement `backend/src/intraday_trade_spy/validation/random_entry.py` (sample eligible entry bars; reuse `PaperBroker` exit/costs to resolve each synthetic trade).
-- [ ] T049 [US3] Failing test: permutation p-value + verdict (`p < alpha`) + full reproducibility in `backend/tests/validation/test_significance.py`.
-- [ ] T050 [US3] Implement the permutation test + verdict in `validation/significance.py`.
-- [ ] T051 [US3] Failing test: `POST /api/validation/significance` (run_id, determinism, 0-trade label, overrides) in `backend/tests/api/test_validation_api.py`.
-- [ ] T052 [US3] Implement the significance endpoint in `api/routers/validation.py` + `SignificanceRequest`/`SignificanceResult` schemas (loads the run's trades).
+- [X] T045 [P] [US3] Failing test: seeded bootstrap CI determinism (expectancy_$/R, Sharpe) + degenerate 0/1-trade handling in `backend/tests/validation/test_significance.py`.
+- [X] T046 [US3] Implement bootstrap CI in `backend/src/intraday_trade_spy/validation/significance.py` (`numpy.random.default_rng(seed)`, percentile CI) + `BootstrapCI`/`SignificanceResult` models in `models.py`.
+- [X] T047 [P] [US3] Failing test: random-entry null respects clock (no entry after `no_new_trades_after`, no overlap with open position, no overnight) + seeded determinism in `backend/tests/validation/test_random_entry.py`.
+- [X] T048 [US3] Implement `backend/src/intraday_trade_spy/validation/random_entry.py` (sample eligible entry bars; reuse `PaperBroker` exit/costs to resolve each synthetic trade).
+- [X] T049 [US3] Failing test: permutation p-value + verdict (`p < alpha`) + full reproducibility in `backend/tests/validation/test_significance.py`.
+- [X] T050 [US3] Implement the permutation test + verdict in `validation/significance.py`.
+- [X] T051 [US3] Failing test: `POST /api/validation/significance` (run_id, determinism, 0-trade label, overrides) in `backend/tests/api/test_validation_api.py`.
+- [X] T052 [US3] Implement the significance endpoint in `api/routers/validation.py` + `SignificanceRequest`/`SignificanceResult` schemas (loads the run's trades).
 - [ ] T053 [P] [US3] Failing test: `significance-panel` (CI bar, p-value, verdict badge, undefined-when-thin) in `frontend/src/components/validation/significance-panel.test.tsx`.
 - [ ] T054 [US3] Implement `frontend/src/components/validation/significance-panel.tsx` + `useSignificance` hook + mount in study-detail / run-detail.
 - [ ] T055 [P] [US3] Add `HELP_CONTENT` keys `bootstrap_ci`, `permutation_test` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `significance-panel.tsx`; assert in its test.

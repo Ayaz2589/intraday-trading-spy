@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from intraday_trade_spy.api import errors
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
 from intraday_trade_spy.api.schemas import (
+    SignificanceRequest,
     StartStudyRequest,
     StartStudyResponse,
     StudyListResponse,
@@ -17,9 +18,12 @@ from intraday_trade_spy.api.schemas import (
 )
 from intraday_trade_spy.api.validation_lifecycle import (
     LargeStudyNotConfirmed,
+    RunNotFound,
     StudyConfigNotFound,
+    run_significance_for_run,
     start_study,
 )
+from intraday_trade_spy.models import SignificanceResult
 
 router = APIRouter(prefix="/validation")
 
@@ -64,6 +68,20 @@ def start_study_endpoint(
     except ValueError as exc:
         errors.raise_validation_error(str(exc))
     return StartStudyResponse(study_id=study_id, status="queued", planned_evaluations=planned)
+
+
+@router.post("/significance", response_model=SignificanceResult)
+def significance_endpoint(
+    body: SignificanceRequest,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> SignificanceResult:
+    try:
+        return run_significance_for_run(
+            run_id=body.run_id, user_id=user_id, storage=storage_client
+        )
+    except RunNotFound:
+        errors.raise_not_found("run not found")
 
 
 @router.get("/studies", response_model=StudyListResponse)

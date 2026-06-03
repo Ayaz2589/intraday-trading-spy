@@ -36,6 +36,91 @@ class LargeStudyNotConfirmed(Exception):
         super().__init__(f"planned {planned} > threshold {threshold}")
 
 
+class RunNotFound(Exception):
+    def __init__(self, run_id: str) -> None:
+        self.run_id = run_id
+        super().__init__(run_id)
+
+
+def _clock_from_cfg(cfg: Config):
+    from datetime import time
+
+    from intraday_trade_spy.clock import MarketClock
+
+    m = cfg.market
+    return MarketClock(
+        session_start=time.fromisoformat(m.session_start),
+        session_end=time.fromisoformat(m.session_end),
+        no_new_trades_after=time.fromisoformat(m.no_new_trades_after),
+        force_flat_time=time.fromisoformat(m.force_flat_time),
+    )
+
+
+def run_significance_for_run(
+    *, run_id, user_id, storage, base_cfg: Config | None = None, _bars=None
+):
+    """Compute significance (bootstrap CIs + random-entry permutation) for a
+    completed run. Loads the run's trades for the bootstrap and the run's window
+    bars for the null (FR-014 / analyze finding C2). `_bars` injectable for tests."""
+    from intraday_trade_spy.broker.paper import PaperBroker
+    from intraday_trade_spy.validation.random_entry import random_entry_null
+    from intraday_trade_spy.validation.significance import (
+        compute_significance,
+        extract_trade_stats,
+    )
+
+    cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    run_row = storage.get_run(run_id=run_id, user_id=user_id)
+    if run_row is None:
+        raise RunNotFound(str(run_id))
+
+    page = storage.list_trades(run_id=run_id, user_id=user_id, limit=100000, cursor=None)
+    trades = getattr(page, "trades", page) or []
+    stats = extract_trade_stats(trades, account_value=cfg.risk.account_value)
+    sig_cfg = cfg.validation.significance
+
+    null: list[float] = []
+    if stats["n_trades"] > 0 and stats["stop_distance"] > 0:
+        bars = _bars
+        if bars is None:
+            from intraday_trade_spy.data.bars import BarIterator
+
+            def _as_date(v):
+                from datetime import date, datetime
+
+                if isinstance(v, date) and not isinstance(v, datetime):
+                    return v
+                return datetime.fromisoformat(str(v)[:10]).date()
+
+            df = _materialize_df(
+                storage, cfg, _as_date(run_row["range_start"]), _as_date(run_row["range_end"])
+            )
+            bars = list(BarIterator(df))
+        null = random_entry_null(
+            bars=bars,
+            clock=_clock_from_cfg(cfg),
+            broker=PaperBroker(
+                fees_per_share=cfg.broker.fees_per_share,
+                slippage_per_share=cfg.broker.slippage_per_share,
+            ),
+            n_trades=stats["n_trades"],
+            stop_distance=stats["stop_distance"],
+            risk_reward=cfg.strategy.vwap_pullback.target.risk_reward,
+            quantity=stats["quantity"] or 1.0,
+            iterations=sig_cfg.permutation_iterations,
+            seed=sig_cfg.seed,
+        )
+
+    return compute_significance(
+        trade_pnls=stats["trade_pnls"],
+        trade_rs=stats["trade_rs"],
+        daily_returns=stats["daily_returns"],
+        observed_metric=stats["observed_total"],
+        null_distribution=null,
+        cfg=sig_cfg,
+    )
+
+
 def _build_walk_forward(cfg: Config, params: dict | None) -> WalkForwardConfig:
     base = cfg.validation.walk_forward.model_dump()
     override = (params or {}).get("walk_forward") or {}
