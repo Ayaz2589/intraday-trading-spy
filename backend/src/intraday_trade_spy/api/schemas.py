@@ -253,3 +253,60 @@ class DataDownloadJobView(_ResponseBase):
 class HealthResponse(_ResponseBase):
     status: Literal["ok"]
     db: Literal["ok", "unreachable"]
+
+
+# ---------- Feature 011: validation studies ----------
+
+
+class StartStudyRequest(_Base):
+    # US1 wires walk_forward; sensitivity (US2) / lockbox (US4) add later.
+    kind: Literal["walk_forward"]
+    config_name: str = Field(min_length=1, max_length=200)
+    # Optional walk-forward overrides (mode / train_months / step_months /
+    # validation_months); unset → config.yaml defaults.
+    walk_forward: Optional[dict] = None
+    # Required true to launch a study whose planned evaluations exceed the
+    # configured fan-out guard (no silent unbounded fan-out).
+    confirm_large: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_forbidden_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+        forbidden = {"symbol", "direction", "live_auto_enabled"} & data.keys()
+        if forbidden:
+            raise ValueError(
+                f"forbidden fields not accepted from clients (constitution I/II/V): {sorted(forbidden)}"
+            )
+        return data
+
+
+class StartStudyResponse(_ResponseBase):
+    study_id: UUID
+    status: Literal["queued"]
+    planned_evaluations: int
+
+
+class ValidationStudyView(_ResponseBase):
+    id: UUID
+    kind: str
+    status: RunStatusLiteral
+    progress_completed: int
+    progress_total: int
+    result: Optional[dict] = None
+    failure_reason: Optional[str] = None
+    created_at: datetime
+
+
+class ValidationStudyStatusView(_ResponseBase):
+    id: UUID
+    status: RunStatusLiteral
+    progress_completed: int
+    progress_total: int
+    failure_reason: Optional[str] = None
+
+
+class StudyListResponse(_ResponseBase):
+    studies: list[ValidationStudyView]
+    next_cursor: Optional[str] = None

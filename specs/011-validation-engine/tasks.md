@@ -63,8 +63,8 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 ### API + frontend shell
 
-- [ ] T021 Failing test: validation router mounts; `GET /api/validation/studies`, `/{id}`, `/{id}/status` are owner-scoped (404 cross-user) in `backend/tests/api/test_validation_api.py`.
-- [ ] T022 Implement `backend/src/intraday_trade_spy/api/routers/validation.py` (list/get/status) + `ValidationStudyView`/`ValidationStudyStatusView`/`StartStudyResponse` in `api/schemas.py`; mount in `api/app.py`.
+- [X] T021 Failing test: validation router mounts; `GET /api/validation/studies`, `/{id}`, `/{id}/status` are owner-scoped (404 cross-user) in `backend/tests/api/test_validation_api.py`.
+- [X] T022 Implement `backend/src/intraday_trade_spy/api/routers/validation.py` (list/get/status) + `ValidationStudyView`/`ValidationStudyStatusView`/`StartStudyResponse` in `api/schemas.py`; mount in `api/app.py`.
 - [ ] T023 [P] Failing test: Validation route shell renders + nav entry present in `frontend/src/routes/_authenticated.validation.test.tsx`.
 - [ ] T024 Implement the Validation route shell `frontend/src/routes/_authenticated.validation.tsx` + study-detail route `frontend/src/routes/_authenticated.validation_.$studyId.tsx` (empty panels), nav entry in the authenticated shell, `frontend/src/api/validation.ts` client + `useStudies`/`useStudy`/`useStudyStatus` hooks + base types in `frontend/src/api/types.ts`.
 
@@ -84,8 +84,8 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T028 [US1] Add those models to `backend/src/intraday_trade_spy/models.py` (per data-model §B1).
 - [X] T029 [US1] Failing test: `walk_forward` builds per-window IS/OOS `WindowMetrics`, gap (OOS−IS), and `mean_oos`/`mean_gap`; never evaluates lockbox, in `backend/tests/validation/test_walk_forward.py`.
 - [X] T030 [US1] Implement `backend/src/intraday_trade_spy/validation/walk_forward.py` (uses study core + window + split guard).
-- [ ] T031 [US1] Failing test: `POST /api/validation/studies kind=walk_forward` returns `planned_evaluations`, enforces `large_study`/`confirm_large`, and rejects lockbox-overlap, in `backend/tests/api/test_validation_api.py`.
-- [ ] T032 [US1] Implement the walk_forward launch path in `api/routers/validation.py` + `StartStudyRequest` (walk_forward params) in `api/schemas.py`; wire orchestrator via `validation_lifecycle`.
+- [X] T031 [US1] Failing test: `POST /api/validation/studies kind=walk_forward` returns `planned_evaluations`, enforces `large_study`/`confirm_large`, and rejects lockbox-overlap, in `backend/tests/api/test_validation_api.py`.
+- [X] T032 [US1] Implement the walk_forward launch path in `api/routers/validation.py` + `StartStudyRequest` (walk_forward params) in `api/schemas.py`; wire orchestrator via `validation_lifecycle`.
 - [ ] T033 [P] [US1] Failing test: `walk-forward-table` renders IS/OOS columns + color-coded gap + low-confidence flag in `frontend/src/components/validation/walk-forward-table.test.tsx`.
 - [ ] T034 [US1] Implement `frontend/src/components/validation/walk-forward-table.tsx` + `start-study-dialog.tsx` (WF mode) + mount in the study-detail route + `useStartStudy` hook + WF result types.
 - [ ] T035 [P] [US1] Add `HELP_CONTENT` keys `walk_forward`, `in_sample`, `out_of_sample`, `is_oos_gap` + `HelpTooltip`s; test in `frontend/src/components/validation/walk-forward-table.test.tsx`.

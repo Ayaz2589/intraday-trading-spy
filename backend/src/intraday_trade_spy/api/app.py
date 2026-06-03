@@ -22,6 +22,7 @@ from intraday_trade_spy.api.routers import (
     health,
     runs,
     strategies,
+    validation,
 )
 
 _log = logging.getLogger(__name__)
@@ -135,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(data.router, prefix="/api")
     app.include_router(configs.router, prefix="/api")
     app.include_router(bars.router, prefix="/api")
+    app.include_router(validation.router, prefix="/api")
 
     # NOTE: Feature 003's static-file endpoints continue to live in
     # `intraday_trade_spy.api.static_server:app` and are served via the

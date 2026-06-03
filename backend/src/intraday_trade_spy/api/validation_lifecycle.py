@@ -11,12 +11,29 @@ from __future__ import annotations
 
 import logging
 import os
+from uuid import uuid4
 
-from intraday_trade_spy.config import Config, WalkForwardConfig
-from intraday_trade_spy.validation.split import segments as _segments
+from intraday_trade_spy.config import Config, WalkForwardConfig, build_effective_config, load_config
+from intraday_trade_spy.validation.split import assert_no_lockbox_overlap, segments as _segments
 from intraday_trade_spy.validation.study import run_walk_forward_study
+from intraday_trade_spy.validation.window import enumerate_windows
 
 _log = logging.getLogger(__name__)
+
+DEFAULT_CONFIG_PATH = "config/config.yaml"
+
+
+class StudyConfigNotFound(Exception):
+    def __init__(self, name: str) -> None:
+        self.name = name
+        super().__init__(name)
+
+
+class LargeStudyNotConfirmed(Exception):
+    def __init__(self, planned: int, threshold: int) -> None:
+        self.planned = planned
+        self.threshold = threshold
+        super().__init__(f"planned {planned} > threshold {threshold}")
 
 
 def _build_walk_forward(cfg: Config, params: dict | None) -> WalkForwardConfig:
@@ -25,13 +42,67 @@ def _build_walk_forward(cfg: Config, params: dict | None) -> WalkForwardConfig:
     return WalkForwardConfig(**{**base, **override})
 
 
+def plan_walk_forward(cfg: Config, params: dict | None) -> int:
+    """Planned evaluation count = 2 × windows (one IS + one OOS each). Also
+    asserts the pool never overlaps the lockbox."""
+    segs = _segments(cfg)
+    pool = segs.train_validation
+    assert_no_lockbox_overlap(pool.start, pool.end, segs)
+    windows = enumerate_windows(pool, _build_walk_forward(cfg, params))
+    return 2 * len(windows)
+
+
+def start_study(
+    *,
+    user_id,
+    kind: str,
+    config_name: str,
+    params: dict | None,
+    confirm_large: bool,
+    storage,
+    background_tasks,
+    base_cfg: Config | None = None,
+):
+    """Validate + enqueue a study. Returns (study_id, planned_evaluations).
+    Raises StudyConfigNotFound / LargeStudyNotConfirmed / ValueError."""
+    cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    if storage.get_config_by_name(config_name) is None:
+        raise StudyConfigNotFound(config_name)
+    if kind != "walk_forward":
+        raise ValueError(f"unsupported study kind: {kind!r}")
+
+    planned = plan_walk_forward(cfg, params)
+    if planned > cfg.validation.max_evaluations_warn and not confirm_large:
+        raise LargeStudyNotConfirmed(planned, cfg.validation.max_evaluations_warn)
+
+    study_id = str(uuid4())
+    storage.insert_validation_study(
+        study_id=study_id,
+        kind=kind,
+        params={"config_name": config_name, "walk_forward": params},
+        progress_total=planned,
+    )
+    cfg_row = storage.get_config_by_name(config_name) or {}
+    config_params = cfg_row.get("params") if isinstance(cfg_row, dict) else None
+    background_tasks.add_task(
+        run_study_task,
+        study_id=study_id,
+        kind=kind,
+        params=params or {},
+        storage=storage,
+        config_params=config_params,
+    )
+    return study_id, planned
+
+
 def run_study_task(
     *,
     study_id,
     kind: str,
     params: dict | None,
     storage,
-    cfg: Config,
+    cfg: Config | None = None,
+    config_params: dict | None = None,
     _df=None,
     _engine=None,
 ) -> None:
@@ -39,6 +110,11 @@ def run_study_task(
         if kind != "walk_forward":
             # sensitivity (US2) / lockbox (US4) wire in later phases.
             raise ValueError(f"unsupported study kind: {kind!r}")
+
+        if cfg is None:
+            # Built in the background (defers effective-config assembly off the
+            # request path); user knobs over the base config.yaml.
+            cfg = build_effective_config(config_params or {}, base_path=DEFAULT_CONFIG_PATH)
 
         segs = _segments(cfg)
         wf = _build_walk_forward(cfg, params)
