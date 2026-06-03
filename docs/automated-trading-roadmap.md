@@ -23,6 +23,7 @@
 7. [Anti-overfitting checklist](#7-anti-overfitting-checklist)
 8. [Metrics glossary](#8-metrics-glossary)
 9. [Open decisions](#9-open-decisions)
+10. [Execution via Spec Kit](#10-execution-via-spec-kit)
 
 ---
 
@@ -302,6 +303,33 @@ What we should track (and why) once Phase 1 lands:
 
 ---
 
+## 10. Execution via Spec Kit
+
+The build phases ship as discrete **Spec Kit features — one per phase** — each run through the full pipeline (`specify → clarify → plan → tasks → analyze → implement`) with a Constitution Check and TDD (Principle IV). We write each spec **just-in-time**: only once the prior phase's exit gate is met, so we never front-load planning for work a gate might cancel ("prove it wrong cheaply").
+
+**Why one feature per phase (not one combined spec):** each phase is a gate with its own exit criteria, hard dependencies (Phase 1 needs Phase 0's data; Phase 2 needs Phase 1's honest metrics), and its own Constitution-Check surface. A combined mega-spec would be unreviewable and would front-load abandonable planning.
+
+### Feature ↔ phase map
+
+Feature numbers are proposed; status updated as work lands.
+
+| Feature | Phase | Scope | Status |
+|---|---|---|---|
+| `008-soft-delete-insights-engine` | retention prereq | **Trim to soft-delete only** (`deleted_at`, list filters, migration `0100`). Its *insights-engine* half moves to Phase 2 — insights built on today's zero-cost / 60-day-sample archive would be confidently wrong. | Planned (`plan.md` exists) |
+| `009` | **Phase 0 — data foundation** | Alpaca historical source + bulk backfill + `bars(bar_start)` index + coverage surfacing | Not started |
+| `010` | **Phase 1 — honest backtest** | Apply costs/slippage + real metrics (expectancy, Sharpe, drawdown $/%, distribution, per-bucket) + dead-knob cleanup | Not started |
+| `011` (+ `012`?) | **Phase 2 — validation** | train/validation/lockbox split, walk-forward, robustness/sensitivity, significance + the insights/aggregation half of `008`. May split into two features. | Not started |
+| later | **Phases 3–5 — paper → live** | Alpaca paper → manual approval → tiny live. Specced when reached; gated by Principle V (author `docs/PAPER_TRADING.md`, the 3-layer live block, a constitution amendment). | Gated |
+
+### Sequencing rules
+- **Close out or consciously defer `007`** (active: 120/135, deferred tests) before opening `009` — don't juggle two open features.
+- **One spec in flight at a time;** write the next only after the current phase's **exit gate** is met (see each phase in [§5](#5-the-phases)).
+- **Phase 2 may split** into a validation-engine feature + an insights/aggregation feature — decide at *its* spec time, not now.
+- **Each plan's Constitution Check must explicitly address:** Phase 0 → new data source + the multi-symbol setup (Principle I); Phase 2 → keep parameter research **manual / non-ML** (Principle II); every feature → TDD (IV), journaling (VII), and `?`-tooltips for any new concept (VI).
+
+---
+
 ### TL;DR
 
 We have a clean backtest viewer and **no proven edge or execution path** — which is exactly where the constitution's build order says we should be. The work, in order: **get real data (0) → measure honestly (1) → validate without self-deception (2) → forward-paper on Alpaca (3) → manual approval (4) → tiny gated live (5).** The discipline that makes it worth doing — costs, sample size, out-of-sample, plateaus, forward confirmation — is the entire point. If the strategy survives all of it, automating it removes emotion from something *worth* executing. If it doesn't, the process just saved us real money.
+`
