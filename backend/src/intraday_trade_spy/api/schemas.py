@@ -303,6 +303,29 @@ class SignificanceRequest(_Base):
     run_id: UUID
 
 
+class LockboxRunRequest(_Base):
+    config_name: str = Field(min_length=1, max_length=200)
+    override: bool = False
+
+
+class LockboxRunResponse(_ResponseBase):
+    state: Literal["spent", "burned"]
+    contaminated: bool
+    config_fingerprint: str
+    run_id: Optional[UUID] = None
+    summary: dict
+
+
+class LockboxStatusView(_ResponseBase):
+    lockbox_start: date
+    lockbox_end: date
+    state: Literal["unspent", "spent", "burned"]
+    config_fingerprint: Optional[str] = None
+    run_id: Optional[UUID] = None
+    result: Optional[dict] = None
+    history: list[dict] = []
+
+
 class ValidationStudyView(_ResponseBase):
     id: UUID
     kind: str

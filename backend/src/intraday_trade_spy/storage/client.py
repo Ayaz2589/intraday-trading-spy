@@ -1050,6 +1050,89 @@ class SupabaseStorageClient:
             raise CloudPushError(f"list_runs_by_study failed: {exc}") from exc
         return response.data or []
 
+    # ---------- Feature 011: lockbox ledger (US4) ----------
+
+    def append_lockbox_row(
+        self,
+        *,
+        ledger_id,
+        lockbox_start,
+        lockbox_end,
+        config_fingerprint: str,
+        result: dict,
+        state: str,
+        override: bool = False,
+        run_id=None,
+    ) -> str:
+        """Append-only insert into lockbox_ledger. Never updates an existing row
+        (a spent result is immutable)."""
+        body = {
+            "id": str(ledger_id),
+            "user_id": self.user_id,
+            "lockbox_start": str(lockbox_start),
+            "lockbox_end": str(lockbox_end),
+            "config_fingerprint": config_fingerprint,
+            "result": result or {},
+            "state": state,
+            "override": bool(override),
+        }
+        if run_id is not None:
+            body["run_id"] = str(run_id)
+        try:
+            response = self._client.table("lockbox_ledger").insert(body).execute()
+        except Exception as exc:
+            raise CloudPushError(f"append_lockbox_row failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("append_lockbox_row returned no row")
+        return response.data[0]["id"]
+
+    def get_lockbox_ledger(self, *, user_id, lockbox_start, lockbox_end) -> list[dict]:
+        """All ledger rows for a (user, lockbox range), oldest first. The lockbox
+        state is derived from these (validation.lockbox.derive_state)."""
+        try:
+            response = (
+                self._client.table("lockbox_ledger")
+                .select("*")
+                .eq("user_id", str(user_id))
+                .eq("lockbox_start", str(lockbox_start))
+                .eq("lockbox_end", str(lockbox_end))
+                .order("created_at", desc=False)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"get_lockbox_ledger failed: {exc}") from exc
+        return response.data or []
+
+    def insert_journal_event(
+        self,
+        *,
+        event_id,
+        occurred_at,
+        kind: str,
+        message: str,
+        severity: str = "info",
+        details: dict | None = None,
+        run_id=None,
+    ) -> str:
+        """Insert a standalone journal_events row (e.g. a lockbox spend/burn —
+        constitution VII / FR-023). run_id is optional (nullable for lifecycle)."""
+        body = {
+            "id": str(event_id),
+            "user_id": self.user_id,
+            "occurred_at": occurred_at,
+            "kind": kind,
+            "severity": severity,
+            "message": message,
+            "details": details or {},
+        }
+        if run_id is not None:
+            body["run_id"] = str(run_id)
+        try:
+            response = self._client.table("journal_events").insert(body).execute()
+        except Exception as exc:
+            raise CloudPushError(f"insert_journal_event failed: {exc}") from exc
+        return response.data[0]["id"] if response.data else str(event_id)
+
     def sweep_stale_studies(self, *, max_age_minutes: int = 15) -> int:
         """Transition validation studies stuck in 'running' past the TTL to
         'failed' (crash recovery). Mirrors sweep_stale_runs."""

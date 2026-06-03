@@ -142,13 +142,13 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 **Independent Test**: first run → spent + journaled; same config → idempotent; different config → 409; `override:true` → burned + warn journal, original never overwritten (SC-005).
 
-- [ ] T056 [P] [US4] Author migration `backend/db/migrations/0112_lockbox_ledger.sql` (append-only table + CHECKs + index + owner RLS, no UPDATE/DELETE policy) per data-model §A3; apply via psycopg.
-- [ ] T057 [US4] Failing test: ledger append + `get_lockbox_status` (latest-row state derivation: unspent→spent→burned) + RLS in `backend/tests/storage/test_client_lockbox.py`.
-- [ ] T058 [US4] Implement ledger storage (`append_lockbox_row`, `get_lockbox_status`) in `backend/src/intraday_trade_spy/storage/client.py`.
-- [ ] T059 [P] [US4] Failing test: freeze-fingerprint determinism (`compute_spec_hash` over config+lockbox range) + the full state machine (spend / idempotent same-fingerprint / block different-fingerprint / override-burn) + result immutability in `backend/tests/validation/test_lockbox.py`.
-- [ ] T060 [US4] Implement `backend/src/intraday_trade_spy/validation/lockbox.py` (freeze fingerprint + state machine + `LockboxStatus` model + journal `lockbox_spent`/`lockbox_burned` events).
-- [ ] T061 [US4] Failing test: `GET /api/validation/lockbox` + `POST /api/validation/lockbox/run` (spent, idempotent, 409 block, override→burned) in `backend/tests/api/test_validation_api.py`.
-- [ ] T062 [US4] Implement the lockbox endpoints in `api/routers/validation.py` + `LockboxRunRequest`/`LockboxRunResponse`/`LockboxStatusView` schemas (runs the one-shot eval via `run_evaluation`, segment=`lockbox`).
+- [X] T056 [P] [US4] Author migration `backend/db/migrations/0112_lockbox_ledger.sql` (append-only table + CHECKs + index + owner RLS, no UPDATE/DELETE policy) per data-model §A3; apply via psycopg.
+- [X] T057 [US4] Failing test: ledger append + `get_lockbox_status` (latest-row state derivation: unspent→spent→burned) + RLS in `backend/tests/storage/test_client_lockbox.py`.
+- [X] T058 [US4] Implement ledger storage (`append_lockbox_row`, `get_lockbox_status`) in `backend/src/intraday_trade_spy/storage/client.py`.
+- [X] T059 [P] [US4] Failing test: freeze-fingerprint determinism (`compute_spec_hash` over config+lockbox range) + the full state machine (spend / idempotent same-fingerprint / block different-fingerprint / override-burn) + result immutability in `backend/tests/validation/test_lockbox.py`.
+- [X] T060 [US4] Implement `backend/src/intraday_trade_spy/validation/lockbox.py` (freeze fingerprint + state machine + `LockboxStatus` model + journal `lockbox_spent`/`lockbox_burned` events).
+- [X] T061 [US4] Failing test: `GET /api/validation/lockbox` + `POST /api/validation/lockbox/run` (spent, idempotent, 409 block, override→burned) in `backend/tests/api/test_validation_api.py`.
+- [X] T062 [US4] Implement the lockbox endpoints in `api/routers/validation.py` + `LockboxRunRequest`/`LockboxRunResponse`/`LockboxStatusView` schemas (runs the one-shot eval via `run_evaluation`, segment=`lockbox`).
 - [ ] T063 [P] [US4] Failing test: `lockbox-gate` (unspent/spent/burned states, override confirm dialog, contaminated banner) in `frontend/src/components/validation/lockbox-gate.test.tsx`.
 - [ ] T064 [US4] Implement `frontend/src/components/validation/lockbox-gate.tsx` + `useLockboxStatus`/`useLockboxRun` hooks + mount in study-detail/Validation route + types.
 - [ ] T065 [P] [US4] Add `HELP_CONTENT` keys `lockbox`, `burned_lockbox` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `lockbox-gate.tsx`; assert in its test.
@@ -159,7 +159,7 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T066 [P] Principle-II/V guard test: assert no `validation/` code path imports or calls a broker live-order path (`live_auto_enabled` unreachable from validation) in `backend/tests/validation/test_no_live_path.py`.
+- [X] T066 [P] Principle-II/V guard test: assert no `validation/` code path imports or calls a broker live-order path (`live_auto_enabled` unreachable from validation) in `backend/tests/validation/test_no_live_path.py`.
 - [ ] T067 Decide and set the `walk_forward.overfit_gap_warn` default threshold in `backend/config/config.yaml` + surface it as the WF table's "overfit" highlight rule (the one knob deferred from plan; add a test for the highlight rule in `walk-forward-table.test.tsx`).
 - [ ] T068 [P] Run `quickstart.md` end-to-end against live Supabase (WF → sensitivity → significance → lockbox); record outcomes.
 - [ ] T069 [P] Determinism sweep: re-run a study + significance with the same seed; assert byte-identical verdicts (SC-004) in `backend/tests/validation/test_determinism.py`.

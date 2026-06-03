@@ -42,6 +42,134 @@ class RunNotFound(Exception):
         super().__init__(run_id)
 
 
+class LockboxAlreadySpent(Exception):
+    def __init__(self, spent_fingerprint: str | None, spent_run_id=None) -> None:
+        self.spent_fingerprint = spent_fingerprint
+        self.spent_run_id = spent_run_id
+        super().__init__("lockbox already spent")
+
+
+def get_lockbox_status_view(*, user_id, storage, base_cfg: Config | None = None) -> dict:
+    from intraday_trade_spy.validation.lockbox import derive_state
+    from intraday_trade_spy.validation.split import segments as _segs
+
+    cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    lb = _segs(cfg).lockbox
+    rows = storage.get_lockbox_ledger(
+        user_id=user_id, lockbox_start=lb.start, lockbox_end=lb.end
+    )
+    spending = next((r for r in rows if r.get("state") == "spent"), None)
+    return {
+        "lockbox_start": lb.start,
+        "lockbox_end": lb.end,
+        "state": derive_state(rows),
+        "config_fingerprint": spending.get("config_fingerprint") if spending else None,
+        "run_id": spending.get("run_id") if spending else None,
+        "result": spending.get("result") if spending else None,
+        "history": [
+            {
+                "config_fingerprint": r.get("config_fingerprint"),
+                "state": r.get("state"),
+                "override": r.get("override", False),
+                "created_at": r.get("created_at"),
+            }
+            for r in rows
+        ],
+    }
+
+
+def run_lockbox(
+    *,
+    user_id,
+    config_name: str,
+    override: bool,
+    storage,
+    base_cfg: Config | None = None,
+    _df=None,
+    _engine=None,
+) -> dict:
+    """The one-shot lockbox test. Enforces the spend/idempotent/block/burn state
+    machine, runs the held-out evaluation when allowed, records it immutably, and
+    journals the spend/burn (FR-017..019, FR-023)."""
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    from intraday_trade_spy.validation.lockbox import (
+        decide_lockbox_action,
+        freeze_fingerprint,
+    )
+    from intraday_trade_spy.validation.split import segments as _segs
+
+    cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    cfg_row = storage.get_config_by_name(config_name)
+    if cfg_row is None:
+        raise StudyConfigNotFound(config_name)
+    params = cfg_row.get("params") if isinstance(cfg_row, dict) else {}
+    lb = _segs(cfg).lockbox
+
+    fingerprint = freeze_fingerprint(
+        strategy_id=cfg.strategy.enabled_setup,
+        params=params or {},
+        symbol=cfg.market.symbol,
+        lockbox_start=lb.start,
+        lockbox_end=lb.end,
+    )
+    rows = storage.get_lockbox_ledger(
+        user_id=user_id, lockbox_start=lb.start, lockbox_end=lb.end
+    )
+    decision = decide_lockbox_action(rows, fingerprint, override=override)
+
+    if decision.action == "block":
+        spent = next((r for r in rows if r.get("state") == "spent"), rows[0])
+        raise LockboxAlreadySpent(
+            spent_fingerprint=spent.get("config_fingerprint"),
+            spent_run_id=spent.get("run_id"),
+        )
+
+    if decision.action == "idempotent":
+        row = decision.existing_row or {}
+        return {
+            "state": row.get("state", "spent"),
+            "contaminated": row.get("state") == "burned",
+            "summary": row.get("result") or {},
+            "config_fingerprint": fingerprint,
+            "run_id": row.get("run_id"),
+        }
+
+    # allow (first spend) or burn (deliberate override) → run the one-shot eval.
+    engine = _engine
+    if engine is None:
+        from intraday_trade_spy.backtest.engine import BacktestEngine
+
+        engine = BacktestEngine(build_effective_config(params or {}, base_path=DEFAULT_CONFIG_PATH))
+    df = _df if _df is not None else _materialize_df(storage, cfg, lb.start, lb.end)
+    result = engine.run_df(df)
+    summary = result.summary.model_dump(mode="json")
+    state = decision.state  # 'spent' or 'burned'
+
+    storage.append_lockbox_row(
+        ledger_id=uuid4(), lockbox_start=lb.start, lockbox_end=lb.end,
+        config_fingerprint=fingerprint, result=summary, state=state,
+        override=(decision.action == "burn"),
+    )
+    storage.insert_journal_event(
+        event_id=uuid4(),
+        occurred_at=datetime.now(timezone.utc).isoformat(),
+        kind="lifecycle",
+        severity=("warning" if state == "burned" else "info"),
+        message=f"Lockbox {state}",
+        details={"event": f"lockbox_{state}", "config_fingerprint": fingerprint,
+                 "override": decision.action == "burn"},
+    )
+    return {
+        "state": state,
+        "contaminated": state == "burned",
+        "summary": summary,
+        "config_fingerprint": fingerprint,
+        "run_id": None,
+    }
+
+
 def _clock_from_cfg(cfg: Config):
     from datetime import time
 

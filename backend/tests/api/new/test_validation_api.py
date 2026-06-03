@@ -149,6 +149,40 @@ def test_significance_happy(unit_client, monkeypatch):
     assert body["significant"] is True and body["p_value"] == 0.03
 
 
+def test_lockbox_status_unspent(unit_client, stub_storage_client):
+    stub_storage_client.get_lockbox_ledger.return_value = []
+    resp = unit_client.get("/api/validation/lockbox")
+    assert resp.status_code == 200
+    assert resp.json()["state"] == "unspent"
+
+
+def test_lockbox_run_happy(unit_client, monkeypatch):
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.routers.validation.run_lockbox",
+        lambda **kw: {
+            "state": "spent", "contaminated": False, "config_fingerprint": "fp",
+            "run_id": None, "summary": {"total_net_pnl_dollars": 42.0},
+        },
+    )
+    resp = unit_client.post("/api/validation/lockbox/run", json={"config_name": "default"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["state"] == "spent"
+
+
+def test_lockbox_run_blocked_409(unit_client, monkeypatch):
+    from intraday_trade_spy.api.validation_lifecycle import LockboxAlreadySpent
+
+    def _boom(**kw):
+        raise LockboxAlreadySpent(spent_fingerprint="fpA", spent_run_id=None)
+
+    monkeypatch.setattr("intraday_trade_spy.api.routers.validation.run_lockbox", _boom)
+    resp = unit_client.post(
+        "/api/validation/lockbox/run", json={"config_name": "other", "override": False}
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["error"] == "lockbox_already_spent"
+
+
 def test_get_status(unit_client, stub_storage_client):
     row = _study_row(status="running", progress_completed=6)
     stub_storage_client.get_validation_study.return_value = row

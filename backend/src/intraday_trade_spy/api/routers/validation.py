@@ -9,6 +9,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from intraday_trade_spy.api import errors
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
 from intraday_trade_spy.api.schemas import (
+    LockboxRunRequest,
+    LockboxRunResponse,
+    LockboxStatusView,
     SignificanceRequest,
     StartStudyRequest,
     StartStudyResponse,
@@ -18,8 +21,11 @@ from intraday_trade_spy.api.schemas import (
 )
 from intraday_trade_spy.api.validation_lifecycle import (
     LargeStudyNotConfirmed,
+    LockboxAlreadySpent,
     RunNotFound,
     StudyConfigNotFound,
+    get_lockbox_status_view,
+    run_lockbox,
     run_significance_for_run,
     start_study,
 )
@@ -82,6 +88,42 @@ def significance_endpoint(
         )
     except RunNotFound:
         errors.raise_not_found("run not found")
+
+
+@router.get("/lockbox", response_model=LockboxStatusView)
+def lockbox_status_endpoint(
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> LockboxStatusView:
+    return LockboxStatusView.model_validate(
+        get_lockbox_status_view(user_id=user_id, storage=storage_client)
+    )
+
+
+@router.post("/lockbox/run", response_model=LockboxRunResponse)
+def lockbox_run_endpoint(
+    body: LockboxRunRequest,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> LockboxRunResponse:
+    try:
+        out = run_lockbox(
+            user_id=user_id, config_name=body.config_name, override=body.override,
+            storage=storage_client,
+        )
+    except StudyConfigNotFound:
+        errors.raise_config_not_found(body.config_name)
+    except LockboxAlreadySpent as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "lockbox_already_spent",
+                "spent_fingerprint": exc.spent_fingerprint,
+                "spent_run_id": str(exc.spent_run_id) if exc.spent_run_id else None,
+                "hint": "the lockbox is one-shot; pass override=true to deliberately burn it",
+            },
+        )
+    return LockboxRunResponse.model_validate(out)
 
 
 @router.get("/studies", response_model=StudyListResponse)
