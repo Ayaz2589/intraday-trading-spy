@@ -244,6 +244,12 @@ describe("RunViewer route", () => {
       "cloud_push",
       "data_download_job",
       "connection_status",
+      // Feature 009 data-foundation keys render in DataCoveragePanel, not the
+      // run-viewer; their tooltip coverage lives in data-coverage-panel.test.tsx.
+      "data_coverage",
+      "regime_completeness",
+      "backfill",
+      "data_source",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

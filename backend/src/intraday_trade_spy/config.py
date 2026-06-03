@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -19,11 +20,29 @@ class MarketConfig(BaseModel):
     force_flat_time: str
 
 
+class RegimeWindow(BaseModel):
+    """A labeled historical market regime used as the yardstick for
+    multi-regime data coverage (Feature 009)."""
+
+    name: str
+    start: date
+    end: date
+
+
 class DataConfig(BaseModel):
     timeframe: Literal["5m"] = "5m"
     csv_path: str
     output_dir: str
     require_regular_session_only: bool = True
+    # Feature 009: cross-source read precedence — first listed source wins when
+    # multiple sources cached the same timestamp.
+    source_preference: list[str] = Field(
+        default_factory=lambda: ["alpaca", "yfinance"]
+    )
+    # A regime is "covered" when this fraction of its expected NYSE trading
+    # sessions are present in the cache.
+    regime_covered_threshold_pct: float = 90.0
+    regimes: list[RegimeWindow] = Field(default_factory=list)
 
 
 class OpeningRangeConfig(BaseModel):
@@ -82,6 +101,13 @@ class BrokerConfig(BaseModel):
     slippage_per_share: float = 0.0
 
 
+class AlpacaConfig(BaseModel):
+    """Alpaca market-data settings (Feature 009). Credentials come from env,
+    never here. Free tier serves the IEX feed."""
+
+    feed: Literal["iex", "sip"] = "iex"
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     market: MarketConfig
@@ -89,6 +115,7 @@ class Config(BaseModel):
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     risk: RiskConfig = Field(default_factory=RiskConfig)
     broker: BrokerConfig = Field(default_factory=BrokerConfig)
+    alpaca: AlpacaConfig = Field(default_factory=AlpacaConfig)
 
 
 def load_config(path: str | Path) -> Config:

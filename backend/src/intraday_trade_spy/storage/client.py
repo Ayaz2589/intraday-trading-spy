@@ -578,23 +578,75 @@ class SupabaseStorageClient:
         return len(response.data or [])
 
     def list_bars(self, *, range_start: str, range_end: str):
-        """Shared OHLC bars within a date range. Bars are not user-scoped.
-        range_end is inclusive — we filter bar_start < range_end + 1 day."""
+        """Shared OHLC bars within a date range (range_end inclusive).
+
+        Multi-year reads can return 100k+ rows, far past PostgREST's default
+        1000-row cap (Feature 009 / FR-011). Primary path is a single psycopg
+        query over SUPABASE_DB_URL (fast, uncapped); if that's unavailable we
+        fall back to a paginated PostgREST read so no rows are silently dropped.
+        """
+        import os
         from datetime import date, timedelta
 
         end_exclusive = (date.fromisoformat(range_end) + timedelta(days=1)).isoformat()
+        db_url = os.environ.get("SUPABASE_DB_URL")
+        if db_url:
+            return self._list_bars_pg(db_url, range_start, end_exclusive)
+        return self._list_bars_rest(range_start, end_exclusive)
+
+    def _list_bars_pg(self, db_url: str, range_start: str, end_exclusive: str):
+        sql = (
+            "SELECT bar_start, open, high, low, close, volume, source "
+            "FROM public.bars WHERE bar_start >= %s AND bar_start < %s "
+            "ORDER BY bar_start ASC"
+        )
         try:
-            response = (
-                self._client.table("bars")
-                .select("bar_start,open,high,low,close,volume")
-                .gte("bar_start", range_start)
-                .lt("bar_start", end_exclusive)
-                .order("bar_start", desc=False)
-                .execute()
-            )
+            import psycopg
+
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (range_start, end_exclusive))
+                    out = []
+                    for bar_start, o, h, lo, c, vol, source in cur.fetchall():
+                        out.append(
+                            {
+                                "bar_start": bar_start.isoformat(),
+                                "open": float(o),
+                                "high": float(h),
+                                "low": float(lo),
+                                "close": float(c),
+                                "volume": int(vol),
+                                "source": source,
+                            }
+                        )
+                    return out
+        except Exception as exc:
+            raise CloudPushError(f"list_bars (pg) failed: {exc}") from exc
+
+    def _list_bars_rest(self, range_start: str, end_exclusive: str):
+        """Paginated PostgREST fallback — pages of 1000 until a short page."""
+        page = 1000
+        offset = 0
+        out: list[dict] = []
+        try:
+            while True:
+                response = (
+                    self._client.table("bars")
+                    .select("bar_start,open,high,low,close,volume,source")
+                    .gte("bar_start", range_start)
+                    .lt("bar_start", end_exclusive)
+                    .order("bar_start", desc=False)
+                    .range(offset, offset + page - 1)
+                    .execute()
+                )
+                batch = response.data or []
+                out.extend(batch)
+                if len(batch) < page:
+                    break
+                offset += page
         except Exception as exc:
             raise CloudPushError(f"list_bars failed: {exc}") from exc
-        return response.data or []
+        return out
 
     def bars_coverage(self) -> dict:
         """Return the earliest and latest cached bar_start, or {earliest: None, latest: None}.
@@ -721,6 +773,137 @@ class SupabaseStorageClient:
         except Exception as exc:
             raise CloudPushError(f"get_data_download_job failed: {exc}") from exc
         return response.data[0] if response.data else None
+
+    def bars_present_session_dates(self, *, range_start: str, range_end: str) -> list[str]:
+        """Distinct ET session-days with ≥1 cached bar in [range_start, range_end].
+
+        Uses a direct psycopg aggregate over SUPABASE_DB_URL (R8) rather than
+        pulling ~100k rows through PostgREST just to count distinct days.
+        range_end is inclusive.
+        """
+        import os
+        from datetime import date, timedelta
+
+        db_url = os.environ.get("SUPABASE_DB_URL")
+        if not db_url:
+            raise CloudPushError("bars_present_session_dates requires SUPABASE_DB_URL")
+
+        end_exclusive = (date.fromisoformat(range_end) + timedelta(days=1)).isoformat()
+        sql = (
+            "SELECT DISTINCT (bar_start AT TIME ZONE 'America/New_York')::date AS d "
+            "FROM public.bars WHERE bar_start >= %s AND bar_start < %s ORDER BY d"
+        )
+        try:
+            import psycopg
+
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (range_start, end_exclusive))
+                    return [r[0].isoformat() for r in cur.fetchall()]
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"bars_present_session_dates failed: {exc}") from exc
+
+    # ---------- Feature 009: backfill_jobs ----------
+
+    def insert_backfill_job(
+        self,
+        *,
+        job_id,
+        range_start,
+        range_end,
+        source: str = "alpaca",
+        windows_total: int = 0,
+    ) -> str:
+        body = {
+            "id": str(job_id),
+            "user_id": self.user_id,
+            "status": "queued",
+            "source": source,
+            "range_start": str(range_start),
+            "range_end": str(range_end),
+            "windows_total": int(windows_total),
+        }
+        try:
+            response = self._client.table("backfill_jobs").insert(body).execute()
+        except Exception as exc:
+            raise CloudPushError(f"insert_backfill_job failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("insert_backfill_job returned no row")
+        return response.data[0]["id"]
+
+    def update_backfill_job(
+        self,
+        *,
+        job_id,
+        status: str | None = None,
+        windows_done: int | None = None,
+        bars_added: int | None = None,
+        gap_session_dates: list | None = None,
+        failure_reason: str | None = None,
+    ) -> None:
+        from datetime import datetime, timezone
+
+        body: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+        if status is not None:
+            body["status"] = status
+        if windows_done is not None:
+            body["windows_done"] = int(windows_done)
+        if bars_added is not None:
+            body["bars_added"] = int(bars_added)
+        if gap_session_dates is not None:
+            body["gap_session_dates"] = list(gap_session_dates)
+        if failure_reason is not None:
+            body["failure_reason"] = failure_reason[:500]
+        try:
+            (
+                self._client.table("backfill_jobs")
+                .update(body)
+                .eq("id", str(job_id))
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"update_backfill_job failed: {exc}") from exc
+
+    def get_backfill_job(self, *, job_id, user_id):
+        try:
+            response = (
+                self._client.table("backfill_jobs")
+                .select("*")
+                .eq("id", str(job_id))
+                .eq("user_id", str(user_id))
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"get_backfill_job failed: {exc}") from exc
+        return response.data[0] if response.data else None
+
+    def count_active_backfills(self, *, user_id, stale_after_minutes: int) -> int:
+        """Count non-terminal backfill jobs that are NOT stale (C1).
+
+        A job whose process died leaves a stuck `running` row; excluding rows
+        whose `updated_at` is older than the TTL keeps a crash from blocking
+        the per-user cap forever.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        cutoff = (
+            datetime.now(timezone.utc) - timedelta(minutes=stale_after_minutes)
+        ).isoformat()
+        try:
+            response = (
+                self._client.table("backfill_jobs")
+                .select("id", count="exact")
+                .eq("user_id", str(user_id))
+                .in_("status", ["queued", "running"])
+                .gte("updated_at", cutoff)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"count_active_backfills failed: {exc}") from exc
+        return response.count or 0
 
     def sweep_stale_runs(self, *, max_age_minutes: int = 15) -> int:
         """Find runs stuck in `running` older than `max_age_minutes` and

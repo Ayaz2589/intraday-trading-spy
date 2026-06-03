@@ -15,6 +15,21 @@ data:
   csv_path: data/raw/spy_5m_sample.csv
   output_dir: data/backtests
   require_regular_session_only: true
+  # Feature 009: cross-source read precedence. When more than one source has a
+  # bar for the same timestamp, the first listed source wins (one bar per
+  # timestamp reaches the engine). Alpaca is the canonical multi-year series;
+  # yfinance fills only the recent tail Alpaca's free IEX feed has not served.
+  source_preference: [alpaca, yfinance]
+  # A regime counts as "covered" when this fraction of its expected NYSE
+  # trading sessions are present in the cache.
+  regime_covered_threshold_pct: 90
+  # Distinct market regimes the multi-year backfill must span. Used to compute
+  # and display per-regime data coverage.
+  regimes:
+    - { name: "2020 volatility",    start: "2020-01-01", end: "2020-12-31" }
+    - { name: "2021 bull",          start: "2021-01-01", end: "2021-12-31" }
+    - { name: "2022 bear",          start: "2022-01-01", end: "2022-12-31" }
+    - { name: "2023-24 chop/trend", start: "2023-01-01", end: "2024-12-31" }
 
 strategy:
   enabled: true
@@ -85,6 +100,20 @@ api:
     retry_attempts: 3
     retry_backoff_seconds: [1, 2, 4]
     max_concurrent_per_user: 3
+  # Bulk historical backfill (Feature 009). window_days bounds each fetch
+  # window (progress granularity); a stale 'running' job older than
+  # stale_job_ttl_minutes no longer counts against the concurrency cap so a
+  # crashed backfill can always be re-triggered.
+  backfill:
+    window_days: 30
+    max_concurrent_per_user: 1
+    stale_job_ttl_minutes: 60
+
+# Alpaca market data (Feature 009). Secrets come from env (ALPACA_API_KEY /
+# ALPACA_SECRET_KEY), never here. Algo Trader Plus subscription → SIP
+# (consolidated, all US exchanges) for faithful multi-year VWAP.
+alpaca:
+  feed: sip
 
 # Data-retention policy (Feature 006, clarification Q5).
 # DECLARED here; not enforced in this feature. Future feature or pg_cron job

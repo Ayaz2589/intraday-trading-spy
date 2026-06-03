@@ -14,6 +14,10 @@ dependencies = [
     "supabase>=2.7",
     "pyjwt[crypto]>=2.9",
     "httpx>=0.27",
+    # Phase 0 data foundation (Feature 009): multi-year historical bars from
+    # Alpaca + NYSE session calendar for per-regime coverage completeness.
+    "alpaca-py>=0.30",
+    "pandas-market-calendars>=4.4",
 ]
 
 [project.optional-dependencies]

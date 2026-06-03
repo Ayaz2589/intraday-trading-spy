@@ -37,6 +37,11 @@ DEFAULT_MAX_CONCURRENT_RUNS_PER_USER = 5
 DEFAULT_MAX_CONCURRENT_DOWNLOADS_PER_USER = 3
 DEFAULT_POLLING_STATUS_MAX_AGE_MINUTES = 15
 
+# Feature 009 backfill defaults (overridden by api.backfill.* in config.yaml).
+DEFAULT_BACKFILL_WINDOW_DAYS = 30
+DEFAULT_MAX_CONCURRENT_BACKFILLS_PER_USER = 1
+DEFAULT_BACKFILL_STALE_TTL_MINUTES = 60
+
 _active_runs: dict[UUID, set[UUID]] = {}
 _active_runs_lock = threading.Lock()
 
@@ -96,6 +101,35 @@ class BarsUnavailableError(RuntimeError):
 # yfinance's 5-minute intraday history is capped to ~60 calendar days. Any
 # request older than that returns zero rows and we have nothing to backtest.
 YFINANCE_5M_LOOKBACK_DAYS = 60
+
+DEFAULT_SOURCE_PREFERENCE = ["alpaca", "yfinance"]
+
+
+def _get_source_preference() -> list[str]:
+    try:
+        from intraday_trade_spy.config import load_config
+
+        return load_config("config/config.yaml").data.source_preference
+    except Exception:
+        return list(DEFAULT_SOURCE_PREFERENCE)
+
+
+def _dedupe_by_source_preference(bars: list[dict], source_preference: list[str]) -> list[dict]:
+    """Keep one bar per bar_start, choosing the highest-precedence source.
+
+    Sources not listed in `source_preference` rank last. Output is sorted
+    chronologically by bar_start.
+    """
+    rank = {s: i for i, s in enumerate(source_preference)}
+    fallback = len(source_preference)
+    best: dict[str, tuple[int, dict]] = {}
+    for b in bars:
+        ts = b["bar_start"]
+        r = rank.get(b.get("source"), fallback)
+        cur = best.get(ts)
+        if cur is None or r < cur[0]:
+            best[ts] = (r, b)
+    return [best[ts][1] for ts in sorted(best)]
 
 
 def materialize_bars_csv(
@@ -169,6 +203,11 @@ def materialize_bars_csv(
             "materialize_bars_csv: %d unreachable day(s) skipped (outside 60d window, not cached)",
             len(unreachable_missing),
         )
+
+    # Feature 009: when more than one source cached the same timestamp, deliver
+    # exactly one bar per bar_start to the engine (no double counting), choosing
+    # by data.source_preference (Alpaca preferred over yfinance).
+    bars = _dedupe_by_source_preference(bars, _get_source_preference())
 
     out = Path(tempfile.mkstemp(suffix="_bars.csv")[1])
     import csv as _csv
@@ -514,6 +553,166 @@ def _run_data_download_task(
                 job_id=job_id, status="failed", failure_reason=str(exc)[:500]
             )
         except Exception:
+            pass
+
+
+class BackfillRangeError(ValueError):
+    """Invalid backfill range — maps to a 400 at the endpoint."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+def _get_backfill_settings() -> tuple[int, int, int]:
+    """(window_days, max_concurrent_per_user, stale_job_ttl_minutes) from config."""
+    try:
+        import yaml
+
+        raw = yaml.safe_load(Path("config/config.yaml").read_text())
+        bf = ((raw or {}).get("api") or {}).get("backfill") or {}
+        return (
+            int(bf.get("window_days", DEFAULT_BACKFILL_WINDOW_DAYS)),
+            int(bf.get("max_concurrent_per_user", DEFAULT_MAX_CONCURRENT_BACKFILLS_PER_USER)),
+            int(bf.get("stale_job_ttl_minutes", DEFAULT_BACKFILL_STALE_TTL_MINUTES)),
+        )
+    except Exception:
+        return (
+            DEFAULT_BACKFILL_WINDOW_DAYS,
+            DEFAULT_MAX_CONCURRENT_BACKFILLS_PER_USER,
+            DEFAULT_BACKFILL_STALE_TTL_MINUTES,
+        )
+
+
+def _get_alpaca_feed() -> str:
+    try:
+        from intraday_trade_spy.config import load_config
+
+        return load_config("config/config.yaml").alpaca.feed
+    except Exception:
+        return "iex"
+
+
+def _make_bar_source(source: str):
+    """Construct a BarSource. NOTE (constitution V): the Alpaca path builds
+    ONLY the historical market-data client — never a trading/order client."""
+    if source == "alpaca":
+        from intraday_trade_spy.data.alpaca_source import AlpacaBarSource
+
+        return AlpacaBarSource(feed=_get_alpaca_feed())
+    if source == "yfinance":
+        from intraday_trade_spy.data.bar_source import YfinanceBarSource
+
+        return YfinanceBarSource()
+    raise ValueError(f"unknown bar source: {source!r}")
+
+
+def start_backfill(
+    *,
+    user_id: UUID,
+    start_date: date,
+    end_date: date,
+    storage_client: SupabaseStorageClient,
+    background_tasks: BackgroundTasks,
+    source: str = "alpaca",
+    bar_source=None,
+) -> UUID:
+    """Validate, enforce the (stale-aware) cap, insert a queued job, enqueue
+    the background runner. Returns the new job_id.
+
+    Raises BackfillRangeError(code) on bad input; ConcurrentRunCapExceeded at cap.
+    """
+    today = _today_et()
+    if end_date < start_date:
+        raise BackfillRangeError("end_before_start")
+    if start_date > today or end_date > today:
+        raise BackfillRangeError("future_date")
+
+    window_days, cap, stale_ttl = _get_backfill_settings()
+    active = storage_client.count_active_backfills(
+        user_id=user_id, stale_after_minutes=stale_ttl
+    )
+    if active >= cap:
+        raise ConcurrentRunCapExceeded(active=active, cap=cap)
+
+    from intraday_trade_spy.data.downloader import iter_windows
+
+    windows = iter_windows(start_date, end_date, max_days=window_days)
+    job_id = uuid4()
+    storage_client.insert_backfill_job(
+        job_id=job_id,
+        range_start=start_date,
+        range_end=end_date,
+        source=source,
+        windows_total=len(windows),
+    )
+    background_tasks.add_task(
+        _run_backfill_task,
+        job_id=job_id,
+        user_id=user_id,
+        start_date=start_date,
+        end_date=end_date,
+        source=source,
+        storage_client=storage_client,
+        bar_source=bar_source,
+    )
+    return job_id
+
+
+def _run_backfill_task(
+    *,
+    job_id: UUID,
+    user_id: UUID,
+    start_date: date,
+    end_date: date,
+    source: str,
+    storage_client: SupabaseStorageClient,
+    bar_source=None,
+) -> None:
+    """BackgroundTask body for the bulk historical backfill (Feature 009).
+
+    Loops fetch windows; upserts each (idempotent via ON CONFLICT DO NOTHING);
+    records empty windows as gaps; writes progress; ends finished/failed.
+    """
+    from intraday_trade_spy.data.downloader import iter_windows
+
+    window_days, _, _ = _get_backfill_settings()
+    try:
+        storage_client.update_backfill_job(job_id=job_id, status="running")
+    except Exception:  # noqa: BLE001 — best effort status write
+        pass
+
+    src = bar_source if bar_source is not None else _make_bar_source(source)
+    windows = iter_windows(start_date, end_date, max_days=window_days)
+    bars_added = 0
+    gaps: list[str] = []
+    try:
+        for i, (ws, we) in enumerate(windows, start=1):
+            rows = src.fetch_rows(start=ws, end=we, symbol="SPY", timeframe="5m")
+            if not rows:
+                gaps.append(f"{ws}..{we}")
+            else:
+                for j in range(0, len(rows), 1000):
+                    bars_added += storage_client.upsert_bars(rows[j : j + 1000])
+            storage_client.update_backfill_job(
+                job_id=job_id,
+                windows_done=i,
+                bars_added=bars_added,
+                gap_session_dates=gaps,
+            )
+        storage_client.update_backfill_job(
+            job_id=job_id,
+            status="finished",
+            windows_done=len(windows),
+            bars_added=bars_added,
+            gap_session_dates=gaps,
+        )
+    except Exception as exc:  # noqa: BLE001 — surface failure on the job row
+        try:
+            storage_client.update_backfill_job(
+                job_id=job_id, status="failed", failure_reason=str(exc)[:500]
+            )
+        except Exception:  # noqa: BLE001
             pass
 
 

@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/007-frontend-auth-api-migration/plan.md](specs/007-frontend-auth-api-migration/plan.md)
+**Active plan**: [specs/009-data-foundation/plan.md](specs/009-data-foundation/plan.md)
 
-**Active spec**: [specs/007-frontend-auth-api-migration/spec.md](specs/007-frontend-auth-api-migration/spec.md)
+**Active spec**: [specs/009-data-foundation/spec.md](specs/009-data-foundation/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 

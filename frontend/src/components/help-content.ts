@@ -31,7 +31,11 @@ export type HelpContentKey =
   | "run_status"
   | "cloud_push"
   | "data_download_job"
-  | "connection_status";
+  | "connection_status"
+  | "data_coverage"
+  | "regime_completeness"
+  | "backfill"
+  | "data_source";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -158,5 +162,25 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Connection status",
     description:
       "A green dot means the backend API is reachable and its database connection is healthy. Red means a recent call to /healthz failed — usually a network blip or the API container being redeployed. Backtests may queue up until it returns.",
+  },
+  data_coverage: {
+    title: "Data coverage",
+    description:
+      "The span of SPY 5-minute bars currently cached (earliest → latest). Every backtest is only as trustworthy as the data underneath it: a strategy 'edge' measured on a thin slice of history is usually just noise. Coverage tells you, at a glance, how much history your results actually stand on.",
+  },
+  regime_completeness: {
+    title: "Regime completeness",
+    description:
+      "What fraction of a market regime's expected trading sessions (NYSE calendar, holidays excluded) are actually in the cache. A regime counts as 'covered' at ≥90%. Why it matters: a strategy that only works in one regime (e.g. a 2021 bull run) is fragile — you want it tested across volatility, bull, bear, and chop. Below 90% shows as a gap to backfill.",
+  },
+  backfill: {
+    title: "Backfill",
+    description:
+      "A background job that loads years of historical SPY bars from Alpaca into the cache, window by window. It's idempotent (re-running adds nothing already stored) and shows live progress. Run it once to turn a 60-day sample into a multi-year, multi-regime one — the foundation for honest backtesting.",
+  },
+  data_source: {
+    title: "Data source",
+    description:
+      "Where a cached bar came from. Alpaca supplies the multi-year history (free tier = IEX feed); yfinance fills only the most recent days Alpaca hasn't served yet. When both have the same timestamp, the backtest uses exactly one bar (Alpaca preferred) so nothing is double-counted.",
   },
 };
