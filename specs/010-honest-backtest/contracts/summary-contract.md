@@ -46,7 +46,7 @@ Degenerate inputs: nullable metrics emit `null` (not `0`/`inf`). `equity_curve` 
 
 Returns `SummaryMetricsView` (legacy surface consumed by `summary-metrics-card.tsx`). Same additive fields as §1. Backwards-compatible: a pre-010 run missing the new keys deserializes with `null`/`0`/`[]` defaults, and the card renders "—" with an explanatory tooltip.
 
-`GET /api/runs/{id}` → `RunView.summary` (cloud `RunSummaryView`): scalar headline metrics only — adds `sortino`, `expectancy`, `expectancy_dollars`, `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, `win_rate_ci_low/high`; `sharpe` now populated; `max_drawdown` now carries `$` (was R).
+`GET /api/runs/{id}` → `RunView.summary` (cloud `RunSummaryView`): scalar headline metrics only — adds `sortino`, `expectancy`, `expectancy_dollars`, `max_drawdown_dollars`, `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, `win_rate_ci_low/high`; `sharpe` now populated; `max_drawdown` **unchanged (stays R)**.
 
 ---
 
@@ -54,8 +54,8 @@ Returns `SummaryMetricsView` (legacy surface consumed by `summary-metrics-card.t
 
 `push.py` maps local `summary.json` → cloud `RunSummary`. Changes:
 - `sharpe`: was hardcoded `0.0` → now `summary_data["sharpe"]`.
-- `max_drawdown`: was `max_drawdown_r` → now `max_drawdown_dollars`.
-- add `sortino`, `expectancy`, `expectancy_dollars`, `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, `win_rate_ci_low/high`.
+- `max_drawdown`: **unchanged — stays mapped from `max_drawdown_r` (R units)** so cross-run aggregation never mixes R and `$` across pre-/post-010 rows (analyze finding I1).
+- add new siblings `max_drawdown_dollars`, `max_drawdown_pct`, plus `sortino`, `expectancy`, `expectancy_dollars`, `total_fees`, `total_slippage`, `low_confidence`, `win_rate_ci_low/high`.
 
 No schema change (JSONB). Existing rows remain valid; reads use view defaults.
 

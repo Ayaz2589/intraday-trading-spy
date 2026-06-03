@@ -88,14 +88,15 @@ JSONB body — extend both (view with safe defaults for pre-010 rows):
 | `sortino` | float | 0.0 |
 | `expectancy` | float | 0.0 |
 | `expectancy_dollars` | Decimal | 0 |
-| `max_drawdown` | Decimal | 0 (retained, R or `$`? → set to **`$`** going forward; see note) |
-| `max_drawdown_pct` | float | 0.0 |
+| `max_drawdown` | Decimal | 0 (**retained, still R** — unchanged meaning) |
+| `max_drawdown_dollars` | Decimal | 0 (**new** — `$` drawdown) |
+| `max_drawdown_pct` | float | 0.0 (new) |
 | `total_fees` | Decimal | 0 |
 | `total_slippage` | Decimal | 0 |
 | `low_confidence` | bool | false |
 | `win_rate_ci_low` / `win_rate_ci_high` | float | 0.0 / 0.0 |
 
-**Note on `max_drawdown`**: today `push.py` maps cloud `max_drawdown` from local `max_drawdown_r`. Going forward it maps from `max_drawdown_dollars` (with `max_drawdown_pct` added as a sibling). Equity curve and per-bucket detail stay in the **local** `summary.json` / legacy `/summary` surface (rich detail for the run-detail view); the cloud summary keeps the scalar headline metrics for cross-run aggregation (Phase 2).
+**Note on `max_drawdown` (resolves analyze finding I1)**: today `push.py` maps cloud `max_drawdown` from local `max_drawdown_r`. We **do NOT repurpose it** — `max_drawdown` keeps its R meaning so pre-010 rows (R) and post-010 rows are never mixed in different units during Phase 2 cross-run aggregation. The `$` and `%` drawdowns are **new sibling fields** `max_drawdown_dollars` / `max_drawdown_pct`. Equity curve and per-bucket detail stay in the **local** `summary.json` / legacy `/summary` surface (rich detail for the run-detail view); the cloud summary keeps the scalar headline metrics for cross-run aggregation (Phase 2).
 
 ---
 

@@ -50,15 +50,16 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 - [ ] T007 [P] [US1] In `backend/tests/test_paper_broker.py`: FAILING tests that slippage moves fills adversely — entry `= next_bar.open + slippage`, stop exit `= stop − slippage`, target exit `= target − slippage`, force-flat `= next_bar.open − slippage`; slippage never improves a fill.
 - [ ] T008 [P] [US1] In `backend/tests/test_paper_broker.py`: FAILING tests that fees are deducted both sides (`fees == fees_per_share × qty × 2`), `realized_pnl == gross_pnl − fees`, and `gross_pnl`/`fees`/`slippage_cost` are populated on the `Position`.
-- [ ] T009 [P] [US1] In `backend/tests/test_cost_fixture.py` (new): FAILING test that running the T002 fixture reproduces the exact expected net PnL and total cost (SC-002).
-- [ ] T010 [P] [US1] In `backend/tests/test_backtest_engine.py`: FAILING tests that (a) the non-zero-cost total = zero-cost total − total modeled cost (SC-001), and (b) a force-flat exit is also net of costs.
+- [ ] T009 [P] [US1] In `backend/tests/test_cost_fixture.py` (new): FAILING test that running the T002 fixture reproduces the exact expected net PnL and total cost (SC-002), **asserting the summary fields `total_net_pnl_dollars`, `total_fees_dollars`, and `total_slippage_dollars`** against hand-computed values (covers the T014 aggregates, constitution IV).
+- [ ] T010 [P] [US1] In `backend/tests/test_backtest_engine.py`: FAILING tests that (a) the non-zero-cost total = zero-cost total − total modeled cost (SC-001), with `total_fees_dollars + total_slippage_dollars` equal to that gap; and (b) a force-flat exit is also net of costs.
 - [ ] T011 [P] [US1] In `backend/tests/test_backtest_engine.py`: FAILING test that the daily-loss lockout (`_apply_exit_to_state` → `daily_realized_pnl`) trips on **net** realized PnL (more conservative).
+- [ ] T011a [P] [US1] In `backend/tests/test_journal.py`: FAILING test (constitution VII) that an EXITED **and** a FORCE_FLAT journal entry carry the cost breakdown (`gross_pnl`, `fees`, `slippage_cost`, net `realized_pnl`), and that the CSV export includes those columns with the expected values. (Asserts FR-006 is actually journaled, not just modeled.)
 
 ### Implementation for User Story 1
 
 - [ ] T012 [US1] In `backend/src/intraday_trade_spy/broker/paper.py`: accept `BrokerConfig` in `__init__`; apply adverse slippage to entry/stop/target/force-flat fills; compute `gross_pnl`, `fees = fees_per_share·qty·2`, `slippage_cost`, and set `realized_pnl` = net. Preserve the same-bar stop-first rule. (Makes T007–T009 pass.)
-- [ ] T013 [US1] In `backend/src/intraday_trade_spy/backtest/engine.py`: construct `PaperBroker(cfg.broker)`; thread `gross_pnl`/`fees`/`slippage_cost` through `_log_exit` so the journal records the cost breakdown (VII). (Makes T010–T011 pass.)
-- [ ] T014 [US1] In `backend/src/intraday_trade_spy/backtest/metrics.py`: ensure `total_pnl_dollars` sums **net**; add `total_net_pnl_dollars`, `total_fees_dollars`, `total_slippage_dollars`.
+- [ ] T013 [US1] In `backend/src/intraday_trade_spy/backtest/engine.py` (+ `journal/logger.py` if the CSV column set is fixed there): construct `PaperBroker(cfg.broker)`; thread `gross_pnl`/`fees`/`slippage_cost` through `_log_exit` so the journal **and CSV export** record the cost breakdown (VII). (Makes T010, T011, T011a pass.)
+- [ ] T014 [US1] In `backend/src/intraday_trade_spy/backtest/metrics.py`: ensure `total_pnl_dollars` sums **net**; add `total_net_pnl_dollars`, `total_fees_dollars`, `total_slippage_dollars`. (TDD-covered by the summary-field assertions added to T009/T010.)
 
 **Checkpoint**: Backtest is net-of-cost and the fixture proves it. **This is the MVP — the honest ruler.**
 
@@ -88,8 +89,8 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 ### Implementation for User Story 2 (persistence + API)
 
-- [ ] T025 [P] [US2] In `backend/tests/storage/test_models_run_trade.py` and `backend/tests/storage/test_push_round_trip.py`: FAILING tests that cloud `RunSummary` carries the new scalar fields and `push.py` maps them (real `sharpe`, `sortino`, `expectancy`, `max_drawdown` now `$`, `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds).
-- [ ] T026 [US2] In `backend/src/intraday_trade_spy/storage/models.py` extend `RunSummary`, and in `backend/src/intraday_trade_spy/storage/push.py` map the new fields from local `summary.json`. (Makes T025 pass.)
+- [ ] T025 [P] [US2] In `backend/tests/storage/test_models_run_trade.py` and `backend/tests/storage/test_push_round_trip.py`: FAILING tests that cloud `RunSummary` carries the new scalar fields and `push.py` maps them (real `sharpe`, `sortino`, `expectancy`, new **`max_drawdown_dollars`** + `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds). **Do NOT repurpose the existing `max_drawdown` field** — it keeps its legacy R meaning (still mapped from `max_drawdown_r`) so pre-010 and post-010 rows are not mixed in different units; assert this in a test.
+- [ ] T026 [US2] In `backend/src/intraday_trade_spy/storage/models.py` extend `RunSummary` (add `max_drawdown_dollars`, `max_drawdown_pct`, `sortino`, `expectancy`, `expectancy_dollars`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds; populate real `sharpe`; **leave `max_drawdown` carrying R**), and in `backend/src/intraday_trade_spy/storage/push.py` map the new fields from local `summary.json`. (Makes T025 pass.)
 - [ ] T027 [P] [US2] In `backend/tests/api/` (new `test_run_summary_view.py`): FAILING test that `RunSummaryView` exposes the new fields and defaults safely for pre-010 rows.
 - [ ] T028 [US2] In `backend/src/intraday_trade_spy/api/schemas.py`: extend `RunSummaryView` with the new fields + safe defaults. (Makes T027 pass.)
 
