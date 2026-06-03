@@ -73,36 +73,36 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 ### Tests for User Story 2 ⚠️ (write first, must FAIL)
 
-- [ ] T015 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for expectancy in R `(win%·avg_win_R − loss%·|avg_loss_R|)` and in `$` (mean net per-trade).
-- [ ] T016 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for the equity curve (seed at `account_value`, length = trades+1) and max drawdown in `$` and `%`.
-- [ ] T017 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for daily-return Sharpe and Sortino (rf=0, ×√252; daily PnL ÷ `account_value`).
-- [ ] T018 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for return distribution (median, sample std, Fisher-Pearson skew).
-- [ ] T019 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for per-bucket breakdown by hour-of-day, weekday, and month-of-year using NY-local entry timestamps (via `clock.py`); bucket counts sum to the trade count.
-- [ ] T020 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests that 0-trade, 1-trade, all-win, and all-loss inputs yield `None` (not `0`/`inf`) for the relevant metrics and raise no exception.
+- [X] T015 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for expectancy in R `(win%·avg_win_R − loss%·|avg_loss_R|)` and in `$` (mean net per-trade).
+- [X] T016 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for the equity curve (seed at `account_value`, length = trades+1) and max drawdown in `$` and `%`.
+- [X] T017 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for daily-return Sharpe and Sortino (rf=0, ×√252; daily PnL ÷ `account_value`).
+- [X] T018 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for return distribution (median, sample std, Fisher-Pearson skew).
+- [X] T019 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests for per-bucket breakdown by hour-of-day, weekday, and month-of-year using NY-local entry timestamps (via `clock.py`); bucket counts sum to the trade count.
+- [X] T020 [P] [US2] In `backend/tests/test_metrics.py`: FAILING tests that 0-trade, 1-trade, all-win, and all-loss inputs yield `None` (not `0`/`inf`) for the relevant metrics and raise no exception.
 
 ### Implementation for User Story 2 (backend metrics)
 
-- [ ] T021 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement expectancy (R and $) and return distribution (median/std/skew). (T015, T018, partial T020.)
-- [ ] T022 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: build the equity curve (`EquityPoint` series anchored on `account_value`) and max drawdown in `$` and `%`. (T016.)
-- [ ] T023 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement daily-return Sharpe and Sortino from `MetricsConfig` (rf, ×√trading_days). (T017.)
-- [ ] T024 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement per-bucket breakdown (hour/weekday/month, NY tz via `clock.py`). (T019, remaining T020.)
+- [X] T021 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement expectancy (R and $) and return distribution (median/std/skew). (T015, T018, partial T020.)
+- [X] T022 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: build the equity curve (`EquityPoint` series anchored on `account_value`) and max drawdown in `$` and `%`. (T016.)
+- [X] T023 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement daily-return Sharpe and Sortino from `MetricsConfig` (rf, ×√trading_days). (T017.)
+- [X] T024 [US2] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement per-bucket breakdown (hour/weekday/month, NY tz via `clock.py`). (T019, remaining T020.)
 
 ### Implementation for User Story 2 (persistence + API)
 
-- [ ] T025 [P] [US2] In `backend/tests/storage/test_models_run_trade.py` and `backend/tests/storage/test_push_round_trip.py`: FAILING tests that cloud `RunSummary` carries the new scalar fields and `push.py` maps them (real `sharpe`, `sortino`, `expectancy`, new **`max_drawdown_dollars`** + `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds). **Do NOT repurpose the existing `max_drawdown` field** — it keeps its legacy R meaning (still mapped from `max_drawdown_r`) so pre-010 and post-010 rows are not mixed in different units; assert this in a test.
-- [ ] T026 [US2] In `backend/src/intraday_trade_spy/storage/models.py` extend `RunSummary` (add `max_drawdown_dollars`, `max_drawdown_pct`, `sortino`, `expectancy`, `expectancy_dollars`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds; populate real `sharpe`; **leave `max_drawdown` carrying R**), and in `backend/src/intraday_trade_spy/storage/push.py` map the new fields from local `summary.json`. (Makes T025 pass.)
-- [ ] T027 [P] [US2] In `backend/tests/api/` (new `test_run_summary_view.py`): FAILING test that `RunSummaryView` exposes the new fields and defaults safely for pre-010 rows.
-- [ ] T028 [US2] In `backend/src/intraday_trade_spy/api/schemas.py`: extend `RunSummaryView` with the new fields + safe defaults. (Makes T027 pass.)
+- [X] T025 [P] [US2] In `backend/tests/storage/test_models_run_trade.py` and `backend/tests/storage/test_push_round_trip.py`: FAILING tests that cloud `RunSummary` carries the new scalar fields and `push.py` maps them (real `sharpe`, `sortino`, `expectancy`, new **`max_drawdown_dollars`** + `max_drawdown_pct`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds). **Do NOT repurpose the existing `max_drawdown` field** — it keeps its legacy R meaning (still mapped from `max_drawdown_r`) so pre-010 and post-010 rows are not mixed in different units; assert this in a test.
+- [X] T026 [US2] In `backend/src/intraday_trade_spy/storage/models.py` extend `RunSummary` (add `max_drawdown_dollars`, `max_drawdown_pct`, `sortino`, `expectancy`, `expectancy_dollars`, `total_fees`, `total_slippage`, `low_confidence`, CI bounds; populate real `sharpe`; **leave `max_drawdown` carrying R**), and in `backend/src/intraday_trade_spy/storage/push.py` map the new fields from local `summary.json`. (Makes T025 pass.)
+- [X] T027 [P] [US2] In `backend/tests/api/` (new `test_run_summary_view.py`): FAILING test that `RunSummaryView` exposes the new fields and defaults safely for pre-010 rows.
+- [X] T028 [US2] In `backend/src/intraday_trade_spy/api/schemas.py`: extend `RunSummaryView` with the new fields + safe defaults. (Makes T027 pass.)
 
 ### Implementation for User Story 2 (frontend)
 
-- [ ] T029 [P] [US2] In `frontend/src/components/summary-metrics-card.test.tsx`: FAILING/updated tests that new metric Stats (expectancy, Sharpe, Sortino, drawdown $/%, distribution) render with a `HelpTooltip` each.
-- [ ] T030 [US2] In `frontend/src/api/legacy-types.ts` (`SummaryMetricsView`) and `frontend/src/api/types.ts` (`RunSummary`): add the new metric fields, equity curve, and bucket arrays.
-- [ ] T031 [US2] In `frontend/src/components/summary-metrics-card.tsx`: add the new `Stat` cells with `helpKey`s, and add the matching `HELP_CONTENT` entries (slippage, fees, expectancy, Sharpe, Sortino, drawdown $/%, distribution) in `frontend/src/components/help-content.ts`. (Makes T029 pass.)
-- [ ] T032 [P] [US2] In `frontend/src/components/per-bucket-card.test.tsx` (new): FAILING test that a `PerBucketCard` renders hour/weekday/month buckets from a mock summary with a `HelpTooltip`.
-- [ ] T033 [US2] Create `frontend/src/components/per-bucket-card.tsx` and mount it in `frontend/src/routes/run-viewer.tsx`; add its `HELP_CONTENT` entry. (Makes T032 pass.)
-- [ ] T034 [P] [US2] In `frontend/src/components/equity-curve.test.tsx` (new): FAILING test that an `EquityCurve` SVG sparkline renders from a mock equity series with a baseline and a `HelpTooltip`.
-- [ ] T035 [US2] Create `frontend/src/components/equity-curve.tsx` (dependency-free SVG) and mount it in `frontend/src/routes/run-viewer.tsx`; add its `HELP_CONTENT` entry. (Makes T034 pass.)
+- [X] T029 [P] [US2] In `frontend/src/components/summary-metrics-card.test.tsx`: FAILING/updated tests that new metric Stats (expectancy, Sharpe, Sortino, drawdown $/%, distribution) render with a `HelpTooltip` each.
+- [X] T030 [US2] In `frontend/src/api/legacy-types.ts` (`SummaryMetricsView`) and `frontend/src/api/types.ts` (`RunSummary`): add the new metric fields, equity curve, and bucket arrays.
+- [X] T031 [US2] In `frontend/src/components/summary-metrics-card.tsx`: add the new `Stat` cells with `helpKey`s, and add the matching `HELP_CONTENT` entries (slippage, fees, expectancy, Sharpe, Sortino, drawdown $/%, distribution) in `frontend/src/components/help-content.ts`. (Makes T029 pass.)
+- [X] T032 [P] [US2] In `frontend/src/components/per-bucket-card.test.tsx` (new): FAILING test that a `PerBucketCard` renders hour/weekday/month buckets from a mock summary with a `HelpTooltip`.
+- [X] T033 [US2] Create `frontend/src/components/per-bucket-card.tsx` and mount it in `frontend/src/routes/run-viewer.tsx`; add its `HELP_CONTENT` entry. (Makes T032 pass.)
+- [X] T034 [P] [US2] In `frontend/src/components/equity-curve.test.tsx` (new): FAILING test that an `EquityCurve` SVG sparkline renders from a mock equity series with a baseline and a `HelpTooltip`.
+- [X] T035 [US2] Create `frontend/src/components/equity-curve.tsx` (dependency-free SVG) and mount it in `frontend/src/routes/run-viewer.tsx`; add its `HELP_CONTENT` entry. (Makes T034 pass.)
 
 **Checkpoint**: Full edge-quality metric set is computed, persisted, served, and displayed with tooltips.
 
@@ -116,13 +116,13 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 ### Tests for User Story 3 ⚠️ (write first, must FAIL)
 
-- [ ] T036 [P] [US3] In `backend/tests/test_metrics.py`: FAILING tests for the Wilson 95% win-rate CI bounds (known fixtures) and the `low_confidence` flag = `total_trades < metrics.low_confidence_trade_count`.
-- [ ] T037 [P] [US3] In `frontend/src/components/summary-metrics-card.test.tsx`: FAILING tests that N and the CI render, a "noise" badge shows when `low_confidence` is true, and is absent for a large-N summary.
+- [X] T036 [P] [US3] In `backend/tests/test_metrics.py`: FAILING tests for the Wilson 95% win-rate CI bounds (known fixtures) and the `low_confidence` flag = `total_trades < metrics.low_confidence_trade_count`.
+- [X] T037 [P] [US3] In `frontend/src/components/summary-metrics-card.test.tsx`: FAILING tests that N and the CI render, a "noise" badge shows when `low_confidence` is true, and is absent for a large-N summary.
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement the Wilson CI (`win_rate_ci_low/high`) and `low_confidence`. (Makes T036 pass.)
-- [ ] T039 [US3] In `frontend/src/components/summary-metrics-card.tsx`: surface N, the CI, and a "noise" badge; add `HELP_CONTENT` for confidence interval and sample size. (Makes T037 pass.) (View/cloud fields for CI + `low_confidence` were defined in T026/T028/T030.)
+- [X] T038 [US3] In `backend/src/intraday_trade_spy/backtest/metrics.py`: implement the Wilson CI (`win_rate_ci_low/high`) and `low_confidence`. (Makes T036 pass.)
+- [X] T039 [US3] In `frontend/src/components/summary-metrics-card.tsx`: surface N, the CI, and a "noise" badge; add `HELP_CONTENT` for confidence interval and sample size. (Makes T037 pass.) (View/cloud fields for CI + `low_confidence` were defined in T026/T028/T030.)
 
 **Checkpoint**: No result can be mistaken for significant without seeing its N and CI.
 
@@ -150,7 +150,7 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T044 [P] In `frontend/src/components/help-content.ts` tests: add/verify a test asserting every new concept key has non-empty what/why/how content (constitution VI completeness).
+- [X] T044 [P] In `frontend/src/components/help-content.ts` tests: add/verify a test asserting every new concept key has non-empty what/why/how content (constitution VI completeness).
 - [ ] T045 Run `quickstart.md` end-to-end: the cost fixture test, a full-span net-of-cost run, and `grep -rn "min_minutes_after_open\|require_close_above" backend/src backend/config` returns no hits.
 - [ ] T046 Performance check: a full-span backtest (~164,918 bars) still completes in ~5s; metric computation overhead < ~1s. Note result in the run.
 - [ ] T047 [P] Update `docs/automated-trading-roadmap.md` (Phase 1 status → done, feature `010` row) once the exit gate is met.

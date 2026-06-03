@@ -32,6 +32,21 @@ def _skew(series: list[float]) -> float | None:
     return g1 * math.sqrt(n * (n - 1)) / (n - 2)
 
 
+def _wilson_ci(
+    wins: int, n: int, confidence: float
+) -> tuple[float | None, float | None]:
+    """Wilson score interval on the win proportion. Well-behaved at small n and
+    near 0/1 (where the normal approximation breaks). None when n == 0."""
+    if n <= 0:
+        return None, None
+    z = statistics.NormalDist().inv_cdf((1 + confidence) / 2)
+    p = wins / n
+    denom = 1 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    margin = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / denom
+    return max(0.0, center - margin), min(1.0, center + margin)
+
+
 def _sharpe_sortino(
     completed: list[JournalEntry], account_value: float, cfg: MetricsConfig
 ) -> tuple[float | None, float | None]:
@@ -194,6 +209,12 @@ def compute_summary(
     # Sharpe / Sortino
     sharpe, sortino = _sharpe_sortino(completed, account_value, cfg)
 
+    # Significance (US3): Wilson CI on the win proportion + low-sample flag.
+    win_rate_ci_low, win_rate_ci_high = _wilson_ci(
+        len(wins), total_trades, cfg.win_rate_ci_confidence
+    )
+    low_confidence = total_trades < cfg.low_confidence_trade_count
+
     # Per-bucket breakdown by NY-local entry time (one position at a time → exact
     # chronological pairing of executed↔exit rows).
     trades = list(
@@ -237,6 +258,9 @@ def compute_summary(
         return_median_dollars=return_median_dollars,
         return_std_dollars=return_std_dollars,
         return_skew=return_skew,
+        win_rate_ci_low=win_rate_ci_low,
+        win_rate_ci_high=win_rate_ci_high,
+        low_confidence=low_confidence,
         equity_curve=equity_curve,
         hour_buckets=hour_buckets,
         weekday_buckets=weekday_buckets,

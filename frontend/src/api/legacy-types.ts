@@ -31,6 +31,21 @@ export type JournalRowView = {
   same_bar_tiebreak: "none" | "stop_first" | null;
 };
 
+// Feature 010 (honest backtest): equity-curve + per-bucket value objects.
+export type EquityPointView = {
+  timestamp: string | null;
+  equity: number;
+  cumulative_net_pnl: number;
+};
+
+export type BucketView = {
+  key: string;
+  trade_count: number;
+  net_pnl_dollars: number;
+  win_rate: number | null;
+  expectancy_r: number | null;
+};
+
 export type SummaryMetricsView = {
   total_trades: number;
   wins: number;
@@ -47,6 +62,27 @@ export type SummaryMetricsView = {
   longest_consecutive_loss_streak: number;
   rejected_signal_count: number;
   rejection_breakdown: Record<string, number>;
+  // Feature 010 — optional so pre-010 runs still type-check.
+  total_pnl_dollars?: number;
+  total_net_pnl_dollars?: number;
+  total_fees_dollars?: number;
+  total_slippage_dollars?: number;
+  expectancy_r?: number | null;
+  expectancy_dollars?: number | null;
+  sharpe?: number | null;
+  sortino?: number | null;
+  max_drawdown_dollars?: number;
+  max_drawdown_pct?: number | null;
+  return_median_dollars?: number | null;
+  return_std_dollars?: number | null;
+  return_skew?: number | null;
+  win_rate_ci_low?: number | null;
+  win_rate_ci_high?: number | null;
+  low_confidence?: boolean;
+  equity_curve?: EquityPointView[];
+  hour_buckets?: BucketView[];
+  weekday_buckets?: BucketView[];
+  month_buckets?: BucketView[];
 };
 
 export type RunSummaryView = {

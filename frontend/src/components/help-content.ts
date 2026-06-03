@@ -35,7 +35,20 @@ export type HelpContentKey =
   | "data_coverage"
   | "regime_completeness"
   | "backfill"
-  | "data_source";
+  | "data_source"
+  // Feature 010 (honest backtest) concepts
+  | "slippage"
+  | "fees"
+  | "expectancy"
+  | "sharpe"
+  | "sortino"
+  | "drawdown_money"
+  | "drawdown_pct"
+  | "return_distribution"
+  | "equity_curve"
+  | "per_bucket"
+  | "confidence_interval"
+  | "sample_size";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -182,5 +195,65 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Data source",
     description:
       "Where a cached bar came from. Alpaca supplies the multi-year history (free tier = IEX feed); yfinance fills only the most recent days Alpaca hasn't served yet. When both have the same timestamp, the backtest uses exactly one bar (Alpaca preferred) so nothing is double-counted.",
+  },
+  slippage: {
+    title: "Slippage",
+    description:
+      "The gap between the price you expected and the price you actually got. Real fills are slightly worse than the quote — you buy a hair higher and sell a hair lower. The backtest models this as a fixed adverse amount per share on both entry and exit, so PnL reflects reality instead of perfect fills.",
+  },
+  fees: {
+    title: "Fees / commissions",
+    description:
+      "The broker's per-share charge on each side of a trade. Our execution broker is commission-free for equities (so the default is $0), but the knob exists so other cost assumptions can be modeled. Fees are deducted from every trade's PnL.",
+  },
+  expectancy: {
+    title: "Expectancy",
+    description:
+      "The average amount you expect to make per trade: (win% × average win) − (loss% × average loss). It's the single best 'is there an edge?' number — positive means the system makes money on average after costs, negative means it bleeds. Shown in R (risk units) and dollars.",
+  },
+  sharpe: {
+    title: "Sharpe ratio",
+    description:
+      "Risk-adjusted return: average daily return divided by its volatility, annualized. Higher is better — it rewards smooth equity growth and penalizes wild swings. It lets you compare strategies that make the same money but with very different ride quality.",
+  },
+  sortino: {
+    title: "Sortino ratio",
+    description:
+      "Like Sharpe, but it only counts downside volatility in the denominator. Upside swings shouldn't be 'penalized' as risk, so Sortino judges return against the kind of volatility that actually hurts — drawdowns. Undefined when there are no losing days.",
+  },
+  drawdown_money: {
+    title: "Max drawdown ($)",
+    description:
+      "The largest peak-to-trough drop in account equity over the run, in dollars. It answers 'what's the worst losing stretch I'd have had to sit through?' — which drives position sizing and whether you could psychologically survive trading this.",
+  },
+  drawdown_pct: {
+    title: "Max drawdown (%)",
+    description:
+      "The same worst peak-to-trough drop, expressed as a percentage of account equity. Because it's scale-invariant, it's the figure to compare across account sizes and strategies — a 20% drawdown means the same thing at $5k or $5M.",
+  },
+  return_distribution: {
+    title: "Return distribution",
+    description:
+      "How individual trade results are spread out: the median (typical trade), the standard deviation (how much they vary), and the skew (whether a few big winners or losers dominate). It reveals whether an edge is broad and reliable or propped up by a handful of lucky trades.",
+  },
+  equity_curve: {
+    title: "Equity curve",
+    description:
+      "Your account value plotted across the sequence of trades, starting from the configured account size. A steady climb is healthy; deep dips show the drawdowns you'd have lived through. The shape matters as much as the endpoint.",
+  },
+  per_bucket: {
+    title: "Per-bucket performance",
+    description:
+      "Trade results grouped by hour of day, weekday, and month. It shows where an edge actually lives or breaks — e.g. strong in the first hour, weak midday. Useful for understanding the strategy, but slicing thin invites overfitting, so treat small buckets with suspicion.",
+  },
+  confidence_interval: {
+    title: "Confidence interval",
+    description:
+      "A range that the true win rate is likely to fall within, given how many trades we've seen. With few trades the range is wide (the number is mostly noise); with many it tightens. A 60% win rate on 8 trades and on 800 trades mean very different things — this shows which.",
+  },
+  sample_size: {
+    title: "Sample size (N)",
+    description:
+      "How many trades a result is based on. Small samples are dominated by luck — an '83% win rate on 6 trades' is a coin-flip story. We flag results below a threshold as low-confidence so a tiny sample is never mistaken for a real, durable edge.",
   },
 };

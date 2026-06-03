@@ -1,6 +1,6 @@
 import math
 import statistics
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from pytest import approx
@@ -155,6 +155,48 @@ def test_metrics_degenerate_inputs_return_none():
     allwin += _trade(_at(2026, 4, 2, 10), _at(2026, 4, 2, 11), exit_reason="target", net_pnl=120.0, realized_r=2.0)
     s_aw = compute_summary(allwin, account_value=25000.0)
     assert s_aw.sortino is None
+
+
+# ---------- Feature 010 / US3: sample size & significance ----------
+
+
+def _many(n_win, n_loss):
+    rows = []
+    base = datetime(2026, 1, 5, 10, tzinfo=ET)
+    total = n_win + n_loss
+    for i in range(total):
+        ts = base + timedelta(days=i)
+        win = i < n_win
+        rows += _trade(
+            ts, ts + timedelta(hours=1),
+            exit_reason="target" if win else "stop",
+            net_pnl=100.0 if win else -50.0,
+            realized_r=2.0 if win else -1.0,
+        )
+    return rows
+
+
+def test_win_rate_wilson_ci_and_low_confidence_flag():
+    """T036: small N → flagged low-confidence with a wide Wilson CI; large N at
+    the same win rate → tighter CI, not flagged."""
+    s_small = compute_summary(_many(3, 3))  # 6 trades, p=0.5
+    assert s_small.total_trades == 6
+    assert s_small.low_confidence is True
+    assert s_small.win_rate_ci_low is not None and s_small.win_rate_ci_high is not None
+    assert s_small.win_rate_ci_low < 0.5 < s_small.win_rate_ci_high
+    width_small = s_small.win_rate_ci_high - s_small.win_rate_ci_low
+
+    s_big = compute_summary(_many(100, 100))  # 200 trades, p=0.5
+    assert s_big.low_confidence is False
+    width_big = s_big.win_rate_ci_high - s_big.win_rate_ci_low
+    assert width_big < width_small  # more data → tighter interval
+
+
+def test_ci_none_for_empty():
+    s = compute_summary([])
+    assert s.win_rate_ci_low is None
+    assert s.win_rate_ci_high is None
+    assert s.low_confidence is True  # 0 < threshold
 
 
 def test_summary_empty_journal():

@@ -42,7 +42,7 @@ def test_flag_absent_does_not_read_supabase_env(monkeypatch, tmp_path):
         Engine.return_value.run.return_value = mock.MagicMock(
             run=mock.MagicMock(run_id="test"),
             journal_rows=[],
-            summary=mock.MagicMock(model_dump=lambda: {}),
+            summary=mock.MagicMock(model_dump=lambda **kw: {}),
         )
         with mock.patch("intraday_trade_spy.cli.run_backtest.write_journal_csv"):
             with mock.patch("intraday_trade_spy.cli.run_backtest.write_run_yaml"):
