@@ -58,17 +58,13 @@ class VwapPullbackTargetConfig(BaseModel):
     risk_reward: float = 2.0
 
 
-class VwapPullbackConfirmationConfig(BaseModel):
-    require_close_above_prior_bar_high: bool = True
-    require_close_above_vwap: bool = True
-
-
 class VwapPullbackConfig(BaseModel):
-    min_minutes_after_open: int = 15
+    # Feature 010: removed `min_minutes_after_open` and the `confirmation` block
+    # (`require_close_above_prior_bar_high`, `require_close_above_vwap`) — they
+    # were parsed but never read by the strategy (the VWAP and prior-bar
+    # confirmations are hardcoded in vwap_pullback.py). Deleting them keeps the
+    # config honest; re-introduce as deliberate, validated knobs if ever needed.
     max_distance_from_vwap_pct: float = 0.25
-    confirmation: VwapPullbackConfirmationConfig = Field(
-        default_factory=VwapPullbackConfirmationConfig
-    )
     stop: VwapPullbackStopConfig = Field(default_factory=VwapPullbackStopConfig)
     target: VwapPullbackTargetConfig = Field(default_factory=VwapPullbackTargetConfig)
 

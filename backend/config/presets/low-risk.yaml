@@ -35,11 +35,7 @@ strategy:
   opening_range:
     minutes: 15
   vwap_pullback:
-    min_minutes_after_open: 15
     max_distance_from_vwap_pct: 0.25
-    confirmation:
-      require_close_above_prior_bar_high: true
-      require_close_above_vwap: true
     stop:
       type: below_pullback_low
       buffer_pct: 0.05

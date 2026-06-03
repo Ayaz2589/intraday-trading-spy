@@ -67,3 +67,37 @@ def test_default_config_yaml_loads_metrics_block(default_config_path):
     cfg = load_config(default_config_path)
     assert cfg.metrics.trading_days_per_year == 252
     assert cfg.broker.slippage_per_share == 0.01
+
+
+# ---------- Feature 010 / US4: dead-knob cleanup ----------
+
+
+def test_dead_knobs_removed_from_schema():
+    """T040: the three parsed-but-ignored knobs no longer exist in the config
+    schema, and the confirmation model is gone."""
+    import intraday_trade_spy.config as config_module
+    from intraday_trade_spy.config import VwapPullbackConfig
+
+    cfg = VwapPullbackConfig()
+    assert not hasattr(cfg, "confirmation")
+    assert not hasattr(cfg, "min_minutes_after_open")
+    assert "confirmation" not in VwapPullbackConfig.model_fields
+    assert "min_minutes_after_open" not in VwapPullbackConfig.model_fields
+    assert not hasattr(config_module, "VwapPullbackConfirmationConfig")
+
+
+def test_legacy_knobs_are_ignored_not_applied():
+    """T040: a config that still names the removed knobs parses without error and
+    silently ignores them — they never secretly drive behavior again."""
+    from intraday_trade_spy.config import VwapPullbackConfig
+
+    cfg = VwapPullbackConfig.model_validate(
+        {
+            "min_minutes_after_open": 99,
+            "confirmation": {"require_close_above_vwap": False},
+            "max_distance_from_vwap_pct": 0.25,
+        }
+    )
+    assert not hasattr(cfg, "min_minutes_after_open")
+    assert not hasattr(cfg, "confirmation")
+    assert cfg.max_distance_from_vwap_pct == 0.25  # real knobs still work

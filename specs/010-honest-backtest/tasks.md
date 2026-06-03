@@ -136,13 +136,13 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 ### Tests for User Story 4 ⚠️ (write first, must FAIL)
 
-- [ ] T040 [P] [US4] In `backend/tests/test_config.py`: FAILING test that `VwapPullbackConfig` has no `confirmation`/`min_minutes_after_open` and that a config containing them is rejected/ignored as designed.
-- [ ] T041 [P] [US4] In `backend/tests/test_vwap_pullback.py`: update the existing tests (the only ones referencing the removed knobs) to construct `VwapPullbackConfig` without them, asserting the hardcoded VWAP + prior-bar confirmations still gate entries (behavior unchanged).
+- [X] T040 [P] [US4] In `backend/tests/test_config.py`: FAILING test that `VwapPullbackConfig` has no `confirmation`/`min_minutes_after_open` and that a config containing them is rejected/ignored as designed.
+- [X] T041 [P] [US4] In `backend/tests/test_vwap_pullback.py`: update the existing tests (the only ones referencing the removed knobs) to construct `VwapPullbackConfig` without them, asserting the hardcoded VWAP + prior-bar confirmations still gate entries (behavior unchanged).
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] In `backend/src/intraday_trade_spy/config.py`: delete `VwapPullbackConfirmationConfig`, the `confirmation` field, and `min_minutes_after_open`. (Makes T040 pass.)
-- [ ] T043 [US4] In `backend/config/config.yaml`: remove the `min_minutes_after_open` and `confirmation:` lines from `strategy.vwap_pullback`. [config — exempt] (With T041, confirms identical behavior.)
+- [X] T042 [US4] In `backend/src/intraday_trade_spy/config.py`: delete `VwapPullbackConfirmationConfig`, the `confirmation` field, and `min_minutes_after_open`. (Makes T040 pass.)
+- [X] T043 [US4] In `backend/config/config.yaml`: remove the `min_minutes_after_open` and `confirmation:` lines from `strategy.vwap_pullback`. [config — exempt] (With T041, confirms identical behavior.)
 
 **Checkpoint**: Zero parsed-but-ignored knobs remain.
 
