@@ -24,7 +24,7 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T003 [P] Author migration `backend/db/migrations/0110_validation_studies.sql` (table + CHECKs + `(user_id, created_at DESC)` index + owner RLS) per data-model §A1.
 - [X] T004 [P] Author migration `backend/db/migrations/0111_runs_study_columns.sql` (ADD nullable `study_id` FK / `segment` CHECK / `window_index` + partial index) per data-model §A2.
 - [ ] T005 [P] Author migration `backend/db/migrations/0113_push_run_finalize_study.sql` updating the `push_run` / `push_run_finalize` RPCs (see migrations 0052/0053) to read and write `study_id`/`segment`/`window_index` from the payload.
-- [ ] T006 Apply migrations 0110, 0111, 0113 to Supabase via direct psycopg + `SUPABASE_DB_URL` (sandbox: use `dangerouslyDisableSandbox` if blocked); verify columns/tables exist.
+- [X] T006 Apply migrations 0110, 0111, 0113 to Supabase via direct psycopg + `SUPABASE_DB_URL` (sandbox: use `dangerouslyDisableSandbox` if blocked); verify columns/tables exist.
 
 ---
 
@@ -49,8 +49,8 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 ### Storage & cloud models
 
-- [ ] T013 [P] Failing test: `ValidationStudyRow` / `LockboxLedgerRow` models + `RunRow` study fields validate/serialize in `backend/tests/storage/test_models_payload.py`.
-- [ ] T014 Add `ValidationStudyRow`, `LockboxLedgerRow` and `study_id`/`segment`/`window_index` to `RunRow` in `backend/src/intraday_trade_spy/storage/models.py`.
+- [X] T013 [P] Failing test: `ValidationStudyRow` / `LockboxLedgerRow` models + `RunRow` study fields validate/serialize in `backend/tests/storage/test_models_payload.py`.
+- [X] T014 Add `ValidationStudyRow`, `LockboxLedgerRow` and `study_id`/`segment`/`window_index` to `RunRow` in `backend/src/intraday_trade_spy/storage/models.py`.
 - [ ] T015 Failing test: study CRUD (`create_study`, `get_study`, `list_studies`, `update_study_progress`, `finalize_study`), `list_runs_by_study`, and `insert_queued_run` carrying study tags in `backend/tests/storage/test_client_studies.py`.
 - [ ] T016 Implement study CRUD + study-tag threading (insert_queued_run / push payload) in `backend/src/intraday_trade_spy/storage/client.py`.
 

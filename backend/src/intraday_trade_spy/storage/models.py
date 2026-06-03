@@ -186,6 +186,12 @@ class RunRow(_Base):
     data_fingerprint: str
     app_version: str
     is_favorite: bool = False
+    # Feature 011: a run may be a child of a validation study. All optional so
+    # standalone runs are unchanged (study_id NULL = standalone). segment is left
+    # NULL for a combined train+validation evaluation (analyze finding I3).
+    study_id: Optional[UUID] = None
+    segment: Optional[Literal["train", "validation", "lockbox"]] = None
+    window_index: Optional[int] = Field(default=None, ge=0)
     created_at: datetime = Field(default_factory=_utcnow)
 
     @model_validator(mode="after")
@@ -193,6 +199,43 @@ class RunRow(_Base):
         if self.range_end < self.range_start:
             raise ValueError("range_end must be >= range_start")
         return self
+
+
+# ---------- validation studies (Feature 011) ----------
+
+class ValidationStudyRow(_Base):
+    """Mirrors `validation_studies` (migration 0110). Parent of many child runs.
+    `kind` excludes 'lockbox' — a lockbox one-shot is a single child run recorded
+    in `lockbox_ledger`, not a study (analyze finding I1)."""
+
+    id: UUID
+    user_id: UUID
+    kind: Literal["walk_forward", "sensitivity"]
+    status: Literal["queued", "running", "finished", "failed"] = "queued"
+    status_updated_at: datetime = Field(default_factory=_utcnow)
+    params: dict = Field(default_factory=dict)
+    progress_completed: int = Field(default=0, ge=0)
+    progress_total: int = Field(default=0, ge=0)
+    result: Optional[dict] = None
+    failure_reason: Optional[str] = None
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class LockboxLedgerRow(_Base):
+    """Mirrors `lockbox_ledger` (migration 0112). Append-only: a row is never
+    updated to overwrite a result. State is derived from the latest row for a
+    (user, lockbox range)."""
+
+    id: UUID
+    user_id: UUID
+    lockbox_start: date
+    lockbox_end: date
+    config_fingerprint: str
+    run_id: UUID
+    result: dict = Field(default_factory=dict)
+    state: Literal["spent", "burned"]
+    override: bool = False
+    created_at: datetime = Field(default_factory=_utcnow)
 
 
 # ---------- trades ----------
