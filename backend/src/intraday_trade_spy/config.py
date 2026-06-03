@@ -97,8 +97,21 @@ class RiskConfig(BaseModel):
 class BrokerConfig(BaseModel):
     provider: Literal["paper"] = "paper"
     live_auto_enabled: Literal[False] = False
+    # Feature 010: costs are applied to every fill. Alpaca equities are
+    # commission-free (fees 0); slippage is a fixed adverse amount per share
+    # applied on both entry and exit. Non-zero default => net-of-cost by default.
     fees_per_share: float = 0.0
-    slippage_per_share: float = 0.0
+    slippage_per_share: float = 0.01
+
+
+class MetricsConfig(BaseModel):
+    """Feature 010: governs the risk-adjusted + significance metrics so no
+    magic numbers live in source."""
+
+    trading_days_per_year: int = 252
+    risk_free_rate: float = 0.0
+    win_rate_ci_confidence: float = 0.95
+    low_confidence_trade_count: int = 30
 
 
 class AlpacaConfig(BaseModel):
@@ -115,6 +128,7 @@ class Config(BaseModel):
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     risk: RiskConfig = Field(default_factory=RiskConfig)
     broker: BrokerConfig = Field(default_factory=BrokerConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     alpaca: AlpacaConfig = Field(default_factory=AlpacaConfig)
 
 

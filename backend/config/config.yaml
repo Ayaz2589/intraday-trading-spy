@@ -65,8 +65,24 @@ risk:
 broker:
   provider: paper
   live_auto_enabled: false
+  # Feature 010 (honest backtest): costs are applied to every fill so PnL is
+  # net. Alpaca equities are commission-free -> fees 0. Slippage is a fixed
+  # adverse amount per share (one cent ~ half-to-full top-of-book SPY spread),
+  # applied on both entry and exit. Set both to 0.0 for a zero-cost baseline.
   fees_per_share: 0.0
-  slippage_per_share: 0.0
+  slippage_per_share: 0.01
+
+# Backtest metrics (Feature 010). Governs the risk-adjusted + significance
+# figures so no magic numbers live in source.
+metrics:
+  # Annualization factor for daily-return Sharpe/Sortino (NYSE trading days).
+  trading_days_per_year: 252
+  # Risk-free rate used in Sharpe/Sortino (0 for an intraday, cash strategy).
+  risk_free_rate: 0.0
+  # Confidence level for the Wilson win-rate confidence interval.
+  win_rate_ci_confidence: 0.95
+  # Results with fewer trades than this are flagged as statistically noisy.
+  low_confidence_trade_count: 30
 
 # Cloud-push knobs (Feature 005). Used when --push-to-supabase is set.
 cloud:

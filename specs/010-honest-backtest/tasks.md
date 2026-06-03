@@ -22,8 +22,8 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 ## Phase 1: Setup (Shared, TDD-exempt artifacts)
 
-- [ ] T001 [P] In `backend/config/config.yaml`: set `broker.slippage_per_share: 0.01` (fees stay `0.0`) and add a new `metrics:` block (`trading_days_per_year: 252`, `risk_free_rate: 0.0`, `win_rate_ci_confidence: 0.95`, `low_confidence_trade_count: 30`). [config — exempt]
-- [ ] T002 [P] Create a deterministic cost fixture under `backend/tests/fixtures/cost_fixture_spy_5m.csv` (a handful of bars producing a known, hand-countable set of trades) plus a sibling `cost_fixture_expected.md` recording expected gross/fees/slippage/net PnL for SC-002. [fixture data — exempt]
+- [X] T001 [P] In `backend/config/config.yaml`: set `broker.slippage_per_share: 0.01` (fees stay `0.0`) and add a new `metrics:` block (`trading_days_per_year: 252`, `risk_free_rate: 0.0`, `win_rate_ci_confidence: 0.95`, `low_confidence_trade_count: 30`). [config — exempt] ✅
+- [X] T002 [P] **Reuse** the existing golden fixture `backend/tests/fixtures/spy_5m_sample.csv` (3 trades, qty 44 each — deterministic) instead of a redundant CSV; record the exact expected gross/fees/slippage/net PnL in `backend/tests/fixtures/cost_fixture_expected.md` for SC-002 (total slippage = 0.01×44×2×3 = $2.64, fees $0). [fixture data — exempt] ✅
 
 ---
 
@@ -31,10 +31,10 @@ description: "Task list for Feature 010 — Make the Backtest Honest"
 
 **⚠️ CRITICAL**: Config + data-model definitions all stories build on. No story work begins until this phase is complete.
 
-- [ ] T003 In `backend/tests/test_config.py`: add FAILING tests asserting `MetricsConfig` parses the new `metrics` block with the documented defaults and that `BrokerConfig.slippage_per_share` defaults to `0.01`.
-- [ ] T004 In `backend/src/intraday_trade_spy/config.py`: add `MetricsConfig` model, add `metrics: MetricsConfig` to `Config`, and update `BrokerConfig.slippage_per_share` default to `0.01`. (Makes T003 pass.)
-- [ ] T005 In `backend/tests/test_models.py`: add FAILING tests for new fields — `Position`/`JournalEntry` cost fields (`gross_pnl`, `fees`, `slippage_cost`), `SummaryMetrics` new metric fields (expectancy_r/$, sharpe, sortino, max_drawdown_dollars/_pct, distribution, CI bounds, low_confidence, equity_curve, *_buckets), and the new `EquityPoint` + `Bucket` value objects (defaults `None`, serialization round-trip).
-- [ ] T006 In `backend/src/intraday_trade_spy/models.py`: add the cost fields to `Position` and `JournalEntry`; add the new metric fields to `SummaryMetrics`; add frozen `EquityPoint` and `Bucket` `BaseModel`s. (Makes T005 pass; population happens per-story.)
+- [X] T003 In `backend/tests/test_config.py`: add FAILING tests asserting `MetricsConfig` parses the new `metrics` block with the documented defaults and that `BrokerConfig.slippage_per_share` defaults to `0.01`. ✅
+- [X] T004 In `backend/src/intraday_trade_spy/config.py`: add `MetricsConfig` model, add `metrics: MetricsConfig` to `Config`, and update `BrokerConfig.slippage_per_share` default to `0.01`. (Makes T003 pass.) ✅
+- [X] T005 In `backend/tests/test_models.py`: add FAILING tests for new fields — `Position`/`JournalEntry` cost fields (`gross_pnl`, `fees`, `slippage_cost`), `SummaryMetrics` new metric fields (expectancy_r/$, sharpe, sortino, max_drawdown_dollars/_pct, distribution, CI bounds, low_confidence, equity_curve, *_buckets), and the new `EquityPoint` + `Bucket` value objects (defaults `None`, serialization round-trip). ✅
+- [X] T006 In `backend/src/intraday_trade_spy/models.py`: add the cost fields to `Position` and `JournalEntry`; add the new metric fields to `SummaryMetrics`; add frozen `EquityPoint` and `Bucket` `BaseModel`s. (Makes T005 pass; population happens per-story.) ✅
 
 **Checkpoint**: Config + models ready — story phases can begin.
 

@@ -37,3 +37,33 @@ def test_rejects_live_auto_enabled():
     bad["broker"] = {"provider": "paper", "live_auto_enabled": True}
     with pytest.raises(ValidationError):
         Config.model_validate(bad)
+
+
+# ---------- Feature 010: honest-backtest config ----------
+
+
+def test_broker_cost_defaults_are_net_of_cost():
+    """T003/SC-007: shipped defaults make backtests net-of-cost out of the box —
+    commission-free fees but a non-zero per-share slippage."""
+    from intraday_trade_spy.config import BrokerConfig
+
+    bc = BrokerConfig()
+    assert bc.fees_per_share == 0.0
+    assert bc.slippage_per_share == 0.01
+
+
+def test_metrics_config_defaults():
+    """T003: MetricsConfig carries the documented defaults (no magic numbers
+    in source)."""
+    cfg = Config.model_validate(_minimal_market_data())
+    assert cfg.metrics.trading_days_per_year == 252
+    assert cfg.metrics.risk_free_rate == 0.0
+    assert cfg.metrics.win_rate_ci_confidence == 0.95
+    assert cfg.metrics.low_confidence_trade_count == 30
+
+
+def test_default_config_yaml_loads_metrics_block(default_config_path):
+    """T003: the shipped config.yaml metrics block parses."""
+    cfg = load_config(default_config_path)
+    assert cfg.metrics.trading_days_per_year == 252
+    assert cfg.broker.slippage_per_share == 0.01

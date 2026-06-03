@@ -93,6 +93,12 @@ class Position(BaseModel):
     realized_pnl: float | None = None
     realized_r: float | None = None
     same_bar_tiebreak: Literal["none", "stop_first"] = "none"
+    # Feature 010 (honest backtest): cost transparency. `realized_pnl` is the
+    # NET figure (gross − fees); these break it down. Slippage is already baked
+    # into entry/exit fill prices; `slippage_cost` reports its dollar magnitude.
+    gross_pnl: float | None = None
+    fees: float | None = None
+    slippage_cost: float | None = None
 
 
 class JournalEntry(BaseModel):
@@ -120,6 +126,11 @@ class JournalEntry(BaseModel):
     reason: str
     rejection_check: str | None = None
     same_bar_tiebreak: Literal["none", "stop_first"] | None = None
+    # Feature 010: per-trade cost breakdown (constitution VII). realized_pnl is
+    # net; these explain the deduction in the journal and CSV export.
+    gross_pnl: float | None = None
+    fees: float | None = None
+    slippage_cost: float | None = None
 
 
 class DataFingerprint(BaseModel):
@@ -129,6 +140,27 @@ class DataFingerprint(BaseModel):
     earliest_timestamp: AwareDatetime
     latest_timestamp: AwareDatetime
     session_count: int
+
+
+class EquityPoint(BaseModel):
+    """Feature 010: one point on the net-PnL equity curve. The seed point has a
+    null timestamp and equals the starting account value."""
+
+    model_config = ConfigDict(frozen=True)
+    timestamp: AwareDatetime | None = None
+    equity: float
+    cumulative_net_pnl: float
+
+
+class Bucket(BaseModel):
+    """Feature 010: per-bucket performance (hour-of-day / weekday / month)."""
+
+    model_config = ConfigDict(frozen=True)
+    key: str
+    trade_count: int
+    net_pnl_dollars: float
+    win_rate: float | None = None
+    expectancy_r: float | None = None
 
 
 class SummaryMetrics(BaseModel):
@@ -149,6 +181,29 @@ class SummaryMetrics(BaseModel):
     longest_consecutive_loss_streak: int
     rejected_signal_count: int
     rejection_breakdown: dict[str, int] = Field(default_factory=dict)
+    # ---- Feature 010 (honest backtest): net cost aggregates ----
+    total_net_pnl_dollars: float = 0.0
+    total_fees_dollars: float = 0.0
+    total_slippage_dollars: float = 0.0
+    # ---- edge-quality metrics (computed over net results) ----
+    expectancy_r: float | None = None
+    expectancy_dollars: float | None = None
+    sharpe: float | None = None
+    sortino: float | None = None
+    max_drawdown_dollars: float = 0.0
+    max_drawdown_pct: float | None = None
+    return_median_dollars: float | None = None
+    return_std_dollars: float | None = None
+    return_skew: float | None = None
+    # ---- significance ----
+    win_rate_ci_low: float | None = None
+    win_rate_ci_high: float | None = None
+    low_confidence: bool = False
+    # ---- equity curve + per-bucket breakdown ----
+    equity_curve: list[EquityPoint] = Field(default_factory=list)
+    hour_buckets: list[Bucket] = Field(default_factory=list)
+    weekday_buckets: list[Bucket] = Field(default_factory=list)
+    month_buckets: list[Bucket] = Field(default_factory=list)
 
 
 class BacktestRun(BaseModel):
