@@ -27,6 +27,13 @@ def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
     # field reads (via total_pnl_dollars) — previously never produced, so PnL
     # always showed $0.
     total_pnl_dollars = sum(r.realized_pnl for r in completed if r.realized_pnl is not None)
+    # Feature 010: realized_pnl is NET of costs. Surface the net total under an
+    # explicit name plus the cost components that produced it.
+    total_net_pnl_dollars = total_pnl_dollars
+    total_fees_dollars = sum(r.fees for r in completed if r.fees is not None)
+    total_slippage_dollars = sum(
+        r.slippage_cost for r in completed if r.slippage_cost is not None
+    )
 
     pf: float | None = None
     if wins and losses:
@@ -65,6 +72,9 @@ def compute_summary(rows: list[JournalEntry]) -> SummaryMetrics:
         average_r=avg_r,
         total_r=total_r,
         total_pnl_dollars=total_pnl_dollars,
+        total_net_pnl_dollars=total_net_pnl_dollars,
+        total_fees_dollars=total_fees_dollars,
+        total_slippage_dollars=total_slippage_dollars,
         profit_factor=pf,
         max_drawdown_r=max_dd,
         best_trade_r=best,
