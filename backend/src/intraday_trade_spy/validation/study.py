@@ -20,9 +20,12 @@ from __future__ import annotations
 
 import pandas as pd
 
+from collections.abc import Callable
+
 from intraday_trade_spy.config import WalkForwardConfig
-from intraday_trade_spy.models import WalkForwardResult
+from intraday_trade_spy.models import SensitivitySurface, WalkForwardResult
 from intraday_trade_spy.validation.split import Segments
+from intraday_trade_spy.validation.sweep import run_sensitivity
 from intraday_trade_spy.validation.walk_forward import run_walk_forward
 
 
@@ -60,3 +63,45 @@ def run_walk_forward_study(
         result=result.model_dump(mode="json"),
     )
     return result
+
+
+def run_sensitivity_study(
+    *,
+    study_id,
+    grid: list[dict],
+    metric: str,
+    segment: str,
+    evaluate_point: Callable[[dict], object],
+    storage,
+) -> SensitivitySurface:
+    """Run a parameter-sensitivity study: evaluate each grid point (a config
+    override) over the chosen segment, reporting progress, then persist the
+    surface. `evaluate_point(coords) -> result` is injected (the lifecycle builds
+    the config + engine per point); unit-tested with a stub."""
+    storage.update_validation_study(study_id=study_id, status="running")
+    completed = 0
+
+    def evaluate(coords: dict):
+        nonlocal completed
+        result = evaluate_point(coords)
+        completed += 1
+        storage.update_validation_study(study_id=study_id, progress_completed=completed)
+        return result
+
+    try:
+        surface = run_sensitivity(
+            grid=grid, metric=metric, segment=segment, evaluate=evaluate
+        )
+    except Exception as exc:
+        storage.update_validation_study(
+            study_id=study_id, status="failed", failure_reason=str(exc)
+        )
+        raise
+
+    storage.update_validation_study(
+        study_id=study_id,
+        status="finished",
+        progress_completed=completed,
+        result=surface.model_dump(mode="json"),
+    )
+    return surface

@@ -31,12 +31,20 @@ def start_study_endpoint(
     user_id: UUID = Depends(auth_user_id),
     storage_client=Depends(get_storage_client),
 ) -> StartStudyResponse:
+    if body.kind == "sensitivity":
+        params = {
+            "grid": body.grid,
+            "metric": body.metric,
+            "segment": body.segment or "train",
+        }
+    else:
+        params = {"walk_forward": body.walk_forward} if body.walk_forward else {}
     try:
         study_id, planned = start_study(
             user_id=user_id,
             kind=body.kind,
             config_name=body.config_name,
-            params={"walk_forward": body.walk_forward} if body.walk_forward else {},
+            params=params,
             confirm_large=body.confirm_large,
             storage=storage_client,
             background_tasks=background_tasks,

@@ -45,6 +45,47 @@ def test_launch_walk_forward_returns_202_and_planned(unit_client, stub_storage_c
     stub_storage_client.insert_validation_study.assert_called_once()
 
 
+def test_launch_sensitivity_returns_202_and_planned(unit_client, stub_storage_client):
+    stub_storage_client.get_config_by_name.return_value = {"params": {}}
+    resp = unit_client.post(
+        "/api/validation/studies",
+        json={
+            "kind": "sensitivity",
+            "config_name": "default",
+            "grid": [{"knob": "strategy.vwap_pullback.target.risk_reward", "values": [1.5, 2.0, 2.5]}],
+        },
+    )
+    assert resp.status_code == 202, resp.text
+    assert resp.json()["planned_evaluations"] == 3
+
+
+def test_launch_sensitivity_three_dims_rejected(unit_client, stub_storage_client):
+    stub_storage_client.get_config_by_name.return_value = {"params": {}}
+    resp = unit_client.post(
+        "/api/validation/studies",
+        json={
+            "kind": "sensitivity",
+            "config_name": "default",
+            "grid": [
+                {"knob": "a", "values": [1]},
+                {"knob": "b", "values": [1]},
+                {"knob": "c", "values": [1]},
+            ],
+        },
+    )
+    # ≥3-D is a business-rule rejection (raise_validation_error → 400), distinct
+    # from a malformed-schema 422.
+    assert resp.status_code == 400
+
+
+def test_launch_sensitivity_requires_grid(unit_client, stub_storage_client):
+    stub_storage_client.get_config_by_name.return_value = {"params": {}}
+    resp = unit_client.post(
+        "/api/validation/studies", json={"kind": "sensitivity", "config_name": "default"}
+    )
+    assert resp.status_code == 422  # schema: grid required for sensitivity
+
+
 def test_launch_unknown_config_returns_404(unit_client, stub_storage_client):
     stub_storage_client.get_config_by_name.return_value = None
     resp = unit_client.post(

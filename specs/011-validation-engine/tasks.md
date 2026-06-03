@@ -100,12 +100,12 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 **Independent Test**: launch a 2-D sensitivity study; confirm the heatmap renders the metric per grid point and the large-grid guard trips without `confirm_large` (SC-003).
 
-- [ ] T036 [P] [US2] Failing test: grid enumeration (1-D/2-D Cartesian, ≥3-D rejected, empty values rejected) + planned-count in `backend/tests/validation/test_sweep.py`.
-- [ ] T037 [US2] Implement `backend/src/intraday_trade_spy/validation/sweep.py` (grid → per-point evaluations over a segment; dotted-knob override).
-- [ ] T038 [P] [US2] Failing test: `SensitivityPoint`/`SensitivitySurface` models in `backend/tests/test_models.py`.
-- [ ] T039 [US2] Add `SensitivityPoint`/`SensitivitySurface` to `backend/src/intraday_trade_spy/models.py` (per data-model §B2).
-- [ ] T040 [US2] Failing test: `POST /api/validation/studies kind=sensitivity` (grid + metric, `confirm_large` over threshold, ≥3-D 422) in `backend/tests/api/test_validation_api.py`.
-- [ ] T041 [US2] Implement the sensitivity launch path in `api/routers/validation.py` + `grid`/`metric` request fields; wire orchestrator.
+- [X] T036 [P] [US2] Failing test: grid enumeration (1-D/2-D Cartesian, ≥3-D rejected, empty values rejected) + planned-count in `backend/tests/validation/test_sweep.py`.
+- [X] T037 [US2] Implement `backend/src/intraday_trade_spy/validation/sweep.py` (grid → per-point evaluations over a segment; dotted-knob override).
+- [X] T038 [P] [US2] Failing test: `SensitivityPoint`/`SensitivitySurface` models in `backend/tests/test_models.py`.
+- [X] T039 [US2] Add `SensitivityPoint`/`SensitivitySurface` to `backend/src/intraday_trade_spy/models.py` (per data-model §B2).
+- [X] T040 [US2] Failing test: `POST /api/validation/studies kind=sensitivity` (grid + metric, `confirm_large` over threshold, ≥3-D 422) in `backend/tests/api/test_validation_api.py`.
+- [X] T041 [US2] Implement the sensitivity launch path in `api/routers/validation.py` + `grid`/`metric` request fields; wire orchestrator.
 - [ ] T042 [P] [US2] Failing test: `sensitivity-surface` heatmap (color scale, 1-D row + 2-D grid, low-confidence cells marked, legend) in `frontend/src/components/validation/sensitivity-surface.test.tsx`.
 - [ ] T043 [US2] Implement `frontend/src/components/validation/sensitivity-surface.tsx` (dependency-free SVG/CSS) + sensitivity mode in `start-study-dialog.tsx` + mount in study-detail.
 - [ ] T044 [P] [US2] Add `HELP_CONTENT` keys `parameter_sensitivity`, `plateau_vs_peak` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `sensitivity-surface.tsx`; assert in its test.

@@ -257,3 +257,21 @@ class WalkForwardResult(BaseModel):
     windows: list[WalkForwardWindowResult]
     mean_oos: dict[str, float | None]
     mean_gap: dict[str, float | None]
+
+
+class SensitivityPoint(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    coords: dict[str, float]          # {dotted_knob_path: value}
+    metric: float | None
+    trade_count: int
+    low_confidence: bool
+    run_id: str
+
+
+class SensitivitySurface(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    metric_name: str
+    knobs: list[str]                  # 1 or 2 dotted paths (axis order)
+    axes: dict[str, list[float]]      # knob -> ordered value list
+    points: list[SensitivityPoint]
+    segment: Literal["train", "validation", "train_validation"]

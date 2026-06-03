@@ -259,12 +259,17 @@ class HealthResponse(_ResponseBase):
 
 
 class StartStudyRequest(_Base):
-    # US1 wires walk_forward; sensitivity (US2) / lockbox (US4) add later.
-    kind: Literal["walk_forward"]
+    # US1 walk_forward + US2 sensitivity; lockbox (US4) uses its own endpoint.
+    kind: Literal["walk_forward", "sensitivity"]
     config_name: str = Field(min_length=1, max_length=200)
-    # Optional walk-forward overrides (mode / train_months / step_months /
+    # walk_forward: optional overrides (mode / train_months / step_months /
     # validation_months); unset → config.yaml defaults.
     walk_forward: Optional[dict] = None
+    # sensitivity: a grid of 1-2 knobs ({knob: dotted.path, values: [...]}), an
+    # optional metric (default from config), and the segment to evaluate over.
+    grid: Optional[list[dict]] = None
+    metric: Optional[str] = None
+    segment: Optional[Literal["train", "validation", "train_validation"]] = None
     # Required true to launch a study whose planned evaluations exceed the
     # configured fan-out guard (no silent unbounded fan-out).
     confirm_large: bool = False
@@ -280,6 +285,12 @@ class StartStudyRequest(_Base):
                 f"forbidden fields not accepted from clients (constitution I/II/V): {sorted(forbidden)}"
             )
         return data
+
+    @model_validator(mode="after")
+    def _kind_requires_fields(self) -> "StartStudyRequest":
+        if self.kind == "sensitivity" and not self.grid:
+            raise ValueError("sensitivity studies require a non-empty `grid`")
+        return self
 
 
 class StartStudyResponse(_ResponseBase):

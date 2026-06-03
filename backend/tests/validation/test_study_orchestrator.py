@@ -78,6 +78,35 @@ def test_orchestrator_runs_progress_and_finalizes():
     assert "mean_oos" in finished["result"]
 
 
+def test_sensitivity_orchestrator_progress_and_finalizes():
+    from intraday_trade_spy.models import SensitivitySurface
+    from intraday_trade_spy.validation.study import run_sensitivity_study
+
+    RR = "strategy.vwap_pullback.target.risk_reward"
+    grid = [{"knob": RR, "values": [1.5, 2.0, 2.5]}]
+    storage = FakeStorage()
+    vals = {1.5: 0.5, 2.0: 2.4, 2.5: 1.1}
+
+    def evaluate_point(coords):
+        s = SimpleNamespace(
+            expectancy_dollars=vals[coords[RR]], total_trades=50, low_confidence=False
+        )
+        return SimpleNamespace(summary=s, run=SimpleNamespace(run_id=f"r{coords[RR]}"))
+
+    surface = run_sensitivity_study(
+        study_id="s2", grid=grid, metric="expectancy_dollars", segment="train",
+        evaluate_point=evaluate_point, storage=storage,
+    )
+    assert isinstance(surface, SensitivitySurface)
+    assert len(surface.points) == 3
+    statuses = [c["status"] for c in storage.calls if c["status"]]
+    assert statuses[0] == "running" and statuses[-1] == "finished"
+    progresses = [c["progress_completed"] for c in storage.calls if c["progress_completed"] is not None]
+    assert max(progresses) == 3
+    finished = [c for c in storage.calls if c["status"] == "finished"][0]
+    assert finished["result"]["metric_name"] == "expectancy_dollars"
+
+
 def test_orchestrator_marks_failed_on_error():
     class BoomEngine:
         def run_df(self, _df):
