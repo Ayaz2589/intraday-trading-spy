@@ -32,4 +32,4 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
-- One deliberate open item carried into `/speckit-clarify` (not a blocking [NEEDS CLARIFICATION]): the **default cost magnitudes** (fees/slippage per share) and the **low-confidence trade-count threshold**. Reasonable defaults are documented in Assumptions so planning can proceed; clarification will firm them up.
+- `/speckit-clarify` (Session 2026-06-03) resolved 4 decisions — default costs ($0 fees + $0.01/sh slippage), dead-knob handling (delete all three), Sharpe/Sortino basis (daily returns, rf=0, ×√252), and the equity base (keep `account_value` 25k; report %+$). Two low-impact items remain at documented defaults (Wilson 95% CI; ~30-trade noise threshold) — settle in planning. No blocking ambiguities remain; ready for `/speckit-plan`.

@@ -14,6 +14,15 @@ Today the backtest measures a fantasy: fills are ideal (no trading costs deducte
 
 This is **Phase 1** of the automated-trading roadmap and a gate: it does not change the *strategy*, only the *measurement* of the strategy.
 
+## Clarifications
+
+### Session 2026-06-03
+
+- Q: What default trading costs should the honest backtest apply per share (adverse on both entry and exit)? → A: $0.00/share fees (Alpaca equities are commission-free) + $0.01/share slippage applied adversely each side.
+- Q: The three parsed-but-ignored knobs (`min_minutes_after_open`, `require_close_above_prior_bar_high`, `require_close_above_vwap`) — implement or delete? → A: Delete all three. Phase 1 is honest measurement, not a strategy change (constitution II); they may return later as a deliberate, separately-validated entry-filter feature.
+- Q: How should the real Sharpe/Sortino ratio be computed (replacing the 0.0 placeholder)? → A: From daily returns (net PnL per trading day as a return on account equity), risk-free = 0, annualized ×√252; Sortino uses downside deviation.
+- Q: What equity base should drawdown-% and the risk-adjusted metrics use, given concern that 25k is unrealistic for eventual small live trading? → A: Keep the existing `risk.account_value` (25,000) as the backtest equity base. Edge metrics (expectancy/R, win rate, Sharpe on % returns, drawdown-%) are scale-invariant under fixed-fractional sizing, and a larger base avoids integer-share-rounding distortion; report drawdown in both % (primary) and $ (illustrative). Absolute live position sizing is a Phase 5 decision, separate from the measurement base.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Net-of-cost backtest results (Priority: P1)
@@ -68,16 +77,17 @@ As the operator, every result I look at should tell me how many trades it is bas
 
 ### User Story 4 - Config that means what it says (Priority: P4)
 
-As the operator, every knob exposed in configuration should actually change backtest behavior, so that when I tune a parameter I can trust the result reflects that change — no silently-ignored dials.
+As the operator, every knob exposed in configuration should actually change backtest behavior, so that when I tune a parameter I can trust the result reflects that change — no silently-ignored dials. The three currently-dead knobs (`min_minutes_after_open`, `require_close_above_prior_bar_high`, `require_close_above_vwap`) are **removed**, not wired up, because Phase 1 fixes the measurement and does not alter the strategy (constitution II).
 
 **Why this priority**: Dead knobs are a correctness/honesty trap independent of costs and metrics — a tuner could "optimize" a knob that does nothing and conclude it matters. Lowest priority because it is the smallest surface, but it must land before any parameter research begins.
 
-**Independent Test**: For each documented strategy knob, vary it and confirm the backtest result changes; any knob that cannot change behavior is removed from configuration entirely.
+**Independent Test**: After this feature, no configuration knob is parsed-but-ignored; for every remaining knob, varying it changes the backtest result. The three dead knobs no longer appear in configuration, and removing them does not change backtest outcomes (they had no effect to begin with).
 
 **Acceptance Scenarios**:
 
-1. **Given** a configuration knob that currently has no effect, **When** this feature is complete, **Then** the knob either demonstrably changes backtest behavior when varied, or no longer exists in configuration.
-2. **Given** the cleaned configuration, **When** I read it, **Then** there are no parameters that are parsed but ignored.
+1. **Given** the three dead knobs (`min_minutes_after_open`, `require_close_above_prior_bar_high`, `require_close_above_vwap`), **When** this feature is complete, **Then** they no longer exist anywhere in configuration or its schema.
+2. **Given** an otherwise-identical config before and after removing the dead knobs, **When** the same backtest runs, **Then** the results are identical (confirming the knobs were truly inert).
+3. **Given** the cleaned configuration, **When** I read it, **Then** there are no parameters that are parsed but ignored.
 
 ---
 
@@ -97,16 +107,16 @@ As the operator, every knob exposed in configuration should actually change back
 
 **Costs (US1)**
 - **FR-001**: The system MUST deduct configured per-share fees on both the entry fill and the exit fill of every executed trade.
-- **FR-002**: The system MUST model configured per-share slippage adversely on both entry and exit (entry filled no better than the reference price, exit filled no better), reducing realized PnL.
-- **FR-003**: The system MUST ship sensible non-zero default cost values so that out-of-the-box backtests are net-of-cost, not zero-cost.
+- **FR-002**: The system MUST model configured per-share slippage adversely on both entry and exit (entry filled no better than the reference price, exit filled no better), reducing realized PnL. Slippage is a fixed adverse amount per share (matching the existing per-share configuration field).
+- **FR-003**: The system MUST ship these default cost values so that out-of-the-box backtests are net-of-cost: **fees = $0.00/share** (the execution broker is commission-free for equities) and **slippage = $0.01/share** applied adversely on each side.
 - **FR-004**: The recorded per-trade PnL MUST be the net figure (gross minus fees minus slippage), and the aggregate PnL MUST be the sum of net per-trade figures.
 - **FR-005**: The system MUST preserve the existing conservative fill assumptions (e.g., same-bar stop-resolves-before-target; force-flat at session close) while layering costs on top of them.
 - **FR-006**: The system MUST record enough cost detail per trade (gross PnL, total fees, total slippage, net PnL) for the journal to explain the deduction (constitution VII — journal everything).
 
 **Metrics (US2)**
 - **FR-007**: The system MUST compute expectancy per trade as (win rate × average win) − (loss rate × |average loss|).
-- **FR-008**: The system MUST compute a genuine Sharpe ratio and a Sortino ratio from the net per-trade return series, replacing the current placeholder.
-- **FR-009**: The system MUST compute maximum drawdown expressed in both dollars and percent.
+- **FR-008**: The system MUST compute a genuine Sharpe ratio and a Sortino ratio, replacing the current placeholder. Both are computed from **daily returns** (net PnL aggregated per trading day, as a return on account equity), with **risk-free rate = 0** and **annualized ×√252**; Sortino uses downside deviation in its denominator.
+- **FR-009**: The system MUST compute maximum drawdown over the equity curve, expressed in both dollars and percent. The equity curve is `risk.account_value` (the configured account base, currently 25,000) plus cumulative net PnL; drawdown-% is the largest peak-to-trough decline divided by the running peak of that curve. Percent figures are the primary (scale-invariant) edge signal; dollar figures are reported as illustrative.
 - **FR-010**: The system MUST compute return-distribution statistics over net per-trade outcomes: median, standard deviation, and skew.
 - **FR-011**: The system MUST produce an equity curve (ordered cumulative net PnL across the trade sequence).
 - **FR-012**: The system MUST produce a per-bucket breakdown of performance by hour-of-day, by weekday, and by month, each bucket reporting at least trade count and aggregate net PnL/expectancy.
@@ -118,7 +128,7 @@ As the operator, every knob exposed in configuration should actually change back
 - **FR-016**: The system MUST visually flag results whose trade count falls below a defined low-confidence threshold as statistically unreliable.
 
 **Config honesty (US4)**
-- **FR-017**: Every configuration knob that is parsed MUST affect behavior; any knob that cannot be made to affect behavior MUST be removed from configuration. Specifically resolves the currently-dead `min_minutes_after_open`, `require_close_above_prior_bar_high`, and `require_close_above_vwap`.
+- **FR-017**: The three currently-dead knobs `min_minutes_after_open`, `require_close_above_prior_bar_high`, and `require_close_above_vwap` MUST be removed from configuration and its schema (not wired up — Phase 1 does not change the strategy). After removal, no configuration knob may be parsed-but-ignored; every remaining knob MUST affect behavior when varied.
 
 **Educational UI (constitution VI)**
 - **FR-018**: Every newly surfaced concept (slippage, fees, expectancy, Sharpe, Sortino, drawdown $/%, return distribution, confidence interval, sample size) MUST ship with an in-context explanation answering: what is this, why does it matter, and how is the app using it.
@@ -148,11 +158,11 @@ As the operator, every knob exposed in configuration should actually change back
 
 ## Assumptions
 
-- **Cost model shape**: slippage is modeled as a fixed adverse amount per share (matching the existing per-share configuration field), not as a spread- or volatility-dependent model. A more sophisticated model is out of scope for Phase 1 and can be revisited later. *(Default cost magnitudes are an open item to firm up in clarification — see below.)*
-- **Default cost magnitudes**: starting assumption is commission-free equity fees (≈ $0.00/share, reflecting the execution broker) plus a conservative non-zero slippage (≈ $0.01/share) so backtests are honestly net-of-cost; exact values to be confirmed in `/speckit-clarify`.
-- **Percent-drawdown base**: drawdown-% is computed against the configured account-equity / starting-capital base already present in configuration; if none is suitable, the smallest defensible base is documented.
-- **Confidence-interval method**: a standard binomial proportion interval (e.g., Wilson) on the win rate at 95% is acceptable; the exact method is an implementation detail.
-- **Low-confidence threshold**: a default trade-count threshold (order of a few dozen trades) flags "noise"; the exact number is a tunable presentation default.
+- **Cost model shape** *(resolved)*: slippage is a fixed adverse amount per share (matching the existing per-share configuration field), not a spread- or volatility-dependent model. A more sophisticated model is out of scope for Phase 1.
+- **Default cost magnitudes** *(resolved in clarification)*: fees = $0.00/share (commission-free equity broker) + slippage = $0.01/share, applied adversely on each side.
+- **Equity base / percent-drawdown base** *(resolved in clarification)*: the existing `risk.account_value` (currently 25,000) is the equity base; equity curve = `account_value` + cumulative net PnL. This base is used for drawdown-% and the daily-return Sharpe/Sortino. Because sizing is fixed-fractional, the %/R edge metrics are ~scale-invariant; absolute live position sizing is deferred to Phase 5.
+- **Confidence-interval method** *(default; not blocking)*: a standard binomial proportion interval (e.g., Wilson) on the win rate at 95%; exact method is an implementation detail to settle in planning.
+- **Low-confidence threshold** *(default; not blocking)*: results with fewer than ~30 trades are flagged as "noise"; the exact number is a tunable presentation default.
 - **Scope guardrails**: SPY-only (constitution I) is unchanged; the strategy still only *suggests* signals and never sizes or places orders (constitution II); no live-trading paths are touched (constitution V). This feature changes measurement and configuration honesty only.
 - **No new data**: relies on the Phase 0 multi-year SIP bar dataset already in place; no data work in this feature.
 - **Reproducibility**: cost parameters become part of the per-run config snapshot so historical runs remain explainable.
