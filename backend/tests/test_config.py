@@ -37,3 +37,67 @@ def test_rejects_live_auto_enabled():
     bad["broker"] = {"provider": "paper", "live_auto_enabled": True}
     with pytest.raises(ValidationError):
         Config.model_validate(bad)
+
+
+# ---------- Feature 010: honest-backtest config ----------
+
+
+def test_broker_cost_defaults_are_net_of_cost():
+    """T003/SC-007: shipped defaults make backtests net-of-cost out of the box —
+    commission-free fees but a non-zero per-share slippage."""
+    from intraday_trade_spy.config import BrokerConfig
+
+    bc = BrokerConfig()
+    assert bc.fees_per_share == 0.0
+    assert bc.slippage_per_share == 0.01
+
+
+def test_metrics_config_defaults():
+    """T003: MetricsConfig carries the documented defaults (no magic numbers
+    in source)."""
+    cfg = Config.model_validate(_minimal_market_data())
+    assert cfg.metrics.trading_days_per_year == 252
+    assert cfg.metrics.risk_free_rate == 0.0
+    assert cfg.metrics.win_rate_ci_confidence == 0.95
+    assert cfg.metrics.low_confidence_trade_count == 30
+
+
+def test_default_config_yaml_loads_metrics_block(default_config_path):
+    """T003: the shipped config.yaml metrics block parses."""
+    cfg = load_config(default_config_path)
+    assert cfg.metrics.trading_days_per_year == 252
+    assert cfg.broker.slippage_per_share == 0.01
+
+
+# ---------- Feature 010 / US4: dead-knob cleanup ----------
+
+
+def test_dead_knobs_removed_from_schema():
+    """T040: the three parsed-but-ignored knobs no longer exist in the config
+    schema, and the confirmation model is gone."""
+    import intraday_trade_spy.config as config_module
+    from intraday_trade_spy.config import VwapPullbackConfig
+
+    cfg = VwapPullbackConfig()
+    assert not hasattr(cfg, "confirmation")
+    assert not hasattr(cfg, "min_minutes_after_open")
+    assert "confirmation" not in VwapPullbackConfig.model_fields
+    assert "min_minutes_after_open" not in VwapPullbackConfig.model_fields
+    assert not hasattr(config_module, "VwapPullbackConfirmationConfig")
+
+
+def test_legacy_knobs_are_ignored_not_applied():
+    """T040: a config that still names the removed knobs parses without error and
+    silently ignores them — they never secretly drive behavior again."""
+    from intraday_trade_spy.config import VwapPullbackConfig
+
+    cfg = VwapPullbackConfig.model_validate(
+        {
+            "min_minutes_after_open": 99,
+            "confirmation": {"require_close_above_vwap": False},
+            "max_distance_from_vwap_pct": 0.25,
+        }
+    )
+    assert not hasattr(cfg, "min_minutes_after_open")
+    assert not hasattr(cfg, "confirmation")
+    assert cfg.max_distance_from_vwap_pct == 0.25  # real knobs still work

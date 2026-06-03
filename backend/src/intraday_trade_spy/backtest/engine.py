@@ -33,7 +33,10 @@ class BacktestEngine:
         )
         self.strategy = VwapPullbackLong(cfg.strategy.vwap_pullback)
         self.risk = RiskManager(cfg, self.clock)
-        self.broker = PaperBroker()
+        self.broker = PaperBroker(
+            fees_per_share=cfg.broker.fees_per_share,
+            slippage_per_share=cfg.broker.slippage_per_share,
+        )
 
     def run(self, *, csv_path: Path, output_dir: Path) -> BacktestResult:
         from intraday_trade_spy.backtest.manifest import build_run
@@ -123,7 +126,11 @@ class BacktestEngine:
                         )
 
         ended = datetime.now(UTC)
-        summary = compute_summary(log.rows())
+        summary = compute_summary(
+            log.rows(),
+            account_value=self.cfg.risk.account_value,
+            metrics_config=self.cfg.metrics,
+        )
         run = build_run(
             csv_path=csv_path, cfg=self.cfg, summary=summary,
             started=started, ended=ended,
@@ -177,6 +184,9 @@ class BacktestEngine:
             exit_reason=pos.exit_reason,
             realized_pnl=pos.realized_pnl,
             realized_r=pos.realized_r,
+            gross_pnl=pos.gross_pnl,
+            fees=pos.fees,
+            slippage_cost=pos.slippage_cost,
             vwap=snap.vwap,
             or_high=snap.or_high,
             or_low=snap.or_low,

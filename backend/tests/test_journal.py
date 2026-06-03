@@ -2,6 +2,8 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from intraday_trade_spy.journal.exporter import write_journal_csv
 from intraday_trade_spy.journal.logger import JournalLogger
 from intraday_trade_spy.models import SignalStatus
@@ -73,3 +75,38 @@ def test_exporter_writes_deterministic_csv(tmp_path: Path):
     assert content.startswith(b"row_seq,timestamp,status,")
     assert b"\r\n" not in content
     assert p1.read_bytes() == p2.read_bytes()
+
+
+# ---------- Feature 010 / US1 (T011a): cost detail is journaled (VII) ----------
+
+
+def test_exit_rows_journal_cost_breakdown(default_config_path, sample_csv_path, tmp_path):
+    """Constitution VII: an EXITED journal row carries the cost breakdown
+    (gross_pnl, fees, slippage_cost) and realized_pnl == gross − fees."""
+    from intraday_trade_spy.backtest.engine import BacktestEngine
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(default_config_path)  # costs on (slippage 0.01)
+    result = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    exits = [r for r in result.journal_rows if r.status.value in ("exited", "force_flat")]
+    assert exits, "fixture should produce at least one exit"
+    for r in exits:
+        assert r.gross_pnl is not None
+        assert r.fees is not None
+        assert r.slippage_cost is not None
+        assert r.realized_pnl == pytest.approx(r.gross_pnl - r.fees, abs=1e-9)
+        assert r.slippage_cost > 0  # default slippage is non-zero
+
+
+def test_csv_export_includes_cost_columns(default_config_path, sample_csv_path, tmp_path):
+    """T011a: the CSV export surfaces the cost columns with values."""
+    from intraday_trade_spy.backtest.engine import BacktestEngine
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(default_config_path)
+    result = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    out = tmp_path / "journal.csv"
+    write_journal_csv(result.journal_rows, out)
+    header = out.read_text().splitlines()[0]
+    for col in ("gross_pnl", "fees", "slippage_cost"):
+        assert col in header

@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { ThemeToggle } from './theme-toggle'
 import { ConnectionStatus } from './connection-status'
 import { SignOutMenu } from './auth/SignOutMenu'
@@ -31,6 +32,16 @@ export function AuthenticatedTopbar({ strategyLabel, configLabel }: Props) {
         ) : null}
       </div>
       <div className="tb-actions">
+        <Link
+          to="/data"
+          data-testid="nav-data"
+          className="text-xs text-muted-foreground"
+          style={{ textDecoration: 'none', fontWeight: 600 }}
+          activeProps={{ style: { color: 'var(--text)' } }}
+        >
+          Data
+        </Link>
+        <span className="tb-div" />
         <StrategyConfigDropdown />
         <span className="tb-div" />
         <ConnectionStatus />

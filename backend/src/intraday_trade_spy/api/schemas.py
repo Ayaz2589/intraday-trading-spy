@@ -99,10 +99,22 @@ class RunSummaryView(_ResponseBase):
     pnl: Decimal = Decimal("0")
     win_rate: float = 0.0
     sharpe: float = 0.0
-    max_drawdown: Decimal = Decimal("0")
+    max_drawdown: Decimal = Decimal("0")  # legacy R units (Feature 010 / I1)
     total_trades: int = 0
     total_signals: int = 0
     rejected_signals: int = 0
+    # Feature 010 (honest backtest): new scalar metrics; default safely so
+    # pre-010 rows still deserialize.
+    sortino: float = 0.0
+    expectancy: float = 0.0
+    expectancy_dollars: Decimal = Decimal("0")
+    max_drawdown_dollars: Decimal = Decimal("0")
+    max_drawdown_pct: float = 0.0
+    total_fees: Decimal = Decimal("0")
+    total_slippage: Decimal = Decimal("0")
+    low_confidence: bool = False
+    win_rate_ci_low: float = 0.0
+    win_rate_ci_high: float = 0.0
 
 
 class RunView(_ResponseBase):

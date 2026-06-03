@@ -15,6 +15,7 @@ import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignInCallbackRouteImport } from './routes/sign-in/callback'
 import { Route as AuthenticatedStrategiesRouteImport } from './routes/_authenticated.strategies'
 import { Route as AuthenticatedRunsRouteImport } from './routes/_authenticated.runs'
+import { Route as AuthenticatedDataRouteImport } from './routes/_authenticated.data'
 import { Route as AuthenticatedRunsRunIdRouteImport } from './routes/_authenticated.runs_.$runId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -46,6 +47,11 @@ const AuthenticatedRunsRoute = AuthenticatedRunsRouteImport.update({
   path: '/runs',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDataRoute = AuthenticatedDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedRunsRunIdRoute = AuthenticatedRunsRunIdRouteImport.update({
   id: '/runs_/$runId',
   path: '/runs/$runId',
@@ -54,6 +60,7 @@ const AuthenticatedRunsRunIdRoute = AuthenticatedRunsRunIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/data': typeof AuthenticatedDataRoute
   '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
   '/sign-in/callback': typeof SignInCallbackRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/data': typeof AuthenticatedDataRoute
   '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
   '/sign-in/callback': typeof SignInCallbackRoute
@@ -72,6 +80,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/_authenticated/data': typeof AuthenticatedDataRoute
   '/_authenticated/runs': typeof AuthenticatedRunsRoute
   '/_authenticated/strategies': typeof AuthenticatedStrategiesRoute
   '/sign-in/callback': typeof SignInCallbackRoute
@@ -82,6 +91,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/data'
     | '/runs'
     | '/strategies'
     | '/sign-in/callback'
@@ -90,6 +100,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/data'
     | '/runs'
     | '/strategies'
     | '/sign-in/callback'
@@ -99,6 +110,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/_authenticated/data'
     | '/_authenticated/runs'
     | '/_authenticated/strategies'
     | '/sign-in/callback'
@@ -157,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRunsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/data': {
+      id: '/_authenticated/data'
+      path: '/data'
+      fullPath: '/data'
+      preLoaderRoute: typeof AuthenticatedDataRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/runs_/$runId': {
       id: '/_authenticated/runs_/$runId'
       path: '/runs/$runId'
@@ -168,12 +187,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedDataRoute: typeof AuthenticatedDataRoute
   AuthenticatedRunsRoute: typeof AuthenticatedRunsRoute
   AuthenticatedStrategiesRoute: typeof AuthenticatedStrategiesRoute
   AuthenticatedRunsRunIdRoute: typeof AuthenticatedRunsRunIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedDataRoute: AuthenticatedDataRoute,
   AuthenticatedRunsRoute: AuthenticatedRunsRoute,
   AuthenticatedStrategiesRoute: AuthenticatedStrategiesRoute,
   AuthenticatedRunsRunIdRoute: AuthenticatedRunsRunIdRoute,

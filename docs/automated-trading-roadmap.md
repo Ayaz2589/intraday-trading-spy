@@ -2,7 +2,7 @@
 
 > From a deterministic backtester to **validated, mostly-automated paper/live trading** — without fooling ourselves into trading a curve-fit illusion with real money.
 
-**Status:** living document · **Audience:** us (builder/operator) · **Last grounded against code:** 2026-06-02
+**Status:** living document · **Audience:** us (builder/operator) · **Last grounded against code:** 2026-06-03
 
 ---
 
@@ -97,6 +97,7 @@ A grounded snapshot from a full pass over the codebase.
 | FastAPI service + React UI (runs list, detail, chart, replay, journal) | ✅ | `api/`, `frontend/src/` |
 | Journal of executions **and** rejections (first-class) | ✅ | `journal/`, `signals` table |
 | Direct DB access for migrations (psycopg + `SUPABASE_DB_URL`) | ✅ (just set up) | `backend/.env`, baked into image |
+| **Multi-year SIP bar data** (164,918 bars, 2018→2026) + idempotent backfill + per-regime coverage | ✅ (Phase 0) | `data/alpaca_source.py`, `data/bar_source.py`, `scripts/backfill_bars.py`, `api/routers/bars.py` |
 
 ### What is deliberately NOT there (the gaps this roadmap fills)
 
@@ -104,7 +105,7 @@ A grounded snapshot from a full pass over the codebase.
 |---|---|---|
 | **Costs/slippage applied to fills** — `broker.fees_per_share`/`slippage_per_share` exist in config but are **never applied** | Every backtest PnL is overstated; intraday edge unproven | 1 |
 | **Real metrics** — `summary.sharpe` is a placeholder `0.0`; no expectancy, no trade distribution, no per-regime breakdown | Can't judge edge quality or significance | 1 |
-| **Multi-year, multi-regime data** — yfinance only returns ~**60 days** of intraday history; no bulk backfill; no `bars(bar_start)` index | Can't get a statistically meaningful sample; can't test across regimes | 0 |
+| ~~**Multi-year, multi-regime data**~~ — ✅ **DONE (Phase 0):** 164,918 Alpaca SIP bars 2018→2026, 4 regimes covered, `bars(bar_start)` index, in-app + CLI backfill | ~~Can't get a statistically meaningful sample~~ — now ~3,926 trades/full-span backtest | 0 ✅ |
 | **Walk-forward / out-of-sample / lockbox split** | No way to distinguish edge from overfitting | 2 |
 | **Significance / robustness tooling** (confidence intervals, parameter-plateau/sensitivity, permutation tests) | No defense against fitting noise | 2 |
 | **Aggregation/insights API** (query across runs) | Can't analyze "this config over these periods" | 2 |
@@ -113,7 +114,7 @@ A grounded snapshot from a full pass over the codebase.
 | **`docs/PAPER_TRADING.md` live-readiness gate** (constitution-required) | Live trading is constitutionally blocked until authored | 5 |
 | Dead config knobs (`min_minutes_after_open`, `confirmation.*`) defined but unused | Misleading UI/config | 1 (cleanup) |
 
-> **Dead-honest one-liner:** today we have an excellent, reproducible *backtest viewer*. We have **no** evidence of edge (zero costs, tiny samples, no out-of-sample), and **no** execution path to a broker. That's fine — it's exactly where the build order says we should be.
+> **Dead-honest one-liner (updated 2026-06-03):** Phase 0 cleared the sample-size blocker — we now have ~8 years of consolidated multi-regime data and backtests producing thousands of trades. But we *still* have **no evidence of edge**: results are **zero-cost** (slippage/fees not yet applied — Phase 1) and **not out-of-sample** (Phase 2), and there's **no execution path to a broker** (Phase 3). A 3,926-trade backtest at +$3,793 means nothing until it's net-of-cost and validated. That's fine — it's exactly where the build order says we should be.
 
 ---
 
@@ -125,23 +126,27 @@ Each phase is a **gate**: you do not advance until its exit criteria are met. Ef
 
 ### Phase 0 — Data foundation
 
+> **Status: ✅ DONE (2026-06-03)** — gate met. Backfilled **164,918 Alpaca SIP 5-min bars, 2018-01-02 → 2026-06-02**; all four regimes 100% covered; a full-span default backtest now produces **3,926 trades** (was ~6). Shipped on branch `009-data-foundation` (Spec Kit feature `009`).
+
 **Goal:** enough clean, multi-regime SPY 5-min history that a single backtest produces **hundreds–thousands** of trades, not six.
 
-**Why:** every number downstream is meaningless without sample size and regime coverage. This is the current hard blocker.
+**Why:** every number downstream is meaningless without sample size and regime coverage. This *was* the hard blocker — now cleared.
 
 **Current state:** Source is **yfinance**, which only serves ~60 calendar days of intraday data (`data/downloader.py` chunks at `MAX_CHUNK_DAYS=60`; `lifecycle.py` materializes from the shared `bars` cache and auto-fetches missing recent days). Anything older than ~60 days can't be fetched and isn't cached. The `bars` table (`0007_bars.sql`) is keyed `UNIQUE(bar_start, source)` and has the `source` column ready for a second provider — but there's **no index on `bar_start` alone** and **no bulk-backfill tool**.
 
 **Build:**
-- [ ] Add **Alpaca market-data** as a bar source (`data/` — mirror the `downloader` interface; `source='alpaca'`). Alpaca serves years of minute bars in larger windows and is the same vendor we'll trade through. Add `ALPACA_API_KEY`/`ALPACA_SECRET_KEY` to `.env.example`.
-- [ ] **Bulk backfill** CLI/endpoint: loop windows from e.g. 2018→present, upsert into `bars` (idempotent via the unique key). Target multiple regimes: 2020 vol, 2021 bull, 2022 bear, 2023–24 chop/trend.
-- [ ] `CREATE INDEX ON bars (bar_start)` (range queries currently scan).
-- [ ] Surface **data coverage** in the UI (`/api/bars/coverage` already exists) so we always know what span/regimes we're testing on.
+- [x] Add **Alpaca market-data** as a bar source (`data/alpaca_source.py`, behind a `BarSource` protocol; `source='alpaca'`). Using **SIP** (consolidated) via Algo Trader Plus → no IEX volume/VWAP-fidelity gap. `ALPACA_*` in `.env.example`.
+- [x] **Bulk backfill** — in-app background job (`POST /api/bars/backfill`) + CLI (`scripts/backfill_bars.py`); idempotent upserts; one bar per timestamp on read (prefer Alpaca over yfinance).
+- [x] `CREATE INDEX ON bars (bar_start)` (migration `0093`). Also **fixed a latent `list_bars` 1000-row PostgREST cap** that had been silently truncating multi-year reads.
+- [x] Surface **data coverage** in the UI — `/api/bars/coverage` extended with per-regime % completeness (≥90% = "covered"); `DataCoveragePanel` + `?` tooltips.
 
-**Exit gate:** ≥ ~2–3 years of validated 5-min SPY bars cached across distinct regimes; a default backtest over the full span yields a few hundred+ trades.
+**Exit gate:** ✅ **met** — 164,918 validated SIP bars across 4 regimes (all 100% covered), 2018→2026; full-span default backtest = **3,926 trades** in ~5s.
 
 ---
 
 ### Phase 1 — Make the backtest honest
+
+> **Status: ✅ DONE (2026-06-03)** — gate met. Costs are applied to every fill (default **$0 fees + $0.01/share slippage**, adverse on entry and exit); a known fixture proves the exact deduction (3 trades × 44 sh × $0.01 × 2 = **$2.64**). Real metrics shipped — expectancy (R/$), daily-return **Sharpe/Sortino** (rf=0, ×√252), max drawdown in **$ and %**, return distribution (median/std/skew), an equity curve, and per-bucket breakdown (hour/weekday/month). Every result now shows **N + a Wilson 95% win-rate CI** and flags thin samples (<30) as noise. The three dead knobs are deleted. Shipped on branch `010-honest-backtest` (Spec Kit feature `010`).
 
 **Goal:** the backtest measures *net, realistic* performance — so later tuning optimizes reality, not a fantasy.
 
@@ -150,13 +155,13 @@ Each phase is a **gate**: you do not advance until its exit criteria are met. Ef
 **Current state:** Fills are ideal. `broker/paper.py` computes `realized_pnl = (exit - entry) * qty` with **no** deduction; `BrokerConfig.fees_per_share`/`slippage_per_share` are parsed and ignored. `backtest/metrics.py` computes win rate, R stats, `total_pnl_dollars`, profit factor, max drawdown (in R) — but **no expectancy, no real Sharpe/Sortino, no trade distribution, no per-time/per-regime breakdown**. `RunSummary.sharpe` is a placeholder.
 
 **Build:**
-- [ ] **Apply costs** in the paper broker: deduct `fees_per_share` + model `slippage_per_share` on entry and exit; set sensible non-zero defaults in `config.yaml`. Add tests proving costs change PnL (TDD).
-- [ ] **Cost realism for intraday fills:** model spread / fill assumptions (e.g., fills at next-bar open ± slippage; conservative same-bar stop-before-target is already done — keep it).
-- [ ] **Real metrics** in `metrics.py`: expectancy per trade `(win% · avg_win_R) − (loss% · |avg_loss_R|)`, an equity curve, proper drawdown in $ and %, return distribution (median/std/skew), and a **per-bucket breakdown** (hour-of-day, weekday, month) to spot where edge lives or breaks.
-- [ ] **Surface sample size + significance hints** on every result ("N=312 trades; 95% CI on win rate ±X") so a 6-trade result is visually flagged as noise.
-- [ ] **Cleanup:** implement or delete the dead knobs (`vwap_pullback.min_minutes_after_open`, `confirmation.require_close_above_*`) so config means what it says.
+- [x] **Apply costs** in the paper broker: deduct `fees_per_share` + model `slippage_per_share` on entry and exit; non-zero defaults in `config.yaml` ($0 fees + $0.01/share slippage). Tests prove costs change PnL (TDD).
+- [x] **Cost realism for intraday fills:** slippage baked adversely into next-bar-open fills; conservative same-bar stop-before-target preserved.
+- [x] **Real metrics** in `metrics.py`: expectancy (R/$), equity curve, drawdown in $ and %, return distribution (median/std/skew), daily-return Sharpe/Sortino, and a **per-bucket breakdown** (hour-of-day, weekday, month-of-year, NY-local).
+- [x] **Surface sample size + significance hints** on every result (N + Wilson 95% CI on win rate; <30 trades flagged as noise), each with a `?` tooltip.
+- [x] **Cleanup:** deleted the dead knobs (`vwap_pullback.min_minutes_after_open`, `confirmation.require_close_above_*`) from the schema, `config.yaml`, and all presets — behavior-neutral (they were never read).
 
-**Exit gate:** backtests report **net-of-cost** results with expectancy, drawdown ($/%), distribution, per-bucket breakdown, and an explicit trade-count/significance indicator. A known fixture proves costs are applied.
+**Exit gate:** ✅ **met** — backtests report **net-of-cost** results with expectancy, drawdown ($/%), distribution, per-bucket breakdown, and an explicit trade-count + 95%-CI significance indicator. A committed fixture proves costs are applied to the cent ($2.64 on the golden 3-trade fixture).
 
 ---
 
@@ -316,8 +321,8 @@ Feature numbers are proposed; status updated as work lands.
 | Feature | Phase | Scope | Status |
 |---|---|---|---|
 | `008-soft-delete-insights-engine` | retention prereq | **Trim to soft-delete only** (`deleted_at`, list filters, migration `0100`). Its *insights-engine* half moves to Phase 2 — insights built on today's zero-cost / 60-day-sample archive would be confidently wrong. | Planned (`plan.md` exists) |
-| `009` | **Phase 0 — data foundation** | Alpaca historical source + bulk backfill + `bars(bar_start)` index + coverage surfacing | Not started |
-| `010` | **Phase 1 — honest backtest** | Apply costs/slippage + real metrics (expectancy, Sharpe, drawdown $/%, distribution, per-bucket) + dead-knob cleanup | Not started |
+| `009` | **Phase 0 — data foundation** | Alpaca historical source + bulk backfill + `bars(bar_start)` index + coverage surfacing | **✅ Done & exit gate met** (branch `009-data-foundation`). Backfilled **164,918 SIP 5-min bars, 2018-01-02 → 2026-06-02**; all four regimes 100% covered; a full-span default backtest yields **3,926 trades** in ~5s. Used Alpaca **SIP** (consolidated) so no IEX/VWAP-fidelity gap. Fixed a latent `list_bars` 1000-row PostgREST cap that had been silently truncating multi-year reads. |
+| `010` | **Phase 1 — honest backtest** | Apply costs/slippage + real metrics (expectancy, Sharpe, drawdown $/%, distribution, per-bucket) + dead-knob cleanup | **✅ Done & exit gate met** (branch `010-honest-backtest`). Net-of-cost fills ($0 fees + $0.01/sh slippage, fixture proves $2.64); expectancy, daily-return Sharpe/Sortino, drawdown $/%, distribution, equity curve, per-bucket (hour/weekday/month); N + Wilson 95% CI + noise flag; 3 dead knobs deleted. TDD throughout; educational tooltips for every new concept. |
 | `011` (+ `012`?) | **Phase 2 — validation** | train/validation/lockbox split, walk-forward, robustness/sensitivity, significance + the insights/aggregation half of `008`. May split into two features. | Not started |
 | later | **Phases 3–5 — paper → live** | Alpaca paper → manual approval → tiny live. Specced when reached; gated by Principle V (author `docs/PAPER_TRADING.md`, the 3-layer live block, a constitution amendment). | Gated |
 

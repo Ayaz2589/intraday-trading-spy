@@ -47,9 +47,22 @@ def test_lockout_or_max_trades_reached(default_config_path, sample_csv_path, tmp
 # ----------- Golden-fixture tests ----------------------------------------
 
 
+def _zero_cost(cfg):
+    """Feature 010: the golden R-structure tests measure strategy/engine logic
+    in R terms, which must be cost-free to stay stable. Cost behavior has its
+    own tests (test_paper_broker.py, test_cost_fixture.py, and below)."""
+    return cfg.model_copy(
+        update={
+            "broker": cfg.broker.model_copy(
+                update={"fees_per_share": 0.0, "slippage_per_share": 0.0}
+            )
+        }
+    )
+
+
 @pytest.fixture
 def fixture_result(default_config_path, sample_csv_path, tmp_path):
-    cfg = load_config(default_config_path)
+    cfg = _zero_cost(load_config(default_config_path))
     return BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
 
 
@@ -138,3 +151,69 @@ def test_consecutive_losses_increment_then_reset_across_sessions(
     # If the per-session reset regresses, day 3 would not execute (locked
     # out after 2 consecutive losses) and total_trades would be 2 not 3.
     assert result.summary.total_trades == 3
+
+
+# ----------- Feature 010 / US1: cost application ------------------------
+
+
+def test_costs_reduce_pnl_by_exact_modeled_amount(
+    default_config_path, sample_csv_path, tmp_path
+):
+    """SC-001: net total = zero-cost total − total modeled cost, and the gap
+    equals total_fees + total_slippage (here 3 trades × 44 × $0.01 × 2 = $2.64)."""
+    cfg = load_config(default_config_path)
+    s_cost = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path).summary
+    s_zero = BacktestEngine(_zero_cost(cfg)).run(
+        csv_path=sample_csv_path, output_dir=tmp_path
+    ).summary
+
+    gap = s_zero.total_pnl_dollars - s_cost.total_pnl_dollars
+    assert gap == pytest.approx(
+        s_cost.total_fees_dollars + s_cost.total_slippage_dollars, abs=1e-9
+    )
+    assert gap == pytest.approx(2.64, abs=1e-9)
+    # zero-cost run records no cost
+    assert s_zero.total_slippage_dollars == pytest.approx(0.0, abs=1e-12)
+    assert s_zero.total_fees_dollars == pytest.approx(0.0, abs=1e-12)
+
+
+def test_lockout_uses_net_realized_pnl(default_config_path):
+    """T011: the daily-loss lockout accumulates NET realized PnL, so costs make
+    it trip earlier (never later) — strengthening the risk veto (constitution III)."""
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+
+    from intraday_trade_spy.models import Direction, Position, Signal, TradePlan
+    from intraday_trade_spy.risk.state import RiskState
+
+    et = ZoneInfo("America/New_York")
+    cfg = load_config(default_config_path)
+    # account 25,000 × 0.01% = $2.50 daily-loss budget.
+    cfg = cfg.model_copy(
+        update={"risk": cfg.risk.model_copy(update={"max_daily_loss_pct": 0.01})}
+    )
+    eng = BacktestEngine(cfg)
+    state = RiskState(session_date=date(2026, 5, 28), account_value=cfg.risk.account_value)
+
+    sig = Signal(
+        symbol="SPY", setup="vwap_pullback_long", direction=Direction.LONG,
+        timestamp=datetime(2026, 5, 28, 10, 0, tzinfo=et),
+        planned_entry=500.0, stop_loss=499.0, take_profit=502.0, reason="x",
+    )
+    plan = TradePlan(signal=sig, quantity=10, planned_risk_dollars=10.0)
+    pos = Position(
+        plan=plan,
+        entry_timestamp=datetime(2026, 5, 28, 10, 5, tzinfo=et),
+        entry_price=500.0,
+        exit_timestamp=datetime(2026, 5, 28, 10, 30, tzinfo=et),
+        exit_price=499.7,
+        exit_reason="stop",
+        realized_pnl=-3.0,  # NET loss > $2.50 budget
+        realized_r=-1.0,
+        gross_pnl=-2.0,
+        fees=0.0,
+        slippage_cost=1.0,
+    )
+    eng._apply_exit_to_state(state, pos)
+    assert state.daily_realized_pnl == pytest.approx(-3.0)  # net, not gross −2.0
+    assert state.daily_lockout_active is True

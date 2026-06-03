@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -19,11 +20,29 @@ class MarketConfig(BaseModel):
     force_flat_time: str
 
 
+class RegimeWindow(BaseModel):
+    """A labeled historical market regime used as the yardstick for
+    multi-regime data coverage (Feature 009)."""
+
+    name: str
+    start: date
+    end: date
+
+
 class DataConfig(BaseModel):
     timeframe: Literal["5m"] = "5m"
     csv_path: str
     output_dir: str
     require_regular_session_only: bool = True
+    # Feature 009: cross-source read precedence — first listed source wins when
+    # multiple sources cached the same timestamp.
+    source_preference: list[str] = Field(
+        default_factory=lambda: ["alpaca", "yfinance"]
+    )
+    # A regime is "covered" when this fraction of its expected NYSE trading
+    # sessions are present in the cache.
+    regime_covered_threshold_pct: float = 90.0
+    regimes: list[RegimeWindow] = Field(default_factory=list)
 
 
 class OpeningRangeConfig(BaseModel):
@@ -39,17 +58,13 @@ class VwapPullbackTargetConfig(BaseModel):
     risk_reward: float = 2.0
 
 
-class VwapPullbackConfirmationConfig(BaseModel):
-    require_close_above_prior_bar_high: bool = True
-    require_close_above_vwap: bool = True
-
-
 class VwapPullbackConfig(BaseModel):
-    min_minutes_after_open: int = 15
+    # Feature 010: removed `min_minutes_after_open` and the `confirmation` block
+    # (`require_close_above_prior_bar_high`, `require_close_above_vwap`) — they
+    # were parsed but never read by the strategy (the VWAP and prior-bar
+    # confirmations are hardcoded in vwap_pullback.py). Deleting them keeps the
+    # config honest; re-introduce as deliberate, validated knobs if ever needed.
     max_distance_from_vwap_pct: float = 0.25
-    confirmation: VwapPullbackConfirmationConfig = Field(
-        default_factory=VwapPullbackConfirmationConfig
-    )
     stop: VwapPullbackStopConfig = Field(default_factory=VwapPullbackStopConfig)
     target: VwapPullbackTargetConfig = Field(default_factory=VwapPullbackTargetConfig)
 
@@ -78,8 +93,28 @@ class RiskConfig(BaseModel):
 class BrokerConfig(BaseModel):
     provider: Literal["paper"] = "paper"
     live_auto_enabled: Literal[False] = False
+    # Feature 010: costs are applied to every fill. Alpaca equities are
+    # commission-free (fees 0); slippage is a fixed adverse amount per share
+    # applied on both entry and exit. Non-zero default => net-of-cost by default.
     fees_per_share: float = 0.0
-    slippage_per_share: float = 0.0
+    slippage_per_share: float = 0.01
+
+
+class MetricsConfig(BaseModel):
+    """Feature 010: governs the risk-adjusted + significance metrics so no
+    magic numbers live in source."""
+
+    trading_days_per_year: int = 252
+    risk_free_rate: float = 0.0
+    win_rate_ci_confidence: float = 0.95
+    low_confidence_trade_count: int = 30
+
+
+class AlpacaConfig(BaseModel):
+    """Alpaca market-data settings (Feature 009). Credentials come from env,
+    never here. Free tier serves the IEX feed."""
+
+    feed: Literal["iex", "sip"] = "iex"
 
 
 class Config(BaseModel):
@@ -89,6 +124,8 @@ class Config(BaseModel):
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     risk: RiskConfig = Field(default_factory=RiskConfig)
     broker: BrokerConfig = Field(default_factory=BrokerConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+    alpaca: AlpacaConfig = Field(default_factory=AlpacaConfig)
 
 
 def load_config(path: str | Path) -> Config:

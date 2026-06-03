@@ -17,10 +17,21 @@ export type RunSummary = {
   pnl: string
   win_rate: number
   sharpe: number
-  max_drawdown: string
+  max_drawdown: string // legacy R units (Feature 010 / I1)
   total_trades: number
   total_signals: number
   rejected_signals: number
+  // Feature 010 — optional so pre-010 rows still type-check.
+  sortino?: number
+  expectancy?: number
+  expectancy_dollars?: string
+  max_drawdown_dollars?: string
+  max_drawdown_pct?: number
+  total_fees?: string
+  total_slippage?: string
+  low_confidence?: boolean
+  win_rate_ci_low?: number
+  win_rate_ci_high?: number
 }
 
 export type Run = {

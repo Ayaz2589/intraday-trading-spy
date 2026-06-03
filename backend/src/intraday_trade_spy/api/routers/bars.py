@@ -16,7 +16,7 @@ from uuid import UUID
 
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
@@ -24,6 +24,87 @@ from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
 
 router = APIRouter()
 _log = logging.getLogger(__name__)
+
+
+class BarsBackfillRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    start: _date
+    end: _date = Field(description="Inclusive end date.")
+    source: str = "alpaca"
+
+
+class BarsBackfillStartResponse(BaseModel):
+    job_id: UUID
+    status: str
+
+
+class BackfillJobView(BaseModel):
+    job_id: UUID
+    status: str
+    source: str
+    range_start: _date
+    range_end: _date
+    windows_total: int
+    windows_done: int
+    bars_added: int
+    gap_session_dates: list = Field(default_factory=list)
+    failure_reason: Optional[str] = None
+
+
+@router.post("/bars/backfill", response_model=BarsBackfillStartResponse, status_code=202)
+def start_bars_backfill(
+    body: BarsBackfillRequest,
+    background_tasks: BackgroundTasks,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> BarsBackfillStartResponse:
+    """Kick off an in-app background bulk historical backfill (Feature 009)."""
+    from intraday_trade_spy.api.lifecycle import (
+        BackfillRangeError,
+        ConcurrentRunCapExceeded,
+        start_backfill,
+    )
+
+    try:
+        job_id = start_backfill(
+            user_id=user_id,
+            start_date=body.start,
+            end_date=body.end,
+            storage_client=storage_client,
+            background_tasks=background_tasks,
+            source=body.source,
+        )
+    except BackfillRangeError as exc:
+        raise HTTPException(status_code=400, detail={"error": exc.code}) from exc
+    except ConcurrentRunCapExceeded as exc:
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "backfill_in_progress", "active": exc.active, "cap": exc.cap},
+        ) from exc
+    return BarsBackfillStartResponse(job_id=job_id, status="queued")
+
+
+@router.get("/bars/backfill/{job_id}", response_model=BackfillJobView)
+def get_bars_backfill_status(
+    job_id: UUID,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> BackfillJobView:
+    row = storage_client.get_backfill_job(job_id=job_id, user_id=user_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail={"error": "job_not_found"})
+    return BackfillJobView(
+        job_id=row["id"],
+        status=row["status"],
+        source=row.get("source", "alpaca"),
+        range_start=row["range_start"],
+        range_end=row["range_end"],
+        windows_total=row.get("windows_total", 0),
+        windows_done=row.get("windows_done", 0),
+        bars_added=row.get("bars_added", 0),
+        gap_session_dates=row.get("gap_session_dates") or [],
+        failure_reason=row.get("failure_reason"),
+    )
 
 
 class BarsFetchRequest(BaseModel):
@@ -39,9 +120,23 @@ class BarsFetchResponse(BaseModel):
     end: _date
 
 
+class RegimeCoverageView(BaseModel):
+    name: str
+    start: _date
+    end: _date
+    expected_sessions: int
+    present_sessions: int
+    completeness_pct: float
+    covered: bool
+
+
 class BarsCoverageResponse(BaseModel):
     earliest: Optional[_date] = Field(description="Date of the oldest cached bar, or null if cache is empty.")
     latest: Optional[_date] = Field(description="Date of the newest cached bar, or null if cache is empty.")
+    regimes: list[RegimeCoverageView] = Field(
+        default_factory=list,
+        description="Per-regime completeness (Feature 009): expected vs present NYSE sessions.",
+    )
 
 
 class BarsRefreshRequest(BaseModel):
@@ -128,6 +223,37 @@ def bars_coverage(
     return BarsCoverageResponse(
         earliest=_iso_to_date(cov.get("earliest")),
         latest=_iso_to_date(cov.get("latest")),
+        regimes=_compute_regime_coverage(storage_client),
+    )
+
+
+def _compute_regime_coverage(storage_client) -> list:
+    """Per-regime completeness for the coverage panel (Feature 009 US3)."""
+    from intraday_trade_spy.api.coverage import regime_coverage
+    from intraday_trade_spy.config import load_config
+    from intraday_trade_spy.data.market_calendar import expected_session_count
+
+    try:
+        cfg = load_config("config/config.yaml")
+    except Exception:  # noqa: BLE001
+        return []
+    regimes = cfg.data.regimes
+    if not regimes:
+        return []
+
+    def present_provider(start, end):
+        try:
+            return storage_client.bars_present_session_dates(
+                range_start=start.isoformat(), range_end=end.isoformat()
+            )
+        except Exception:  # noqa: BLE001 — coverage is best-effort, never 500s
+            return []
+
+    return regime_coverage(
+        regimes=regimes,
+        threshold_pct=cfg.data.regime_covered_threshold_pct,
+        present_provider=present_provider,
+        expected_provider=expected_session_count,
     )
 
 

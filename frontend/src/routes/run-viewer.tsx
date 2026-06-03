@@ -24,6 +24,8 @@ import { RunHeader } from "@/components/run-header";
 import { SummaryMetricsCard } from "@/components/summary-metrics-card";
 import { StrategyConfigCard } from "@/components/strategy-config-card";
 import { RejectionBreakdownCard } from "@/components/rejection-breakdown-card";
+import { EquityCurve } from "@/components/equity-curve";
+import { PerBucketCard } from "@/components/per-bucket-card";
 import { JournalTable } from "@/components/journal-table";
 import { PriceChart } from "@/components/price-chart";
 import { SessionPicker } from "@/components/session-picker";
@@ -319,7 +321,19 @@ export function RunViewer() {
             )}
           </Section>
         </div>
+        <Section state={summary}>
+          {(s) => <EquityCurve points={s.equity_curve ?? []} />}
+        </Section>
         {renderChart()}
+        <Section state={summary}>
+          {(s) => (
+            <PerBucketCard
+              hour={s.hour_buckets ?? []}
+              weekday={s.weekday_buckets ?? []}
+              month={s.month_buckets ?? []}
+            />
+          )}
+        </Section>
         <Section state={journal}>
           {(j) => (
             <JournalTable

@@ -7,6 +7,8 @@ COLUMNS = [
     "row_seq", "timestamp", "status", "setup", "direction",
     "planned_entry", "stop_loss", "take_profit", "quantity", "planned_risk_dollars",
     "actual_entry", "actual_exit", "exit_reason", "realized_pnl", "realized_r",
+    # Feature 010: cost breakdown (constitution VII — explain the net deduction).
+    "gross_pnl", "fees", "slippage_cost",
     "vwap", "or_high", "or_low", "distance_from_vwap_pct", "prior_bar_close",
     "reason", "rejection_check", "same_bar_tiebreak",
 ]
@@ -26,6 +28,7 @@ _FLOAT_FMT = {
     "planned_risk_dollars": "{:.2f}",
     "actual_entry": "{:.4f}", "actual_exit": "{:.4f}",
     "realized_pnl": "{:.2f}", "realized_r": "{:.3f}",
+    "gross_pnl": "{:.2f}", "fees": "{:.2f}", "slippage_cost": "{:.2f}",
     "vwap": "{:.4f}", "or_high": "{:.4f}", "or_low": "{:.4f}",
     "distance_from_vwap_pct": "{:.4f}", "prior_bar_close": "{:.4f}",
 }
