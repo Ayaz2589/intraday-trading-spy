@@ -6,7 +6,7 @@ import yaml
 
 from intraday_trade_spy.config import Config
 from intraday_trade_spy.data.fingerprint import fingerprint_csv
-from intraday_trade_spy.models import BacktestRun, SummaryMetrics
+from intraday_trade_spy.models import BacktestRun, DataFingerprint, SummaryMetrics
 
 
 def _code_version() -> str:
@@ -22,6 +22,28 @@ def _code_version() -> str:
         return "unversioned"
 
 
+def build_run_from_fingerprint(
+    *,
+    data_fingerprint: DataFingerprint,
+    cfg: Config,
+    summary: SummaryMetrics,
+    started: datetime,
+    ended: datetime,
+) -> BacktestRun:
+    """Core run-manifest builder given an already-computed data fingerprint.
+    Used by both the CSV path (run) and the in-memory path (run_df)."""
+    run_id = f"{started.strftime('%Y%m%d-%H%M%S')}-{data_fingerprint.sha256[:8]}"
+    return BacktestRun(
+        run_id=run_id,
+        run_started_at=started,
+        run_ended_at=ended,
+        code_version=_code_version(),
+        config_snapshot=cfg.model_dump(mode="json"),
+        data_fingerprint=data_fingerprint,
+        summary=summary,
+    )
+
+
 def build_run(
     *,
     csv_path: Path,
@@ -30,16 +52,12 @@ def build_run(
     started: datetime,
     ended: datetime,
 ) -> BacktestRun:
-    fp = fingerprint_csv(csv_path)
-    run_id = f"{started.strftime('%Y%m%d-%H%M%S')}-{fp.sha256[:8]}"
-    return BacktestRun(
-        run_id=run_id,
-        run_started_at=started,
-        run_ended_at=ended,
-        code_version=_code_version(),
-        config_snapshot=cfg.model_dump(mode="json"),
-        data_fingerprint=fp,
+    return build_run_from_fingerprint(
+        data_fingerprint=fingerprint_csv(csv_path),
+        cfg=cfg,
         summary=summary,
+        started=started,
+        ended=ended,
     )
 
 

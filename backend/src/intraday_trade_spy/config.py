@@ -117,6 +117,72 @@ class AlpacaConfig(BaseModel):
     feed: Literal["iex", "sip"] = "iex"
 
 
+# ---- Feature 011 (Phase 2 — validation engine) ----------------------------
+# Defaults mirror config.yaml (the MetricsConfig precedent): the authoritative
+# values live in config.yaml and override these. No validation *logic* hardcodes
+# dates or thresholds — it reads them from here.
+
+
+class SplitWindowConfig(BaseModel):
+    start: date
+    end: date
+
+
+class SplitConfig(BaseModel):
+    """Train / validation / lockbox segments. The lockbox is the most-recent
+    slice (closest to forward / out-of-sample-by-construction) and is held out
+    until the one-shot test."""
+
+    train: SplitWindowConfig = Field(
+        default_factory=lambda: SplitWindowConfig(
+            start=date(2018, 1, 1), end=date(2022, 12, 31)
+        )
+    )
+    validation: SplitWindowConfig = Field(
+        default_factory=lambda: SplitWindowConfig(
+            start=date(2023, 1, 1), end=date(2024, 12, 31)
+        )
+    )
+    lockbox: SplitWindowConfig = Field(
+        default_factory=lambda: SplitWindowConfig(
+            start=date(2025, 1, 1), end=date(2026, 12, 31)
+        )
+    )
+
+
+class WalkForwardConfig(BaseModel):
+    mode: Literal["rolling", "anchored"] = "rolling"
+    train_months: int = 12
+    step_months: int = 6
+    validation_months: int = 6
+    # Absolute expectancy-R gap (|OOS − IS|) beyond which a window is flagged as
+    # likely overfit in the UI. Provisional default — finalized in task T067.
+    overfit_gap_warn: float = 0.10
+
+
+class SensitivityConfig(BaseModel):
+    default_metric: str = "expectancy_dollars"
+
+
+class SignificanceConfig(BaseModel):
+    bootstrap_iterations: int = 1000
+    permutation_iterations: int = 1000
+    confidence: float = 0.95
+    alpha: float = 0.05
+    seed: int = 20260603
+
+
+class ValidationConfig(BaseModel):
+    split: SplitConfig = Field(default_factory=SplitConfig)
+    walk_forward: WalkForwardConfig = Field(default_factory=WalkForwardConfig)
+    sensitivity: SensitivityConfig = Field(default_factory=SensitivityConfig)
+    significance: SignificanceConfig = Field(default_factory=SignificanceConfig)
+    # Single canonical fan-out guard (resolves analyze finding D1): the total
+    # planned evaluations (grid points × windows) beyond which a study launch
+    # requires explicit confirmation.
+    max_evaluations_warn: int = 200
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     market: MarketConfig
@@ -126,6 +192,7 @@ class Config(BaseModel):
     broker: BrokerConfig = Field(default_factory=BrokerConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     alpaca: AlpacaConfig = Field(default_factory=AlpacaConfig)
+    validation: ValidationConfig = Field(default_factory=ValidationConfig)
 
 
 def load_config(path: str | Path) -> Config:

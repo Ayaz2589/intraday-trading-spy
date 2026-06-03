@@ -38,12 +38,29 @@ class BacktestEngine:
             slippage_per_share=cfg.broker.slippage_per_share,
         )
 
-    def run(self, *, csv_path: Path, output_dir: Path) -> BacktestResult:
-        from intraday_trade_spy.backtest.manifest import build_run
+    def run(self, *, csv_path: Path, output_dir: Path | None = None) -> BacktestResult:
+        """CSV entry point. Fingerprints the file bytes (unchanged behavior) and
+        runs the in-memory engine."""
+        from intraday_trade_spy.data.fingerprint import fingerprint_csv
+
+        df = load_bars(csv_path, market=self.cfg.market)
+        return self._run_loaded(df, fingerprint=fingerprint_csv(csv_path))
+
+    def run_df(self, df) -> BacktestResult:
+        """Feature 011 (FR-024): run over a pre-loaded, date-sliced bar frame
+        (post-`load_bars`). The validation engine parses the full history once
+        and slices per window, calling this instead of re-reading a CSV per
+        evaluation. Behavior-neutral twin of `run` — see tests/validation/
+        test_engine_run_df.py — with a content-based fingerprint."""
+        from intraday_trade_spy.data.fingerprint import fingerprint_df
+
+        return self._run_loaded(df, fingerprint=fingerprint_df(df))
+
+    def _run_loaded(self, df, *, fingerprint) -> BacktestResult:
+        from intraday_trade_spy.backtest.manifest import build_run_from_fingerprint
         from intraday_trade_spy.backtest.metrics import compute_summary
 
         started = datetime.now(UTC)
-        df = load_bars(csv_path, market=self.cfg.market)
         df = attach_indicators(df, or_minutes=self.cfg.strategy.opening_range.minutes)
         bars = list(BarIterator(df))
         rows = df.to_dict("records")
@@ -131,8 +148,8 @@ class BacktestEngine:
             account_value=self.cfg.risk.account_value,
             metrics_config=self.cfg.metrics,
         )
-        run = build_run(
-            csv_path=csv_path, cfg=self.cfg, summary=summary,
+        run = build_run_from_fingerprint(
+            data_fingerprint=fingerprint, cfg=self.cfg, summary=summary,
             started=started, ended=ended,
         )
         return BacktestResult(journal_rows=log.rows(), summary=summary, run=run)

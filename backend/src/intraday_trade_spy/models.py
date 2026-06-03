@@ -215,3 +215,45 @@ class BacktestRun(BaseModel):
     config_snapshot: dict
     data_fingerprint: DataFingerprint
     summary: SummaryMetrics
+
+
+# ---- Feature 011 (Phase 2 — validation engine) result value objects --------
+
+
+class WindowMetrics(BaseModel):
+    """The subset of SummaryMetrics compared across walk-forward windows /
+    sensitivity points. Carries the child run_id for drill-down."""
+
+    model_config = ConfigDict(frozen=True)
+    segment: Literal["train", "validation", "lockbox"]
+    range_start: date
+    range_end: date
+    run_id: str
+    total_trades: int
+    expectancy_dollars: float | None
+    expectancy_r: float | None
+    win_rate: float
+    profit_factor: float | None
+    sharpe: float | None
+    total_net_pnl_dollars: float
+    low_confidence: bool
+
+
+class WalkForwardWindowResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    window_index: int
+    in_sample: WindowMetrics
+    out_of_sample: WindowMetrics
+    # OOS − IS per compared metric; None where either side is undefined.
+    gap: dict[str, float | None]
+
+
+class WalkForwardResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    mode: Literal["rolling", "anchored"]
+    train_months: int
+    step_months: int
+    validation_months: int
+    windows: list[WalkForwardWindowResult]
+    mean_oos: dict[str, float | None]
+    mean_gap: dict[str, float | None]

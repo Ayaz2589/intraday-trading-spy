@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/010-honest-backtest/plan.md](specs/010-honest-backtest/plan.md)
+**Active plan**: [specs/011-validation-engine/plan.md](specs/011-validation-engine/plan.md)
 
-**Active spec**: [specs/010-honest-backtest/spec.md](specs/010-honest-backtest/spec.md)
+**Active spec**: [specs/011-validation-engine/spec.md](specs/011-validation-engine/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -16,6 +16,7 @@
 - [specs/006-fastapi-service-expansion/plan.md](specs/006-fastapi-service-expansion/plan.md) — implemented end-to-end against live Supabase (8 integration test tasks deferred)
 - [specs/007-frontend-auth-api-migration/plan.md](specs/007-frontend-auth-api-migration/plan.md) — 120/135 tasks complete; per-component unit tests + integration tests + data-source picker deferred (see test-inventory.md)
 - [specs/009-data-foundation/plan.md](specs/009-data-foundation/plan.md) — implemented (Phase 0; 164,918 SIP bars 2018→2026, exit gate met)
+- [specs/010-honest-backtest/plan.md](specs/010-honest-backtest/plan.md) — implemented (Phase 1; net-of-cost fills + real edge metrics, exit gate met)
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,

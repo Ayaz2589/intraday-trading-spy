@@ -127,6 +127,40 @@ api:
 alpaca:
   feed: sip
 
+# Validation engine (Feature 011, Phase 2). The methodology that distinguishes
+# a real edge from fit-to-noise. All dates/thresholds live here (no magic
+# numbers in source). The engine EVALUATES and REPORTS only — it never
+# auto-selects a config (constitution II).
+validation:
+  # Train / validation / lockbox split. Lockbox is the most-recent slice, held
+  # out and never touched until the one-shot test.
+  split:
+    train:      { start: "2018-01-01", end: "2022-12-31" }
+    validation: { start: "2023-01-01", end: "2024-12-31" }
+    lockbox:    { start: "2025-01-01", end: "2026-12-31" }
+  # Walk-forward defaults (clarified): rolling 12-month train, 6-month step,
+  # validating on the next 6-month window. mode: rolling | anchored.
+  walk_forward:
+    mode: rolling
+    train_months: 12
+    step_months: 6
+    validation_months: 6
+    # |OOS − IS| expectancy-R gap that paints a window "likely overfit".
+    # Provisional — finalized in task T067.
+    overfit_gap_warn: 0.10
+  sensitivity:
+    default_metric: expectancy_dollars
+  # Significance is seeded so verdicts are reproducible.
+  significance:
+    bootstrap_iterations: 1000
+    permutation_iterations: 1000
+    confidence: 0.95
+    alpha: 0.05
+    seed: 20260603
+  # Single fan-out guard: total planned evaluations (grid points × windows)
+  # beyond which a study launch must be explicitly confirmed.
+  max_evaluations_warn: 200
+
 # Data-retention policy (Feature 006, clarification Q5).
 # DECLARED here; not enforced in this feature. Future feature or pg_cron job
 # implements the actual pruning.
