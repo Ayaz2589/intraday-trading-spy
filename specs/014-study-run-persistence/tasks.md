@@ -64,12 +64,12 @@ trades/journal; significance works (quickstart §2–§3).
 
 - [ ] T008 [P] [US1] Failing tests: `run_walk_forward_study`/`run_sensitivity_study` with `persist` injected stamp `run_id` + `persisted` into every `WindowMetrics`/`SensitivityPoint`; `persist=None` → result byte-identical to today; aggregate-math regression — result metrics equal across persist=healthy / None / always-raising, in backend/tests/validation/test_study_persistence.py
 - [ ] T009 [US1] Add optional `persist` parameter to both study functions and call it from the `evaluate()` closures in backend/src/intraday_trade_spy/validation/study.py
-- [ ] T010 [P] [US1] Failing tests: `run_study_task` builds the persist callback with user/config/strategy context and per-eval `config_snapshot` (walk-forward: study config knobs; sensitivity: base config merged with each grid-point's overrides) in backend/tests/api/test_validation_lifecycle_persist.py (stub storage + tiny fixture frame)
+- [ ] T010 [P] [US1] Failing tests: `run_study_task` builds the persist callback with user/config/strategy context and per-eval `config_snapshot` (walk-forward: study config knobs; sensitivity: base config merged with each grid-point's overrides); segment mapping pinned — walk-forward children `train`/`validation`, sensitivity children over `train_validation` get **`segment=None`** (0111 CHECK allows only NULL/'train'/'validation'/'lockbox'), in backend/tests/api/test_validation_lifecycle_persist.py (stub storage + tiny fixture frame)
 - [ ] T011 [US1] Wire `run_study_task()` to construct and inject the persist callback in backend/src/intraday_trade_spy/api/validation_lifecycle.py
 
 ### Lockbox child run
 
-- [ ] T012 [P] [US1] Failing tests: `set_lockbox_ledger_run_id()` issues the ledger update; `run_lockbox()` persists its evaluation as a run with `segment='lockbox'`, `study_id=None` and writes `lockbox_ledger.run_id`, in backend/tests/api/test_lockbox_child_run.py
+- [ ] T012 [P] [US1] Failing tests: `set_lockbox_ledger_run_id()` issues the ledger update; `run_lockbox()` persists its evaluation as a run with `segment='lockbox'`, `study_id=None` and writes `lockbox_ledger.run_id`; `get_lockbox_status_view()` surfaces the ledger's `run_id` in the (already-existing) `LockboxStatusView.run_id` field, in backend/tests/api/test_lockbox_child_run.py
 - [ ] T013 [US1] Implement `set_lockbox_ledger_run_id()` in backend/src/intraday_trade_spy/storage/client.py and persist-the-child + link-the-ledger in `run_lockbox()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py
 
 ### Child runs visible in the API
@@ -105,8 +105,8 @@ the same page with links hidden (quickstart §2 step 4–5).
 - [ ] T023 [P] [US2] Implement `StudyStatCards` in frontend/src/components/validation/StudyStatCards.tsx
 - [ ] T024 [P] [US2] Implement `WindowRows` in frontend/src/components/validation/WindowRows.tsx
 - [ ] T025 [P] [US2] Implement `SensitivityPointsTable` in frontend/src/components/validation/SensitivityPointsTable.tsx
-- [ ] T026 [US2] Failing tests: study-detail page composition — walk-forward fixture renders header/stats/rows; sensitivity fixture renders surface card + points table; lockbox run link when ledger has run_id; pre-014 fixture shows zero run links, in frontend/src/routes/validation-study-detail.test.tsx
-- [ ] T027 [US2] Recompose frontend/src/routes/_authenticated.validation_.$studyId.tsx with the new cards (surface plot wrapped in a card; shared section-title) and add `persisted` to result types in frontend/src/api/validation.ts
+- [ ] T026 [US2] Failing tests: `StudyDetailPage` composition — walk-forward fixture renders header/stats/rows; sensitivity fixture renders surface card + points table; pre-014 fixture shows zero run links — in frontend/src/components/validation/StudyDetailPage.test.tsx (NOT under routes/ — TanStack file-based routing scans that folder); plus LockboxCard renders a "View run →" link only when the lockbox status has `run_id`, extending frontend/src/components/validation/LockboxCard.test.tsx
+- [ ] T027 [US2] Implement `StudyDetailPage` in frontend/src/components/validation/StudyDetailPage.tsx (surface plot wrapped in a card; shared section-title), reduce frontend/src/routes/_authenticated.validation_.$studyId.tsx to a thin mount, add the lockbox run link to frontend/src/components/validation/LockboxCard.tsx, and add `persisted` to result types in frontend/src/api/validation.ts
 
 **Checkpoint**: US1 + US2 work together — drill-down e2e in the browser.
 

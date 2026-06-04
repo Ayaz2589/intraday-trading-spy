@@ -17,7 +17,12 @@ feature starts *writing* columns that were created (and left empty) by 011/012.
 | `summary`, `data_fingerprint`, trades/signals/journal child rows | written via the same `push_run(jsonb)` RPC as standalone runs |
 
 **Invariants**
-- A child run (`study_id IS NOT NULL`) always has `segment IS NOT NULL`.
+- Walk-forward children carry `segment IN ('train','validation')`. Sensitivity
+  children over a single segment carry that segment; over the combined
+  `train_validation` range they carry **`segment = NULL`** — the 0111 CHECK
+  only allows NULL/'train'/'validation'/'lockbox', and 0111's header comment
+  documents exactly this resolution. The true segment label always lives in the
+  study's result JSON (`SensitivitySurface.segment`), so nothing is lost.
 - `window_index` is set for walk-forward and sensitivity children, NULL for the
   lockbox child (which has `study_id IS NULL`, `segment='lockbox'`).
 - Deleting a study cascades to its children (existing FK); runs a study merely
@@ -78,7 +83,7 @@ planned_evaluations: int           # same shape start_study returns today
 
 | Surface | Change |
 |---|---|
-| `storage/push.py::build_run_payload(result, *, user_id, config_id, strategy_id, run_id, study_id=None, segment=None, window_index=None, config_snapshot=None, spec_hash=None) -> PushRunPayload` | **new** — single mapper from `BacktestResult`; `gather_run_outputs()` refactored to file-read + this mapper (parity-locked) |
+| `storage/push.py::build_run_payload(result, *, user_id, config_id, strategy_id, run_id, study_id=None, segment=None, window_index=None, config_snapshot=None) -> PushRunPayload` | **new** — single mapper from `BacktestResult`; `gather_run_outputs()` refactored to file-read + this mapper (parity-locked). `spec_hash` is NOT a payload concern — it is stamped post-push via the existing `set_run_spec_hash()` (api/lifecycle.py pattern) |
 | `validation_lifecycle::make_study_persist(...) -> persist(result, *, segment, window_index) -> tuple[str, bool]` | **new** — carries user/config/strategy + snapshot context; returns `(run_id, persisted)`; never raises (fail-soft) |
 | `validation/study.py::run_*_study(..., persist=None)` | **modified** — evaluate() closures stamp `(run_id, persisted)` into metrics; `persist=None` ⇒ today's behavior (unit tests stay offline) |
 | `client.list_runs()` | **modified** — adds `study_id IS NULL` filter |
