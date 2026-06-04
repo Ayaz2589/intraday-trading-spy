@@ -23,7 +23,7 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T002 [P] Create the backend package `backend/src/intraday_trade_spy/validation/__init__.py` and the test package `backend/tests/validation/__init__.py`.
 - [X] T003 [P] Author migration `backend/db/migrations/0110_validation_studies.sql` (table + CHECKs + `(user_id, created_at DESC)` index + owner RLS) per data-model §A1.
 - [X] T004 [P] Author migration `backend/db/migrations/0111_runs_study_columns.sql` (ADD nullable `study_id` FK / `segment` CHECK / `window_index` + partial index) per data-model §A2.
-- [ ] T005 [P] Author migration `backend/db/migrations/0113_push_run_finalize_study.sql` updating the `push_run` / `push_run_finalize` RPCs (see migrations 0052/0053) to read and write `study_id`/`segment`/`window_index` from the payload.
+- [X] T005 ~Author migration 0113 (push_run RPC passthrough)~ — N/A: confirmed UNNEEDED. study_id/segment/window_index are set at insert_queued_run (direct insert); push_run_finalize preserves un-named columns, so no RPC change is required.
 - [X] T006 Apply migrations 0110, 0111, 0113 to Supabase via direct psycopg + `SUPABASE_DB_URL` (sandbox: use `dangerouslyDisableSandbox` if blocked); verify columns/tables exist.
 
 ---
@@ -161,10 +161,10 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 - [X] T066 [P] Principle-II/V guard test: assert no `validation/` code path imports or calls a broker live-order path (`live_auto_enabled` unreachable from validation) in `backend/tests/validation/test_no_live_path.py`.
 - [X] T067 Decide and set the `walk_forward.overfit_gap_warn` default threshold in `backend/config/config.yaml` + surface it as the WF table's "overfit" highlight rule (the one knob deferred from plan; add a test for the highlight rule in `walk-forward-table.test.tsx`).
-- [ ] T068 [P] Run `quickstart.md` end-to-end against live Supabase (WF → sensitivity → significance → lockbox); record outcomes.
-- [ ] T069 [P] Determinism sweep: re-run a study + significance with the same seed; assert byte-identical verdicts (SC-004) in `backend/tests/validation/test_determinism.py`.
-- [ ] T070 [P] Update `docs/automated-trading-roadmap.md` Phase 2 status + the feature↔phase map (011 status) and add an `EXPERIMENTS.md` note that the methodology is live.
-- [ ] T071 Performance check: a default WF study (~11 windows) + a ~12-point sensitivity grid complete within the low-single-digit-minute target; record timings.
+- [X] T068 [P] Run `quickstart.md` end-to-end against live Supabase (WF → sensitivity → significance → lockbox); record outcomes.
+- [X] T069 [P] Determinism sweep: re-run a study + significance with the same seed; assert byte-identical verdicts (SC-004) in `backend/tests/validation/test_determinism.py`.
+- [X] T070 [P] Update `docs/automated-trading-roadmap.md` Phase 2 status + the feature↔phase map (011 status) and add an `EXPERIMENTS.md` note that the methodology is live.
+- [X] T071 Performance check: a default WF study (~11 windows) + a ~12-point sensitivity grid complete within the low-single-digit-minute target; record timings.
 
 ---
 
