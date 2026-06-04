@@ -44,9 +44,13 @@ def test_flag_absent_does_not_read_supabase_env(monkeypatch, tmp_path):
             journal_rows=[],
             summary=mock.MagicMock(model_dump=lambda **kw: {}),
         )
-        with mock.patch("intraday_trade_spy.cli.run_backtest.write_journal_csv"):
-            with mock.patch("intraday_trade_spy.cli.run_backtest.write_run_yaml"):
-                exit_code = main(["--config", DEFAULT_CONFIG, "--out", str(tmp_path), "--quiet"])
+        # Feature 014: the three per-file writers were consolidated into the
+        # shared write_run_outputs (storage/push.py) — patch that instead.
+        with mock.patch(
+            "intraday_trade_spy.cli.run_backtest.write_run_outputs",
+            return_value=tmp_path / "test",
+        ):
+            exit_code = main(["--config", DEFAULT_CONFIG, "--out", str(tmp_path), "--quiet"])
     assert exit_code == 0
     # If we got here without an exception about garbage SUPABASE_USER_ID,
     # the CLI didn't try to validate it.

@@ -22,7 +22,7 @@ each story is independently implementable and testable.
 
 **Purpose**: Pin the green baseline before any change.
 
-- [ ] T001 Run both offline suites and record the baseline (backend all-pass; frontend all-pass except the 3 known `frontend/src/components/price-chart.test.tsx` failures) — no file changes
+- [x] T001 Run both offline suites and record the baseline (backend all-pass; frontend all-pass except the 3 known `frontend/src/components/price-chart.test.tsx` failures) — no file changes
 
 ---
 
@@ -47,35 +47,35 @@ trades/journal; significance works (quickstart §2–§3).
 
 ### Models — `persisted` flag
 
-- [ ] T002 [P] [US1] Failing tests: `WindowMetrics`/`SensitivityPoint` accept `persisted` (default `False`; pre-014 JSON without the key parses to `False`; `model_dump` round-trips it) in backend/tests/validation/test_persisted_flag.py
-- [ ] T003 [US1] Add `persisted: bool = False` to `WindowMetrics` and `SensitivityPoint` in backend/src/intraday_trade_spy/models.py
+- [x] T002 [P] [US1] Failing tests: `WindowMetrics`/`SensitivityPoint` accept `persisted` (default `False`; pre-014 JSON without the key parses to `False`; `model_dump` round-trips it) in backend/tests/validation/test_persisted_flag.py
+- [x] T003 [US1] Add `persisted: bool = False` to `WindowMetrics` and `SensitivityPoint` in backend/src/intraday_trade_spy/models.py
 
 ### Shared payload builder (parity-locked refactor)
 
-- [ ] T004 [P] [US1] Failing tests: `build_run_payload(result, ...)` maps a `BacktestResult` to a complete `PushRunPayload` (run row incl. `study_id`/`segment`/`window_index`/`config_snapshot`, trade/signal/journal rows); parity test asserting in-memory payload ≡ `gather_run_outputs()` payload for the same engine result written to disk, in backend/tests/storage/test_build_run_payload.py
-- [ ] T005 [US1] Implement `build_run_payload()` in backend/src/intraday_trade_spy/storage/push.py and refactor `gather_run_outputs()` onto the shared row-mapper (public behavior byte-identical — parity test green)
+- [x] T004 [P] [US1] Failing tests: `build_run_payload(result, ...)` maps a `BacktestResult` to a complete `PushRunPayload` (run row incl. `study_id`/`segment`/`window_index`/`config_snapshot`, trade/signal/journal rows); parity test asserting in-memory payload ≡ `gather_run_outputs()` payload for the same engine result written to disk, in backend/tests/storage/test_build_run_payload.py
+- [x] T005 [US1] Implement `build_run_payload()` in backend/src/intraday_trade_spy/storage/push.py and refactor `gather_run_outputs()` onto the shared row-mapper (public behavior byte-identical — parity test green)
 
 ### Persist callback (dedup + fail-soft)
 
-- [ ] T006 [P] [US1] Failing tests for `make_study_persist()`: success → `(cloud_run_id, True)` and `push_run` called with tags + snapshot, then `set_run_spec_hash` stamped (api/lifecycle.py:310–325 pattern); dedup hit via `find_finished_run_by_spec` → existing id, `True`, no push; push raises → `(local_id, False)` and NO exception escapes, in backend/tests/api/test_study_persist_callback.py (stub storage client)
-- [ ] T007 [US1] Implement `make_study_persist()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py (`compute_spec_hash` → dedup lookup → `build_run_payload` → `client.push_run` → stamp spec_hash; catch/log all persistence errors)
+- [x] T006 [P] [US1] Failing tests for `make_study_persist()`: success → `(cloud_run_id, True)` and `push_run` called with tags + snapshot, then `set_run_spec_hash` stamped (api/lifecycle.py:310–325 pattern); dedup hit via `find_finished_run_by_spec` → existing id, `True`, no push; push raises → `(local_id, False)` and NO exception escapes, in backend/tests/api/test_study_persist_callback.py (stub storage client)
+- [x] T007 [US1] Implement `make_study_persist()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py (`compute_spec_hash` → dedup lookup → `build_run_payload` → `client.push_run` → stamp spec_hash; catch/log all persistence errors)
 
 ### Orchestrator wiring
 
-- [ ] T008 [P] [US1] Failing tests: `run_walk_forward_study`/`run_sensitivity_study` with `persist` injected stamp `run_id` + `persisted` into every `WindowMetrics`/`SensitivityPoint`; `persist=None` → result byte-identical to today; aggregate-math regression — result metrics equal across persist=healthy / None / always-raising, in backend/tests/validation/test_study_persistence.py
-- [ ] T009 [US1] Add optional `persist` parameter to both study functions and call it from the `evaluate()` closures in backend/src/intraday_trade_spy/validation/study.py
-- [ ] T010 [P] [US1] Failing tests: `run_study_task` builds the persist callback with user/config/strategy context and per-eval `config_snapshot` (walk-forward: study config knobs; sensitivity: base config merged with each grid-point's overrides); segment mapping pinned — walk-forward children `train`/`validation`, sensitivity children over `train_validation` get **`segment=None`** (0111 CHECK allows only NULL/'train'/'validation'/'lockbox'), in backend/tests/api/test_validation_lifecycle_persist.py (stub storage + tiny fixture frame)
-- [ ] T011 [US1] Wire `run_study_task()` to construct and inject the persist callback in backend/src/intraday_trade_spy/api/validation_lifecycle.py
+- [x] T008 [P] [US1] Failing tests: `run_walk_forward_study`/`run_sensitivity_study` with `persist` injected stamp `run_id` + `persisted` into every `WindowMetrics`/`SensitivityPoint`; `persist=None` → result byte-identical to today; aggregate-math regression — result metrics equal across persist=healthy / None / always-raising, in backend/tests/validation/test_study_persistence.py
+- [x] T009 [US1] Add optional `persist` parameter to both study functions and call it from the `evaluate()` closures in backend/src/intraday_trade_spy/validation/study.py
+- [x] T010 [P] [US1] Failing tests: `run_study_task` builds the persist callback with user/config/strategy context and per-eval `config_snapshot` (walk-forward: study config knobs; sensitivity: base config merged with each grid-point's overrides); segment mapping pinned — walk-forward children `train`/`validation`, sensitivity children over `train_validation` get **`segment=None`** (0111 CHECK allows only NULL/'train'/'validation'/'lockbox'), in backend/tests/api/test_validation_lifecycle_persist.py (stub storage + tiny fixture frame)
+- [x] T011 [US1] Wire `run_study_task()` to construct and inject the persist callback in backend/src/intraday_trade_spy/api/validation_lifecycle.py
 
 ### Lockbox child run
 
-- [ ] T012 [P] [US1] Failing tests: `set_lockbox_ledger_run_id()` issues the ledger update; `run_lockbox()` persists its evaluation as a run with `segment='lockbox'`, `study_id=None` and writes `lockbox_ledger.run_id`; `get_lockbox_status_view()` surfaces the ledger's `run_id` in the (already-existing) `LockboxStatusView.run_id` field, in backend/tests/api/test_lockbox_child_run.py
-- [ ] T013 [US1] Implement `set_lockbox_ledger_run_id()` in backend/src/intraday_trade_spy/storage/client.py and persist-the-child + link-the-ledger in `run_lockbox()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py
+- [x] T012 [P] [US1] Failing tests: `set_lockbox_ledger_run_id()` issues the ledger update; `run_lockbox()` persists its evaluation as a run with `segment='lockbox'`, `study_id=None` and writes `lockbox_ledger.run_id`; `get_lockbox_status_view()` surfaces the ledger's `run_id` in the (already-existing) `LockboxStatusView.run_id` field, in backend/tests/api/test_lockbox_child_run.py
+- [x] T013 [US1] Implement `set_lockbox_ledger_run_id()` in backend/src/intraday_trade_spy/storage/client.py and persist-the-child + link-the-ledger in `run_lockbox()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py
 
 ### Child runs visible in the API
 
-- [ ] T014 [P] [US1] Failing tests: `RunView` exposes nullable `study_id`/`segment`/`window_index` (null for standalone; populated for a child) through `GET /runs/{id}` and list mapping, in backend/tests/api/test_runs_study_fields.py
-- [ ] T015 [US1] Add the three fields to `RunView` in backend/src/intraday_trade_spy/api/schemas.py and thread them through the run mapping in backend/src/intraday_trade_spy/api/routers/runs.py / storage client row selection as needed
+- [x] T014 [P] [US1] Failing tests: `RunView` exposes nullable `study_id`/`segment`/`window_index` (null for standalone; populated for a child) through `GET /runs/{id}` and list mapping, in backend/tests/api/test_runs_study_fields.py
+- [x] T015 [US1] Add the three fields to `RunView` in backend/src/intraday_trade_spy/api/schemas.py and thread them through the run mapping in backend/src/intraday_trade_spy/api/routers/runs.py / storage client row selection as needed
 
 ### Run detail badge (frontend)
 
@@ -136,8 +136,8 @@ appears and (post-completion) is fully drillable (quickstart §5).
 **Independent Test**: after a study with persisted children, the runs list
 shows only standalone runs (quickstart §4).
 
-- [ ] T032 [P] [US4] Failing tests: `list_runs()` applies `study_id IS NULL`; standalone runs (incl. dedup-referenced ones) still listed; cursor pagination unchanged, in backend/tests/storage/test_list_runs_filter.py
-- [ ] T033 [US4] Add the `study_id IS NULL` filter to `list_runs()` in backend/src/intraday_trade_spy/storage/client.py
+- [x] T032 [P] [US4] Failing tests: `list_runs()` applies `study_id IS NULL`; standalone runs (incl. dedup-referenced ones) still listed; cursor pagination unchanged, in backend/tests/storage/test_list_runs_filter.py
+- [x] T033 [US4] Add the `study_id IS NULL` filter to `list_runs()` in backend/src/intraday_trade_spy/storage/client.py
 
 ---
 

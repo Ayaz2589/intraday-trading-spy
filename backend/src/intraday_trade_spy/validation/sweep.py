@@ -79,6 +79,9 @@ def run_sensitivity(
                 trade_count=s.total_trades,
                 low_confidence=s.low_confidence,
                 run_id=result.run.run_id,
+                # Feature 014: stamped by the study orchestrator's persistence
+                # wrapper; plain engine results default to not-drillable.
+                persisted=bool(getattr(result, "persisted", False)),
             )
         )
     return SensitivitySurface(

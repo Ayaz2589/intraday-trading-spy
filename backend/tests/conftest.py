@@ -54,6 +54,19 @@ def default_config_path() -> Path:
     return Path(__file__).parent.parent / "config" / "config.yaml"
 
 
+@pytest.fixture(scope="session")
+def engine_result():
+    """One real BacktestResult over the committed sample CSV (Feature 014).
+    Session-scoped: the engine run is deterministic and read-only, so the
+    payload-builder / persist-callback / lockbox tests can share it."""
+    from intraday_trade_spy.backtest.engine import BacktestEngine
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(Path(__file__).parent.parent / "config" / "config.yaml")
+    engine = BacktestEngine(cfg)
+    return engine.run(csv_path=FIXTURES / "spy_5m_sample.csv", output_dir=None)
+
+
 @pytest.fixture(autouse=True)
 def _block_network(request, monkeypatch):
     """Constitution v1.1.0 + Feature 002 SC-005: any test not marked `slow`

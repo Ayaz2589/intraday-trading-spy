@@ -5,10 +5,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from intraday_trade_spy.backtest.engine import BacktestEngine
-from intraday_trade_spy.backtest.manifest import write_run_yaml
 from intraday_trade_spy.config import load_config
-from intraday_trade_spy.journal.exporter import write_journal_csv
 from intraday_trade_spy.journal.logger import JournalLogger
+from intraday_trade_spy.storage.push import write_run_outputs
 
 
 def _print_session_stream(rows) -> None:
@@ -148,19 +147,9 @@ def main(argv: list[str] | None = None) -> int:
     engine = BacktestEngine(cfg)
     result = engine.run(csv_path=data_path, output_dir=out_dir)
 
-    run_dir = out_dir / result.run.run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    write_journal_csv(result.journal_rows, run_dir / "journal.csv")
-    (run_dir / "summary.json").write_text(
-        # mode="json" serializes the Feature 010 equity-curve timestamps (and any
-        # other non-primitive types) to JSON-native values.
-        json.dumps(
-            result.summary.model_dump(mode="json"),
-            indent=2, sort_keys=True, ensure_ascii=False,
-        )
-        + "\n"
-    )
-    write_run_yaml(result.run, run_dir / "run.yaml")
+    # Shared writer (storage/push.py) — same code path as the API task, so the
+    # two can never drift again (Feature 014).
+    run_dir = write_run_outputs(result, out_dir)
 
     # Cloud push happens AFTER local outputs are persisted, so a cloud failure
     # never costs the operator their local results (SC-005).

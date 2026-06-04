@@ -130,6 +130,12 @@ class RunView(_ResponseBase):
     app_version: str
     is_favorite: bool = False
     failure_reason: Optional[str] = None
+    # Feature 014 (FR-009): study membership for child runs — the run detail
+    # page renders a "Part of study — window N · segment" badge linking back to
+    # /validation/$studyId. All null for standalone runs.
+    study_id: Optional[UUID] = None
+    segment: Optional[Literal["train", "validation", "lockbox"]] = None
+    window_index: Optional[int] = None
 
 
 class RunListResponse(_ResponseBase):

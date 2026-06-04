@@ -146,6 +146,88 @@ def gather_run_outputs(
     )
 
 
+def write_run_outputs(result, out_dir: Path) -> Path:
+    """Persist the local run outputs (journal.csv, summary.json, run.yaml) for
+    a BacktestResult and return the run directory. ONE writer shared by the CLI
+    and the API backtest task — the previous duplication let the API copy drift
+    to a plain `model_dump()`, which crashed on the Feature 010 equity-curve
+    timestamps for any run with trades (mode="json" serializes them)."""
+    from intraday_trade_spy.backtest.manifest import write_run_yaml
+    from intraday_trade_spy.journal.exporter import write_journal_csv
+
+    run_dir = out_dir / result.run.run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    write_journal_csv(result.journal_rows, run_dir / "journal.csv")
+    (run_dir / "summary.json").write_text(
+        json.dumps(
+            result.summary.model_dump(mode="json"),
+            indent=2, sort_keys=True, ensure_ascii=False,
+        )
+        + "\n"
+    )
+    write_run_yaml(result.run, run_dir / "run.yaml")
+    return run_dir
+
+
+def build_run_payload(
+    result,
+    *,
+    user_id: UUID,
+    config_id: UUID,
+    strategy_id: UUID,
+    run_id: UUID,
+    study_id: UUID | None = None,
+    segment: str | None = None,
+    window_index: int | None = None,
+) -> PushRunPayload:
+    """Map an in-memory BacktestResult directly to a PushRunPayload (Feature 014).
+
+    The behavior-neutral twin of `gather_run_outputs()` for results that never
+    touch disk (study evaluations via `engine.run_df`). Journal rows are
+    serialized through the exporter's `journal_dict_rows` — the exact dicts a
+    csv.DictReader yields from the written file — so both paths share one
+    mapper (parity-locked in tests/storage/test_build_run_payload.py).
+
+    The optional study tags mark the run as a child of a validation study
+    (migration 0111 columns). `spec_hash` / `config_snapshot` are NOT payload
+    concerns — callers stamp them post-push via the existing client helpers.
+    """
+    from intraday_trade_spy.journal.exporter import journal_dict_rows
+
+    rows = journal_dict_rows(result.journal_rows)
+    summary_data = result.summary.model_dump()
+    cloud_summary = build_cloud_summary(summary_data, _count_signal_rows(rows))
+
+    fp = result.run.data_fingerprint
+    cloud_run = RunRow(
+        id=run_id,
+        user_id=user_id,
+        config_id=config_id,
+        strategy_id=strategy_id,
+        started_at=result.run.run_started_at,
+        finished_at=result.run.run_ended_at,
+        range_start=fp.earliest_timestamp.date(),
+        range_end=fp.latest_timestamp.date(),
+        bar_count=fp.bar_count,
+        summary=cloud_summary,
+        data_fingerprint=fp.sha256,
+        app_version=result.run.code_version,
+        study_id=study_id,
+        segment=segment,
+        window_index=window_index,
+    )
+
+    trades, signals, journal_events = _transform_journal_rows(
+        rows, user_id=user_id, run_id=run_id
+    )
+    return PushRunPayload(
+        run=cloud_run,
+        trades=trades,
+        signals=signals,
+        journal_events=journal_events,
+    )
+
+
 def push_run(
     client: "SupabaseStorageClient",
     run_dir: Path,
@@ -183,23 +265,24 @@ def _last_session(fp: dict) -> date:
     return latest.date()
 
 
+def _count_signal_rows(rows) -> int:
+    return sum(1 for row in rows if row.get("status") in {"executed", "rejected"})
+
+
 def _count_signals(journal_path: Path) -> int:
-    count = 0
     with journal_path.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row.get("status") in {"executed", "rejected"}:
-                count += 1
-    return count
+        return _count_signal_rows(csv.DictReader(f))
 
 
-def _transform_journal(
-    journal_path: Path,
+def _transform_journal_rows(
+    rows,
     *,
     user_id: UUID,
     run_id: UUID,
 ) -> tuple[list[TradeRow], list[SignalRow], list[JournalEventRow]]:
-    """Map local journal CSV rows to cloud SignalRow / TradeRow / JournalEventRow.
+    """Map journal dict rows (CSV-reader shape) to cloud SignalRow / TradeRow /
+    JournalEventRow. Shared by the file path (`_transform_journal`) and the
+    in-memory path (`build_run_payload`) — one mapper, no logic drift.
 
     Pairing strategy:
       - executed + matching exited/force_flat row → one TradeRow + one SignalRow(executed=True)
@@ -215,35 +298,46 @@ def _transform_journal(
 
     pending_executed: dict | None = None
 
-    with journal_path.open() as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            status = row.get("status")
+    for row in rows:
+        status = row.get("status")
 
-            if status in {"emitted", "approved"}:
-                continue
+        if status in {"emitted", "approved"}:
+            continue
 
-            if status == "rejected":
-                signals.append(_signal_from_rejected(row, user_id=user_id, run_id=run_id))
-                continue
+        if status == "rejected":
+            signals.append(_signal_from_rejected(row, user_id=user_id, run_id=run_id))
+            continue
 
-            if status == "executed":
-                pending_executed = row
-                continue
+        if status == "executed":
+            pending_executed = row
+            continue
 
-            if status in {"exited", "force_flat"} and pending_executed is not None:
-                trade = _trade_from_pair(pending_executed, row, user_id=user_id, run_id=run_id)
-                trades.append(trade)
-                signals.append(_signal_from_executed(pending_executed, trade.id, user_id=user_id, run_id=run_id))
-                if status == "force_flat":
-                    events.append(_event_force_flat(row, user_id=user_id, run_id=run_id))
-                pending_executed = None
-                continue
+        if status in {"exited", "force_flat"} and pending_executed is not None:
+            trade = _trade_from_pair(pending_executed, row, user_id=user_id, run_id=run_id)
+            trades.append(trade)
+            signals.append(_signal_from_executed(pending_executed, trade.id, user_id=user_id, run_id=run_id))
+            if status == "force_flat":
+                events.append(_event_force_flat(row, user_id=user_id, run_id=run_id))
+            pending_executed = None
+            continue
 
-            if status == "lockout":
-                events.append(_event_lockout(row, user_id=user_id, run_id=run_id))
+        if status == "lockout":
+            events.append(_event_lockout(row, user_id=user_id, run_id=run_id))
 
     return trades, signals, events
+
+
+def _transform_journal(
+    journal_path: Path,
+    *,
+    user_id: UUID,
+    run_id: UUID,
+) -> tuple[list[TradeRow], list[SignalRow], list[JournalEventRow]]:
+    """File-based wrapper: read journal.csv, delegate to the shared mapper."""
+    with journal_path.open() as f:
+        return _transform_journal_rows(
+            csv.DictReader(f), user_id=user_id, run_id=run_id
+        )
 
 
 def _ctx_from_row(row: dict) -> SignalIndicatorContext:
