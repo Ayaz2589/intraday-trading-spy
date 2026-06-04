@@ -15,7 +15,10 @@ function ValidationPage() {
   const runLockbox = useRunLockbox();
   const configsQuery = useConfigs();
   const configs = configsQuery.data?.configs ?? [];
-  const [lockboxConfig, setLockboxConfig] = useState("default");
+  // Pre-select the active config to freeze (Feature 012); user can override.
+  const activeName = configs.find((c) => c.is_active)?.name;
+  const [pickedLockbox, setPickedLockbox] = useState<string | null>(null);
+  const lockboxConfig = pickedLockbox ?? activeName ?? "default";
 
   return (
     <div style={{ padding: "var(--sp-5)", display: "grid", gap: "var(--sp-5)", maxWidth: 900 }}>
@@ -50,7 +53,7 @@ function ValidationPage() {
             <select
               aria-label="lockbox config"
               value={lockboxConfig}
-              onChange={(e) => setLockboxConfig(e.target.value)}
+              onChange={(e) => setPickedLockbox(e.target.value)}
             >
               {(configs.length > 0 ? configs.map((c) => c.name) : ["default"]).map((name) => (
                 <option key={name} value={name}>{name}</option>

@@ -39,6 +39,21 @@ describe("StartStudyDialog config picker", () => {
     );
   });
 
+  it("pre-selects the active config (Feature 012 SC-007)", async () => {
+    listConfigsMock.mockResolvedValue({
+      configs: [cfg("default"), { ...cfg("aggressive"), is_active: true }],
+    });
+    startStudyMock.mockResolvedValue({ study_id: "x", status: "queued", planned_evaluations: 24 });
+    const { StartStudyDialog } = await import("./start-study-dialog");
+    wrap(createElement(StartStudyDialog));
+    // Without touching the picker, launching uses the active config.
+    await waitFor(() => expect(screen.getByRole("option", { name: "aggressive" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /launch study/i }));
+    await waitFor(() =>
+      expect(startStudyMock).toHaveBeenCalledWith(expect.objectContaining({ config_name: "aggressive" }))
+    );
+  });
+
   it("falls back to the default config before the list loads", async () => {
     listConfigsMock.mockResolvedValue({ configs: [] });
     startStudyMock.mockResolvedValue({ study_id: "x", status: "queued", planned_evaluations: 24 });

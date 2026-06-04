@@ -14,6 +14,7 @@ import pytest
 
 from intraday_trade_spy.backtest.engine import BacktestEngine
 from intraday_trade_spy.config import build_effective_config, load_config
+from intraday_trade_spy.config_presets import load_presets
 from intraday_trade_spy.data.loader import load_bars
 
 CONFIG_YAML = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
@@ -49,6 +50,24 @@ def test_position_cap_fix_is_what_unblocks_trades(df):
 def test_shipped_default_executes_trades(df):
     # A fresh config from the shipped default actually trades over a month.
     assert _trades({}, df) > 0
+
+
+@pytest.mark.parametrize("preset", load_presets(), ids=lambda p: p["name"])
+def test_each_builtin_preset_executes_trades(preset, df):
+    # T030/T031: every shipped preset must clear the 0-trade wall over the
+    # fixture month. A preset that pairs raised risk with a 100% cap (the old
+    # `aggressive`) rejects nearly every signal — those caps are the bug.
+    assert _trades(preset["params"], df) > 0, f"preset {preset['name']!r} executed 0 trades"
+
+
+def test_preset_loss_controls_are_not_weakened(df):
+    # The cap raise must not disable the per-preset loss controls: clamping the
+    # daily-loss limit to near-zero must still cut trading short for each preset.
+    for preset in load_presets():
+        params = preset["params"]
+        normal = _trades(params, df)
+        clamped = {**params, "risk": {**params["risk"], "max_daily_loss_pct": 0.02}}
+        assert _trades(clamped, df) <= normal, f"daily-loss veto not binding for {preset['name']!r}"
 
 
 def test_daily_loss_veto_still_binds_at_higher_cap(df):

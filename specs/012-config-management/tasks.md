@@ -19,7 +19,7 @@ description: "Task list for Feature 012 — First-Class Config Management"
 - [X] T002 [P] Author migration `backend/db/migrations/0121_runs_config_id_nullable.sql` — `runs.config_id` DROP NOT NULL; drop the existing FK (verify constraint name first) and re-add `FOREIGN KEY (config_id) REFERENCES configs(id) ON DELETE SET NULL`.
 - [X] T003 [P] Author migration `backend/db/migrations/0122_workable_default_seed.sql` — `CREATE OR REPLACE FUNCTION seed_default_config_for_user` with `risk.max_position_value_pct=400`; idempotently reseed existing `default` configs still on the mis-sized cap (safe against the already-hand-patched live default).
 - [X] T004 Apply migrations 0120/0121/0122 to Supabase via direct psycopg + `SUPABASE_DB_URL` (sandbox off if blocked); verify `is_active`, the nullable FK, and the seed function.
-- [ ] T005 [P] Set `risk.max_position_value_pct: 400` in `backend/config/config.yaml` and adjust each `backend/config/presets/*.yaml` (and its header note) so every preset executes trades while staying a distinct risk profile (the `aggressive` preset's "most signals reject" note must no longer hold).
+- [X] T005 [P] Set `risk.max_position_value_pct: 400` in `backend/config/config.yaml` and adjust each `backend/config/presets/*.yaml` (and its header note) so every preset executes trades while staying a distinct risk profile (the `aggressive` preset's "most signals reject" note must no longer hold).
 
 ---
 
@@ -48,9 +48,9 @@ description: "Task list for Feature 012 — First-Class Config Management"
 - [X] T013 [US1] Implement `create_config` / `duplicate_config` / `set_active_config` / `get_active_config` / `list_presets` in `backend/src/intraday_trade_spy/storage/client.py`; create/duplicate emit a `journal_events` lifecycle row.
 - [X] T014 [US1] Failing test: `POST /api/configs` (scratch/preset/duplicate), `POST /api/configs/{id}/activate`, `GET /api/configs/presets` — in `backend/tests/api/new/test_configs_api.py` (TestClient + stub storage, `pytestmark = pytest.mark.api`).
 - [X] T015 [US1] Implement create / duplicate / activate / presets endpoints in `backend/src/intraday_trade_spy/api/routers/configs.py` + `ConfigCreateRequest` / `PresetView` / `PresetListResponse` in `api/schemas.py` (reject symbol/direction/live_auto_enabled at the boundary).
-- [ ] T016 [P] [US1] Frontend failing test: config manager creates from preset/duplicate, marks the active config, and pickers pre-select active — in `frontend/src/components/strategies/config-manager.test.tsx`.
-- [ ] T017 [US1] Implement `frontend/src/components/strategies/config-manager.tsx` (create/duplicate/activate) + `createConfig`/`duplicateConfig`/`activateConfig`/`listPresets` in `frontend/src/api/configs.ts` + mutations in `frontend/src/hooks/useConfigs.ts` + active pre-selection in the study/backtest/lockbox pickers.
-- [ ] T018 [P] [US1] Add `HELP_CONTENT` keys `saved_config`, `active_config` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `config-manager.tsx`; assert in its test.
+- [X] T016 [P] [US1] Frontend failing test: config manager creates from preset/duplicate, marks the active config, and pickers pre-select active — in `frontend/src/components/strategies/config-manager.test.tsx`.
+- [X] T017 [US1] Implement `frontend/src/components/strategies/config-manager.tsx` (create/duplicate/activate) + `createConfig`/`duplicateConfig`/`activateConfig`/`listPresets` in `frontend/src/api/configs.ts` + mutations in `frontend/src/hooks/useConfigs.ts` + active pre-selection in the study/backtest/lockbox pickers.
+- [X] T018 [P] [US1] Add `HELP_CONTENT` keys `saved_config`, `active_config` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `config-manager.tsx`; assert in its test.
 
 **Checkpoint**: US1 independently functional (MVP) — more than one config exists and is selectable.
 
@@ -63,8 +63,8 @@ description: "Task list for Feature 012 — First-Class Config Management"
 **Independent Test**: edit "low-risk"'s risk-reward, save, confirm `default` is unchanged and past runs are unaffected.
 
 - [ ] T019 [P] [US2] Failing test (integration-style): `update_config` edits only the targeted config (owner+id scoped); other configs and finished runs unchanged — in `backend/tests/storage/test_client_configs.py`.
-- [ ] T020 [P] [US2] Frontend failing test: editing the selected config saves only that config (no cross-config bleed) in `frontend/src/components/strategies/config-manager.test.tsx`.
-- [ ] T021 [US2] Wire per-selected-config editing into `config-manager.tsx` (reuse the existing `PATCH /api/configs/{id}` params path); ensure the editor is scoped to the selected config.
+- [X] T020 [P] [US2] Frontend failing test: editing the selected config saves only that config (no cross-config bleed) in `frontend/src/components/strategies/config-manager.test.tsx`.
+- [X] T021 [US2] Wire per-selected-config editing into `config-manager.tsx` (reuse the existing `PATCH /api/configs/{id}` params path); ensure the editor is scoped to the selected config.
 
 **Checkpoint**: US1 + US2 functional.
 
@@ -80,9 +80,9 @@ description: "Task list for Feature 012 — First-Class Config Management"
 - [X] T023 [US3] Implement `rename_config` + `delete_config` (last-config guard, active promotion, journal lifecycle event) in `backend/src/intraday_trade_spy/storage/client.py`.
 - [X] T024 [US3] Failing test: `PATCH /api/configs/{id}` rename + `DELETE /api/configs/{id}` (409 last-config, run still resolvable after delete) — in `backend/tests/api/new/test_configs_api.py`.
 - [X] T025 [US3] Implement rename in `PATCH /configs/{id}` (extend to accept optional `name`) + `DELETE /configs/{id}` in `routers/configs.py` + `ConfigRenameRequest` in `api/schemas.py`.
-- [ ] T026 [P] [US3] Frontend failing test: rename + delete (confirm dialog + run-history-safe note; last-config delete disabled) in `frontend/src/components/strategies/config-manager.test.tsx`.
-- [ ] T027 [US3] Implement rename/delete in `config-manager.tsx` + `renameConfig`/`deleteConfig` in `frontend/src/api/configs.ts` + mutations in `useConfigs.ts`.
-- [ ] T028 [P] [US3] Add `HELP_CONTENT` keys `duplicate_vs_edit`, `delete_safe` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `config-manager.tsx`; assert in its test.
+- [X] T026 [P] [US3] Frontend failing test: rename + delete (confirm dialog + run-history-safe note; last-config delete disabled) in `frontend/src/components/strategies/config-manager.test.tsx`.
+- [X] T027 [US3] Implement rename/delete in `config-manager.tsx` + `renameConfig`/`deleteConfig` in `frontend/src/api/configs.ts` + mutations in `useConfigs.ts`.
+- [X] T028 [P] [US3] Add `HELP_CONTENT` keys `duplicate_vs_edit`, `delete_safe` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `config-manager.tsx`; assert in its test.
 
 **Checkpoint**: US1–US3 functional.
 
@@ -96,7 +96,7 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 - [X] T029 [US4] Failing test: a backtest with the shipped default params over a committed multi-month fixture CSV (`backend/data/raw/spy_5m_2026-04-29_2026-05-28.csv`) executes a non-trivial trade count (cap=400 → trades > 0; assert cap=100 → ~0 for contrast) — in `backend/tests/test_workable_default.py`.
 - [X] T030 [US4] Failing test: each built-in preset, loaded via `config_presets`, executes trades over the fixture and the daily-loss / per-trade veto still binds (loss controls not weakened by the cap raise) — in `backend/tests/test_workable_default.py`.
-- [ ] T031 [US4] Finalize `backend/config/config.yaml` + `backend/config/presets/*.yaml` values so T029/T030 pass (presets span low-risk → aggressive, all trading). (Config files — verified by the tests above.)
+- [X] T031 [US4] Finalize `backend/config/config.yaml` + `backend/config/presets/*.yaml` values so T029/T030 pass (presets span low-risk → aggressive, all trading). (Config files — verified by the tests above.)
 
 **Checkpoint**: all four stories functional.
 
@@ -108,7 +108,7 @@ description: "Task list for Feature 012 — First-Class Config Management"
 - [ ] T033 [P] Test: config create/duplicate/rename/delete/activate emit `journal_events` lifecycle rows (constitution VII) — in `backend/tests/storage/test_client_configs.py`.
 - [ ] T034 [P] Update `docs/research-tooling-uplift.md` (012 status) + the roadmap §10 feature map (012 done).
 - [ ] T035 Run `quickstart.md` end-to-end against cloud (create→edit→duplicate→safe-delete→activate; confirm a fresh-default backtest trades).
-- [ ] T036 [P] Verify the Feature 011 pickers (study launcher, lockbox) + start-backtest now list multiple configs and pre-select the active one (closes SC-007).
+- [X] T036 [P] Verify the Feature 011 pickers (study launcher, lockbox) + start-backtest now list multiple configs and pre-select the active one (closes SC-007).
 
 ---
 

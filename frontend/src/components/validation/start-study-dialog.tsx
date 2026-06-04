@@ -10,7 +10,10 @@ import type { StartStudyRequest, StudyKind } from "@/api/types";
 export function StartStudyDialog({ defaultConfig = "default" }: { defaultConfig?: string }) {
   const configsQuery = useConfigs();
   const configs = configsQuery.data?.configs ?? [];
-  const [configName, setConfigName] = useState(defaultConfig);
+  // Pre-select the active config (Feature 012); the user can still pick another.
+  const activeName = configs.find((c) => c.is_active)?.name;
+  const [picked, setPicked] = useState<string | null>(null);
+  const configName = picked ?? activeName ?? defaultConfig;
   const [kind, setKind] = useState<StudyKind>("walk_forward");
   const [knob, setKnob] = useState("strategy.vwap_pullback.target.risk_reward");
   const [values, setValues] = useState("1.5, 2.0, 2.5, 3.0");
@@ -37,7 +40,7 @@ export function StartStudyDialog({ defaultConfig = "default" }: { defaultConfig?
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
         <label className="stat-label">
           Config{" "}
-          <select aria-label="config" value={configName} onChange={(e) => setConfigName(e.target.value)}>
+          <select aria-label="config" value={configName} onChange={(e) => setPicked(e.target.value)}>
             {options.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}

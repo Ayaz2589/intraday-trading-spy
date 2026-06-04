@@ -263,6 +263,13 @@ describe("RunViewer route", () => {
       "permutation_test",
       "lockbox",
       "burned_lockbox",
+      // Feature 012 config-management keys render on the Strategies route's
+      // config-manager (create/list/edit knobs), not the run-viewer; coverage
+      // lives in config-manager.test.tsx + help-content.test.ts.
+      "active_config",
+      "duplicate_vs_edit",
+      "delete_safe",
+      "buying_power",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;
