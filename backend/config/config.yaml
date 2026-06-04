@@ -53,7 +53,12 @@ risk:
   max_trades_per_day: 3
   max_consecutive_losses: 2
   cooldown_after_loss_minutes: 30
-  max_position_value_pct: 100.0
+  # Feature 012: 4x intraday day-trading buying power (standard for a same-day
+  # strategy). At 100% the risk-based position size exceeds the cap as soon as
+  # risk is raised above ~0.1%, so signals never become trades (the "0-trade
+  # wall"). 400 lets the strategy size up to a realistic intraday position while
+  # the per-trade-risk and daily-loss vetoes still bind. See FR-011.
+  max_position_value_pct: 400.0
   require_stop_loss: true
   require_take_profit: true
   allow_overnight_positions: false

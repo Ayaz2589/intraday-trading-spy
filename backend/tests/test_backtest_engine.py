@@ -60,9 +60,19 @@ def _zero_cost(cfg):
     )
 
 
+def _legacy_default(cfg):
+    """Feature 012 raised the shipped default's position-value cap (100->400) so
+    configs can trade at higher risk. These golden/cost assertions were authored
+    at the cap=100 sizing (qty 44 on the fixture); pin it so they keep testing
+    engine LOGIC at a fixed scenario, decoupled from the now-tunable default."""
+    return cfg.model_copy(
+        update={"risk": cfg.risk.model_copy(update={"max_position_value_pct": 100.0})}
+    )
+
+
 @pytest.fixture
 def fixture_result(default_config_path, sample_csv_path, tmp_path):
-    cfg = _zero_cost(load_config(default_config_path))
+    cfg = _zero_cost(_legacy_default(load_config(default_config_path)))
     return BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
 
 
@@ -145,7 +155,7 @@ def test_consecutive_losses_increment_then_reset_across_sessions(
     again (per-session reset on roll_to_session). If RiskState.roll_to_session
     silently drops the consecutive-loss reset (the Experiment 004 bug
     re-emerging), one of these days would lock out and we'd see fewer trades."""
-    cfg = load_config(default_config_path)
+    cfg = _legacy_default(load_config(default_config_path))
     eng = BacktestEngine(cfg)
     result = eng.run(csv_path=sample_csv_path, output_dir=tmp_path)
     # If the per-session reset regresses, day 3 would not execute (locked
@@ -161,7 +171,7 @@ def test_costs_reduce_pnl_by_exact_modeled_amount(
 ):
     """SC-001: net total = zero-cost total − total modeled cost, and the gap
     equals total_fees + total_slippage (here 3 trades × 44 × $0.01 × 2 = $2.64)."""
-    cfg = load_config(default_config_path)
+    cfg = _legacy_default(load_config(default_config_path))
     s_cost = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path).summary
     s_zero = BacktestEngine(_zero_cost(cfg)).run(
         csv_path=sample_csv_path, output_dir=tmp_path

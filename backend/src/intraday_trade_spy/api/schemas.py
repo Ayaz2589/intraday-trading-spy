@@ -219,6 +219,7 @@ class ConfigView(_ResponseBase):
     timeframe: Literal["5m"]
     strategy_id: UUID
     params: dict
+    is_active: bool = False  # Feature 012
 
 
 class StrategyView(_ResponseBase):

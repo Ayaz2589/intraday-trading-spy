@@ -127,6 +127,7 @@ class ConfigRow(_Base):
     live_auto_enabled: bool = False
     timeframe: Timeframe = "5m"
     params: ConfigParams
+    is_active: bool = False  # Feature 012: exactly one active config per user
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -172,7 +173,9 @@ class RunSummary(_Base):
 class RunRow(_Base):
     id: UUID
     user_id: UUID
-    config_id: UUID
+    # Feature 012: nullable — deleting a config sets this NULL (ON DELETE SET
+    # NULL); the run survives via its own config_snapshot.
+    config_id: Optional[UUID] = None
     strategy_id: UUID
     started_at: datetime
     finished_at: datetime
