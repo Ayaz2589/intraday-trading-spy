@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/013-data-observability/plan.md](specs/013-data-observability/plan.md)
+**Active plan**: none in flight — `013-data-observability` is implemented & merged. Next up: `014` (study child-run persistence + drill-down), then `015` (insights).
 
-**Active spec**: [specs/013-data-observability/spec.md](specs/013-data-observability/spec.md)
+**Most recent spec**: [specs/013-data-observability/spec.md](specs/013-data-observability/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -19,6 +19,7 @@
 - [specs/010-honest-backtest/plan.md](specs/010-honest-backtest/plan.md) — implemented (Phase 1; net-of-cost fills + real edge metrics, exit gate met)
 - [specs/011-validation-engine/plan.md](specs/011-validation-engine/plan.md) — implemented & merged to main (Phase 2; walk-forward/sensitivity/significance/lockbox, backend+UI, e2e-verified; exit gate is operational). See [docs/research-tooling-uplift.md](docs/research-tooling-uplift.md) for the 012/013/014 follow-on.
 - [specs/012-config-management/plan.md](specs/012-config-management/plan.md) — implemented & merged to main (Phase 2 follow-on; first-class named configs create/duplicate/rename/delete/activate + SPY-workable default cap=400 fixing the 0-trade wall; backend+UI; edit-isolation/journaling/e2e verified live on cloud).
+- [specs/013-data-observability/plan.md](specs/013-data-observability/plan.md) — implemented & merged to main (Data-page uplift: backfill job history w/ persistent failure reasons, cache summary + no-missing verdict, year×month completeness heatmap w/ exact missing-day hover, light lineage; no DB migration — R8 psycopg aggregate; verified live: 168k bars, 0 missing sessions).
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
