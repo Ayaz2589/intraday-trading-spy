@@ -637,6 +637,72 @@ one keeps it constant but adds notional exposure).
 
 ---
 
+## Experiment 007 — 2026-06-04 — Walk-forward: 2:1 vs 3:1 target (first OOS test)
+
+> First **out-of-sample** experiment in this log. Everything above is
+> in-sample (one backtest over one window); this one uses the Feature 011
+> walk-forward engine over real configs (the Feature 012 unlock) — 12 rolling
+> windows across 2018–2024, each validating on data its 12-month training
+> window never saw. The 2025–26 lockbox stayed untouched.
+
+### Hypothesis
+
+Raising the take-profit from 2:1 to 3:1 will *lower* win rate (a wider target
+is hit less often) but *raise* expectancy if the bigger winners more than pay
+for the extra misses — and, more importantly, it will hold up **out-of-sample**
+rather than just in-sample. Prediction: 3:1 wins on expectancy but both are
+weak/noisy.
+
+### Knobs changed
+
+| Field | Config A (`default`) | Config B (`wf-rr3`) |
+|---|---|---|
+| `strategy.vwap_pullback.target.risk_reward` | 2.0 | **3.0** |
+
+Both at `max_position_value_pct: 400`, account $25,000, risk 0.1%, OR 15 min,
+stop buffer 0.05%, max dist VWAP 0.25%. Net-of-cost ($0.01/share slippage).
+
+### Study IDs (persisted, visible in the Validation UI)
+
+- **Config A `default`**: `72f60493-bc5d-4b88-9159-540429aa3d22`
+- **Config B `wf-rr3`**: `841a94ff-0969-40aa-bdca-9aed813978ca`
+
+Pool 2018-01-01 → 2024-12-31 (lockbox 2025-01-01 → 2026-12-31 held out);
+137,306 SIP bars; 12 windows × IS+OOS each.
+
+### Outcome (means across the 12 OOS windows)
+
+| Metric | A — 2:1 | B — 3:1 |
+|---|---|---|
+| Mean OOS expectancy ($/trade) | +0.19 | **+0.95** |
+| Mean IS→OOS gap (expectancy R) | 0.0153 | **0.0054** |
+| OOS win rate | ~30% | ~20% |
+| OOS trades / window | ~250 | ~220 |
+| OOS per-window expectancy$ range | −3.54 … +3.14 | −4.23 … +4.57 |
+
+### Lesson
+
+Hypothesis broadly confirmed. The 3:1 target is the better candidate on *both*
+axes that matter for trusting an edge: higher mean OOS expectancy (+$0.95 vs
++$0.19/trade) **and** a smaller in-sample→out-of-sample decay (0.005 vs 0.015 R),
+i.e. it overfits less. The lower win rate (~20%) is expected and fine — at 3:1
+the fewer winners are bigger.
+
+**But this is a weak, noisy signal, not a green light.** OOS expectancy swings
+hard window-to-window (one −$4.23, another +$4.57), and a positive *mean* across
+12 windows is well within "could be luck." On a $25k account at ~0.1% risk/trade,
++$0.95/trade ≈ 0.04R — small. The honest next step is **significance** (bootstrap
+CI + random-entry permutation) to ask whether the OOS expectancy is
+distinguishable from random entries. Only if it survives that should the one-shot
+**lockbox** (2025–26) ever be spent on `wf-rr3` — and not before.
+
+Methodological note: this is the first experiment here that *can't* be fooled by
+in-sample fitting, because the metric is OOS by construction. Prior experiments
+(001–006) measured in-sample behavior on a single window; treat their "edges"
+with more suspicion than this one.
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical

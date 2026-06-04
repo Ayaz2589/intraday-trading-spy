@@ -21,6 +21,30 @@ learning app.
   HelpTooltip on every concept. Backed by a tiny FastAPI static
   server exposing `/api/runs/*`. See
   `specs/003-backtest-viewer-ui/`.
+- **Features 004–008 (design system, cloud, API, auth)** —
+  implemented. Design-system adoption (004); Supabase data layer (005);
+  FastAPI service expansion with per-user runs/auth (006); frontend
+  auth + API migration (007); soft-delete retention (008, trimmed).
+- **Feature 009 (Data foundation)** — implemented, exit gate met.
+  Alpaca **SIP** historical source + bulk backfill: **164,918 5-min
+  bars, 2018→2026**, all four market regimes 100% covered. See
+  `specs/009-data-foundation/`.
+- **Feature 010 (Honest backtest)** — implemented, exit gate met.
+  Net-of-cost fills (fees + slippage) + real edge metrics (expectancy,
+  Sharpe/Sortino, drawdown $/%, distribution, per-bucket, N + Wilson
+  95% CI + noise flag). See `specs/010-honest-backtest/`.
+- **Feature 011 (Validation engine)** — implemented & merged.
+  Train/validation/lockbox split, walk-forward, parameter-sensitivity
+  surface, bootstrap + random-entry-permutation significance, and the
+  one-shot lockbox gate — backend + UI at `/api/validation/*`. See
+  `specs/011-validation-engine/`.
+- **Feature 012 (First-class configs)** — implemented. Create /
+  duplicate / rename / delete / activate named configs (manager on the
+  Strategies page); presets as starting points; a SPY-workable default
+  (`max_position_value_pct: 400`) that fixes the 0-trade wall; every
+  picker pre-selects the active config so the validation engine has
+  real configs to compare. See `specs/012-config-management/` and
+  [`docs/research-tooling-uplift.md`](docs/research-tooling-uplift.md).
 
 ## Quickstart
 

@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/012-config-management/plan.md](specs/012-config-management/plan.md)
+**Active plan**: none in flight — `012-config-management` is **implemented** (3 commits on branch `012-config-management`, **pending merge to main**). Next up: `013` (study child-run persistence + drill-down).
 
-**Active spec**: [specs/012-config-management/spec.md](specs/012-config-management/spec.md)
+**Most recent spec**: [specs/012-config-management/spec.md](specs/012-config-management/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -18,6 +18,7 @@
 - [specs/009-data-foundation/plan.md](specs/009-data-foundation/plan.md) — implemented (Phase 0; 164,918 SIP bars 2018→2026, exit gate met)
 - [specs/010-honest-backtest/plan.md](specs/010-honest-backtest/plan.md) — implemented (Phase 1; net-of-cost fills + real edge metrics, exit gate met)
 - [specs/011-validation-engine/plan.md](specs/011-validation-engine/plan.md) — implemented & merged to main (Phase 2; walk-forward/sensitivity/significance/lockbox, backend+UI, e2e-verified; exit gate is operational). See [docs/research-tooling-uplift.md](docs/research-tooling-uplift.md) for the 012/013/014 follow-on.
+- [specs/012-config-management/plan.md](specs/012-config-management/plan.md) — implemented (Phase 2 follow-on; first-class named configs create/duplicate/rename/delete/activate + SPY-workable default cap=400 fixing the 0-trade wall; backend+UI; edit-isolation/journaling/e2e verified live on cloud). **On branch `012-config-management`, not yet merged.**
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
