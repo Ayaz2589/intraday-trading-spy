@@ -973,6 +973,123 @@ class SupabaseStorageClient:
         except Exception as exc:
             raise CloudPushError(f"bars_present_session_dates failed: {exc}") from exc
 
+    # ---------- Feature 013: cache stats + lineage ----------
+
+    def bars_monthly_aggregate(self) -> dict:
+        """Per-ET-month cache stats + whole-cache totals in one round trip
+        (Feature 013 US2; research D1/D2 — R8 direct-psycopg aggregate).
+
+        Returns {"months": {"YYYY-MM": {"bars", "session_dates", "sources"}},
+                 "totals": {"bars", "sessions", "earliest", "latest",
+                            "last_updated", "sources"}}.
+        """
+        import os
+
+        db_url = os.environ.get("SUPABASE_DB_URL")
+        if not db_url:
+            raise CloudPushError("bars_monthly_aggregate requires SUPABASE_DB_URL")
+
+        per_day_sql = (
+            "SELECT (bar_start AT TIME ZONE 'America/New_York')::date AS d, "
+            "       count(*) AS bars, array_agg(DISTINCT source) AS sources "
+            "FROM public.bars GROUP BY d ORDER BY d"
+        )
+        totals_sql = "SELECT count(*), max(created_at) FROM public.bars"
+        try:
+            import psycopg
+
+            with psycopg.connect(db_url) as conn, conn.cursor() as cur:
+                cur.execute(per_day_sql)
+                days = cur.fetchall()
+                cur.execute(totals_sql)
+                total_bars, last_created = cur.fetchone()
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"bars_monthly_aggregate failed: {exc}") from exc
+
+        months: dict[str, dict] = {}
+        all_sources: set[str] = set()
+        for d, bars, sources in days:
+            key = f"{d.year:04d}-{d.month:02d}"
+            m = months.setdefault(key, {"bars": 0, "session_dates": [], "sources": set()})
+            m["bars"] += int(bars)
+            m["session_dates"].append(d.isoformat())
+            m["sources"].update(sources or [])
+            all_sources.update(sources or [])
+        for m in months.values():
+            m["sources"] = sorted(m["sources"])
+
+        return {
+            "months": months,
+            "totals": {
+                "bars": int(total_bars or 0),
+                "sessions": len(days),
+                "earliest": days[0][0].isoformat() if days else None,
+                "latest": days[-1][0].isoformat() if days else None,
+                "last_updated": last_created.isoformat() if last_created else None,
+                "sources": sorted(all_sources),
+            },
+        }
+
+    def list_backfill_jobs(self, *, limit: int) -> list[dict]:
+        """The user's most recent backfill jobs, newest first (Feature 013 US1)."""
+        try:
+            response = (
+                self._client.table("backfill_jobs")
+                .select("*")
+                .eq("user_id", self.user_id)
+                .order("created_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"list_backfill_jobs failed: {exc}") from exc
+        return response.data or []
+
+    def runs_count(self) -> int:
+        """Count of the user's persisted runs (Feature 013 US4, research D4)."""
+        try:
+            response = (
+                self._client.table("runs")
+                .select("id", count="exact")
+                .eq("user_id", self.user_id)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"runs_count failed: {exc}") from exc
+        return response.count or 0
+
+    def studies_count(self) -> int:
+        """Count of the user's validation studies (Feature 013 US4)."""
+        try:
+            response = (
+                self._client.table("validation_studies")
+                .select("id", count="exact")
+                .eq("user_id", self.user_id)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"studies_count failed: {exc}") from exc
+        return response.count or 0
+
+    def latest_run_at(self):
+        """started_at of the user's most recent run, or None (Feature 013 US4)."""
+        try:
+            response = (
+                self._client.table("runs")
+                .select("started_at")
+                .eq("user_id", self.user_id)
+                .order("started_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"latest_run_at failed: {exc}") from exc
+        return response.data[0]["started_at"] if response.data else None
+
     # ---------- Feature 009: backfill_jobs ----------
 
     def insert_backfill_job(

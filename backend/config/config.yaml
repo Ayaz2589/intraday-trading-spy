@@ -125,6 +125,9 @@ api:
     window_days: 30
     max_concurrent_per_user: 1
     stale_job_ttl_minutes: 60
+    # Feature 013: how many recent backfill jobs the Data page's job-history
+    # table shows (newest first). Older jobs stay stored, just not displayed.
+    history_limit: 20
 
 # Alpaca market data (Feature 009). Secrets come from env (ALPACA_API_KEY /
 # ALPACA_SECRET_KEY), never here. Algo Trader Plus subscription → SIP

@@ -49,6 +49,64 @@ class BackfillJobView(BaseModel):
     bars_added: int
     gap_session_dates: list = Field(default_factory=list)
     failure_reason: Optional[str] = None
+    # Feature 013: job history shows when it ran + how long it took.
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+def _job_view(row: dict) -> BackfillJobView:
+    return BackfillJobView(
+        job_id=row["id"],
+        status=row["status"],
+        source=row.get("source", "alpaca"),
+        range_start=row["range_start"],
+        range_end=row["range_end"],
+        windows_total=row.get("windows_total", 0),
+        windows_done=row.get("windows_done", 0),
+        bars_added=row.get("bars_added", 0),
+        gap_session_dates=row.get("gap_session_dates") or [],
+        failure_reason=row.get("failure_reason"),
+        created_at=row.get("created_at"),
+        updated_at=row.get("updated_at"),
+    )
+
+
+class BackfillJobListResponse(BaseModel):
+    jobs: list[BackfillJobView] = Field(default_factory=list)
+
+
+# ---- Feature 013: cache stats (page snapshot) ----
+
+
+class CacheTotalsView(BaseModel):
+    bars: int = 0
+    sessions: int = 0
+    earliest: Optional[_date] = None
+    latest: Optional[_date] = None
+    last_updated: Optional[str] = None
+    sources: list[str] = Field(default_factory=list)
+
+
+class MonthStatView(BaseModel):
+    month: str  # "YYYY-MM"
+    state: str  # complete | partial | current | future
+    sessions_present: int
+    sessions_expected: int
+    bars: int
+    sources: list[str] = Field(default_factory=list)
+    missing_dates: list[str] = Field(default_factory=list)
+
+
+class LineageView(BaseModel):
+    runs_count: int = 0
+    studies_count: int = 0
+    latest_run_at: Optional[str] = None
+
+
+class BarsStatsResponse(BaseModel):
+    totals: CacheTotalsView
+    months: list[MonthStatView] = Field(default_factory=list)
+    lineage: LineageView
 
 
 @router.post("/bars/backfill", response_model=BarsBackfillStartResponse, status_code=202)
@@ -84,6 +142,20 @@ def start_bars_backfill(
     return BarsBackfillStartResponse(job_id=job_id, status="queued")
 
 
+@router.get("/bars/backfill", response_model=BackfillJobListResponse)
+def list_bars_backfill_jobs(
+    user_id: UUID = Depends(auth_user_id),  # noqa: ARG001 — storage client is user-scoped.
+    storage_client=Depends(get_storage_client),
+) -> BackfillJobListResponse:
+    """Job history for the Data page (Feature 013 US1): the most recent
+    backfill jobs, newest first, capped by `api.backfill.history_limit`.
+    Failed jobs stay visible with their failure_reason (FR-002)."""
+    from intraday_trade_spy.api.lifecycle import get_backfill_history_limit
+
+    rows = storage_client.list_backfill_jobs(limit=get_backfill_history_limit())
+    return BackfillJobListResponse(jobs=[_job_view(r) for r in rows])
+
+
 @router.get("/bars/backfill/{job_id}", response_model=BackfillJobView)
 def get_bars_backfill_status(
     job_id: UUID,
@@ -93,18 +165,53 @@ def get_bars_backfill_status(
     row = storage_client.get_backfill_job(job_id=job_id, user_id=user_id)
     if row is None:
         raise HTTPException(status_code=404, detail={"error": "job_not_found"})
-    return BackfillJobView(
-        job_id=row["id"],
-        status=row["status"],
-        source=row.get("source", "alpaca"),
-        range_start=row["range_start"],
-        range_end=row["range_end"],
-        windows_total=row.get("windows_total", 0),
-        windows_done=row.get("windows_done", 0),
-        bars_added=row.get("bars_added", 0),
-        gap_session_dates=row.get("gap_session_dates") or [],
-        failure_reason=row.get("failure_reason"),
-    )
+    return _job_view(row)
+
+
+@router.get("/bars/stats", response_model=BarsStatsResponse)
+def bars_stats(
+    user_id: UUID = Depends(auth_user_id),  # noqa: ARG001 — auth gate; bars are shared.
+    storage_client=Depends(get_storage_client),
+) -> BarsStatsResponse:
+    """The Data page snapshot (Feature 013): cache totals + per-month
+    completeness rows + light lineage. Best-effort per subsection (FR-011) —
+    a storage failure degrades that subsection, never 500s the page."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from intraday_trade_spy.api.coverage import month_stats
+    from intraday_trade_spy.data.market_calendar import expected_session_dates
+
+    today = datetime.now(ZoneInfo("America/New_York")).date()
+
+    totals = CacheTotalsView()
+    months: list[MonthStatView] = []
+    try:
+        agg = storage_client.bars_monthly_aggregate()
+        raw_totals = agg.get("totals") or {}
+        totals = CacheTotalsView(**raw_totals)
+        rows = month_stats(
+            months_raw=agg.get("months") or {},
+            earliest=totals.earliest,
+            latest=totals.latest,
+            expected_dates_provider=lambda s, e: expected_session_dates(s, e, today=today),
+            today=today,
+        )
+        months = [MonthStatView(**r) for r in rows]
+    except Exception:  # noqa: BLE001 — best-effort (FR-011)
+        _log.exception("bars.stats: aggregate failed; degrading")
+
+    lineage = LineageView()
+    try:
+        lineage = LineageView(
+            runs_count=storage_client.runs_count(),
+            studies_count=storage_client.studies_count(),
+            latest_run_at=storage_client.latest_run_at(),
+        )
+    except Exception:  # noqa: BLE001 — best-effort (FR-011)
+        _log.exception("bars.stats: lineage failed; degrading")
+
+    return BarsStatsResponse(totals=totals, months=months, lineage=lineage)
 
 
 class BarsFetchRequest(BaseModel):
