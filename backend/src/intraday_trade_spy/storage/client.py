@@ -32,6 +32,14 @@ if TYPE_CHECKING:
 HEALTH_CHECK_TIMEOUT_S = 5.0
 
 
+class ConfigNameConflict(Exception):
+    """A config name collides with an existing one (or is empty) — Feature 012."""
+
+
+class LastConfigError(Exception):
+    """Refusing to delete the operator's only remaining config — Feature 012."""
+
+
 class SupabaseStorageClient:
     """Service-role-authenticated Supabase client scoped to a single operator.
 
@@ -369,6 +377,153 @@ class SupabaseStorageClient:
         if not response.data:
             raise CloudPushError("update_config returned no row")
         return response.data[0]
+
+    # ---------- Feature 012: config lifecycle ----------
+
+    def _journal_config_event(self, event: str, name: str) -> None:
+        """Best-effort lifecycle journal for a config mutation (constitution VII)."""
+        import uuid
+        from datetime import datetime, timezone
+
+        try:
+            self.insert_journal_event(
+                event_id=uuid.uuid4(),
+                occurred_at=datetime.now(timezone.utc).isoformat(),
+                kind="lifecycle",
+                message=f"config {event}: {name}",
+                details={"event": f"config_{event}", "config_name": name},
+            )
+        except Exception:  # noqa: BLE001 — journaling must never block the mutation
+            pass
+
+    def create_config(self, *, name: str, params: dict, strategy_id=None, mode: str = "backtest") -> dict:
+        """Create a new named config. Rejects empty/duplicate names; pins the
+        SPY strategy (FR-014); live stays disabled. Returns the row."""
+        import uuid
+
+        name = (name or "").strip()
+        if not name:
+            raise ConfigNameConflict("config name must not be empty")
+        if self.get_config_by_name(name) is not None:
+            raise ConfigNameConflict(f"config name '{name}' is already in use")
+        if strategy_id is None:
+            strategy_id = self.get_strategy_by_key("vwap_pullback_long").id  # SPY-only
+        body = {
+            "id": str(uuid.uuid4()),
+            "user_id": self.user_id,
+            "strategy_id": str(strategy_id),
+            "name": name,
+            "mode": mode,
+            "params": params or {},
+            "is_active": False,
+        }
+        try:
+            response = self._client.table("configs").insert(body).execute()
+        except Exception as exc:
+            raise CloudPushError(f"create_config failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("create_config returned no row")
+        self._journal_config_event("created", name)
+        return response.data[0]
+
+    def duplicate_config(self, *, src_id, new_name: str) -> dict:
+        src = self.get_config_by_id(config_id=src_id, user_id=self.user_id)
+        if src is None:
+            raise SchemaError(f"config {src_id} not found")
+        row = self.create_config(
+            name=new_name,
+            params=src.get("params") or {},
+            strategy_id=src.get("strategy_id"),
+            mode=src.get("mode", "backtest"),
+        )
+        return row
+
+    def rename_config(self, *, config_id, new_name: str) -> dict:
+        from datetime import datetime, timezone
+
+        new_name = (new_name or "").strip()
+        if not new_name:
+            raise ConfigNameConflict("config name must not be empty")
+        existing = self.get_config_by_name(new_name)
+        if existing is not None and str(existing["id"]) != str(config_id):
+            raise ConfigNameConflict(f"config name '{new_name}' is already in use")
+        body = {"name": new_name, "updated_at": datetime.now(timezone.utc).isoformat()}
+        try:
+            response = (
+                self._client.table("configs")
+                .update(body)
+                .eq("id", str(config_id))
+                .eq("user_id", self.user_id)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"rename_config failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("rename_config returned no row")
+        self._journal_config_event("renamed", new_name)
+        return response.data[0]
+
+    def get_active_config(self):
+        try:
+            response = (
+                self._client.table("configs")
+                .select("*")
+                .eq("user_id", self.user_id)
+                .eq("is_active", True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"get_active_config failed: {exc}") from exc
+        return response.data[0] if response.data else None
+
+    def set_active_config(self, *, config_id) -> dict:
+        """Make `config_id` the active config. Clears the prior active first so
+        the one-active-per-user index never sees two active rows."""
+        try:
+            self._client.table("configs").update({"is_active": False}).eq(
+                "user_id", self.user_id
+            ).eq("is_active", True).execute()
+            response = (
+                self._client.table("configs")
+                .update({"is_active": True})
+                .eq("id", str(config_id))
+                .eq("user_id", self.user_id)
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"set_active_config failed: {exc}") from exc
+        if not response.data:
+            raise CloudPushError("set_active_config returned no row")
+        self._journal_config_event("activated", response.data[0].get("name", ""))
+        return response.data[0]
+
+    def delete_config(self, *, config_id) -> None:
+        """Delete a config. Refuses the last remaining config; if the deleted
+        one was active, promotes another to active. Referencing runs keep their
+        snapshot (config_id -> NULL via the FK)."""
+        configs = self.list_configs(user_id=self.user_id)
+        if len(configs) <= 1:
+            raise LastConfigError("cannot delete your only remaining config")
+        target = next((c for c in configs if str(c["id"]) == str(config_id)), None)
+        if target is None:
+            raise SchemaError(f"config {config_id} not found")
+        was_active = bool(target.get("is_active"))
+        try:
+            self._client.table("configs").delete().eq("id", str(config_id)).eq(
+                "user_id", self.user_id
+            ).execute()
+        except Exception as exc:
+            raise CloudPushError(f"delete_config failed: {exc}") from exc
+        if was_active:
+            remaining = [c for c in configs if str(c["id"]) != str(config_id)]
+            self.set_active_config(config_id=remaining[0]["id"])
+        self._journal_config_event("deleted", target.get("name", ""))
+
+    def list_presets(self) -> list[dict]:
+        from intraday_trade_spy.config_presets import load_presets
+
+        return load_presets()
 
     def get_strategy_by_id(self, *, strategy_id):
         try:

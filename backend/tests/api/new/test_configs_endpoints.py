@@ -81,3 +81,107 @@ def test_patch_config_404_when_not_found(unit_client, stub_storage_client):
         json={"params": {}},
     )
     assert r.status_code == 404
+
+
+# ---------- Feature 012: config management endpoints ----------
+
+from intraday_trade_spy.storage.client import ConfigNameConflict, LastConfigError  # noqa: E402
+
+
+def test_list_configs_exposes_is_active(unit_client, stub_storage_client):
+    row = {**_make_config_row("default"), "is_active": True}
+    stub_storage_client.list_configs.return_value = [row]
+    body = unit_client.get("/api/configs").json()
+    assert body["configs"][0]["is_active"] is True
+
+
+def test_create_config_scratch(unit_client, stub_storage_client):
+    created = {**_make_config_row("tighter"), "is_active": False}
+    stub_storage_client.create_config.return_value = created
+    r = unit_client.post("/api/configs", json={"name": "tighter", "source": "scratch"})
+    assert r.status_code == 201, r.text
+    assert r.json()["name"] == "tighter"
+    assert stub_storage_client.create_config.called
+
+
+def test_create_config_from_preset(unit_client, stub_storage_client):
+    stub_storage_client.list_presets.return_value = [
+        {"name": "low-risk", "description": "d", "params": {"risk": {}, "strategy": {}}}
+    ]
+    stub_storage_client.create_config.return_value = {**_make_config_row("lr"), "is_active": False}
+    r = unit_client.post("/api/configs", json={"name": "lr", "source": "preset", "preset_name": "low-risk"})
+    assert r.status_code == 201, r.text
+
+
+def test_create_config_unknown_preset_404(unit_client, stub_storage_client):
+    stub_storage_client.list_presets.return_value = []
+    r = unit_client.post("/api/configs", json={"name": "x", "source": "preset", "preset_name": "ghost"})
+    assert r.status_code == 404
+
+
+def test_create_config_duplicate_source(unit_client, stub_storage_client):
+    stub_storage_client.duplicate_config.return_value = {**_make_config_row("copy"), "is_active": False}
+    r = unit_client.post(
+        "/api/configs",
+        json={"name": "copy", "source": "duplicate", "from_config_id": str(uuid4())},
+    )
+    assert r.status_code == 201, r.text
+    assert stub_storage_client.duplicate_config.called
+
+
+def test_create_config_name_conflict_400(unit_client, stub_storage_client):
+    stub_storage_client.create_config.side_effect = ConfigNameConflict("name in use")
+    r = unit_client.post("/api/configs", json={"name": "default", "source": "scratch"})
+    assert r.status_code == 400
+
+
+def test_create_config_rejects_live(unit_client, stub_storage_client):
+    # Constitution V: a config path can never enable live trading.
+    r = unit_client.post(
+        "/api/configs",
+        json={"name": "x", "source": "scratch", "live_auto_enabled": True},
+    )
+    assert r.status_code == 422
+
+
+def test_activate_config(unit_client, stub_storage_client):
+    row = {**_make_config_row("aggressive"), "is_active": True}
+    stub_storage_client.get_config_by_id.return_value = row
+    stub_storage_client.set_active_config.return_value = row
+    r = unit_client.post(f"/api/configs/{row['id']}/activate")
+    assert r.status_code == 200
+    assert r.json()["is_active"] is True
+
+
+def test_rename_via_patch(unit_client, stub_storage_client):
+    existing = _make_config_row("old")
+    renamed = {**existing, "name": "new"}
+    stub_storage_client.get_config_by_id.return_value = existing
+    stub_storage_client.rename_config.return_value = renamed
+    r = unit_client.patch(f"/api/configs/{existing['id']}", json={"name": "new"})
+    assert r.status_code == 200
+    assert r.json()["name"] == "new"
+
+
+def test_delete_config(unit_client, stub_storage_client):
+    cid = uuid4()
+    stub_storage_client.delete_config.return_value = None
+    r = unit_client.delete(f"/api/configs/{cid}")
+    assert r.status_code == 200
+    assert r.json()["deleted"] == str(cid)
+
+
+def test_delete_last_config_409(unit_client, stub_storage_client):
+    stub_storage_client.delete_config.side_effect = LastConfigError("only one left")
+    r = unit_client.delete(f"/api/configs/{uuid4()}")
+    assert r.status_code == 409
+    assert r.json()["detail"]["error"] == "last_config"
+
+
+def test_list_presets(unit_client, stub_storage_client):
+    stub_storage_client.list_presets.return_value = [
+        {"name": "aggressive", "description": "bigger risk", "params": {"risk": {}, "strategy": {}}}
+    ]
+    r = unit_client.get("/api/configs/presets")
+    assert r.status_code == 200
+    assert r.json()["presets"][0]["name"] == "aggressive"

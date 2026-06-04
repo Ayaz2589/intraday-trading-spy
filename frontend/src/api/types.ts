@@ -131,7 +131,20 @@ export type Config = {
   timeframe: '5m'
   strategy_id: UUID
   params: Record<string, unknown>
+  // Feature 012 — exactly one config per user is the active one (pre-selected
+  // in every picker). Optional so pre-012 cached shapes still type-check.
+  is_active?: boolean
 }
+
+// Feature 012 — built-in preset a config can be created from. Read-only
+// templates surfaced by GET /api/configs/presets; not user-editable themselves.
+export type Preset = {
+  name: string
+  description: string
+  params: Record<string, unknown>
+}
+
+export type ConfigSource = 'scratch' | 'preset' | 'duplicate'
 
 export type RunManifestResponse = {
   strategy: Strategy

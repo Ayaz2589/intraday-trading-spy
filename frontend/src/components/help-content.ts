@@ -59,7 +59,12 @@ export type HelpContentKey =
   | "bootstrap_ci"
   | "permutation_test"
   | "lockbox"
-  | "burned_lockbox";
+  | "burned_lockbox"
+  // Feature 012 (config management) concepts
+  | "active_config"
+  | "duplicate_vs_edit"
+  | "delete_safe"
+  | "buying_power";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -100,7 +105,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   position_cap: {
     title: "Position Cap",
     description:
-      "Maximum dollar value of any single position, as a percentage of account size. Prevents one trade from putting the whole account at risk. Default 25%: with $1,000 account, max position is $250.",
+      "Maximum dollar value of any single position, as a percentage of account size. Prevents one trade from putting the whole account at risk. For an intraday strategy the default is 400% — 4x intraday buying power (see Buying power). Too low a cap (e.g. 100%) makes the risk-based size exceed the cap so nearly every signal is rejected and you get 0 trades.",
   },
   cooldown: {
     title: "Cooldown",
@@ -317,5 +322,25 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Burned / contaminated lockbox",
     description:
       "Once you run a SECOND, different config against the lockbox, it is no longer untouched — you've started fitting to it. The system blocks this by default; doing it deliberately permanently marks the lockbox 'burned', and its results can no longer be trusted as a clean out-of-sample test.",
+  },
+  active_config: {
+    title: "Active config",
+    description:
+      "Exactly one of your saved configs is the 'active' one. It's pre-selected wherever you pick a config — start backtest, new study, lockbox — so you don't have to re-choose each time. Setting another config active just changes that default; it never edits any config's knobs.",
+  },
+  duplicate_vs_edit: {
+    title: "Duplicate vs. edit",
+    description:
+      "Editing changes a config's knobs in place — every future run that picks it uses the new values (past runs keep their own snapshot, so they're unaffected). Duplicate makes a separate named copy so you can change one knob and compare A vs. B side by side. Research = duplicate then tweak; fixing a typo = edit.",
+  },
+  delete_safe: {
+    title: "Why deleting is safe",
+    description:
+      "Deleting a config never corrupts run history. Every past run stored its own full copy of the knobs it ran with (a snapshot), so those results stay intact and readable — the run simply no longer links to a live config. You can't delete your last remaining config.",
+  },
+  buying_power: {
+    title: "Intraday buying power",
+    description:
+      "A pattern-day-trader account can take intraday positions up to 4x its cash (then must close them by the session end — no overnight). That's why the position cap defaults to 400%: it reflects standard 4x day-trading buying power so the strategy can size a realistic intraday position while the per-trade-risk and daily-loss limits still bind.",
   },
 };

@@ -81,17 +81,19 @@ insights/aggregation" shifts to **014**. Adjust numbers at spec time.
 
 | Feature | Scope | Why now | Depends on |
 |---|---|---|---|
-| **012 — First-class configs** | create / duplicate / rename / delete named configs; presets as starting points; config-management UI; ship a SPY-workable default | The unlock: without it Job 2 has nothing to compare; also fixes the 0-trade `position_size_cap` confusion | 011 |
+| **012 — First-class configs** ✅ **DONE** | create / duplicate / rename / delete / activate named configs; presets as starting points; config-management UI on the Strategies page; SPY-workable default (cap=400) + presets that all trade; every picker pre-selects the active config | The unlock: without it Job 2 has nothing to compare; also fixed the 0-trade `position_size_cap` wall | 011 |
 | **013 — Study child-run persistence + drill-down** | orchestrator writes each window/grid eval as a real (study-tagged) run; study-detail rows link to run-detail; significance attaches to a window; runs list hides study children | Closes the run/study seam; makes significance + drill-down work end-to-end | 011, complements 012 |
 | **014 — Insights / aggregation + retention** | cross-run insights API + views (per-config distribution, sensitivity across the archive, edge time-series, rejection mining) + soft-delete (the trimmed `008`) | Far more valuable once 013 produces many child runs to aggregate | 013 |
 | **015 (optional) — Research/Learn UI lanes** | reorganize nav/IA into "Backtest / Learn" and "Validate / Research" sections over the shared core | Clarity; can be folded into 012/013 | 012, 013 |
 
-**Immediate, no-feature fix (do now):** the shipped `default` config is mis-sized
-for SPY at ~$740 on a $25k account — `risk.max_position_value_pct = 100` makes
-the risk-based size exceed the value cap, so `position_size_cap` rejects nearly
-every signal → 0 trades. Raising `max_position_value_pct` (e.g. 400–1000) and/or
-lowering account expectations makes backtests execute. Folds naturally into 012's
-"ship a workable default + presets."
+**0-trade fix (DONE in 012):** the shipped `default` config was mis-sized for SPY
+at ~$740 on a $25k account — `risk.max_position_value_pct = 100` made the
+risk-based size exceed the value cap, so `position_size_cap` rejected nearly
+every signal → 0 trades. Feature 012 shipped `max_position_value_pct = 400` (4x
+intraday buying power) as the version-controlled default + a seed migration, and
+fixed each preset (e.g. `aggressive` cap 100→1200) so all presets trade;
+`tests/test_workable_default.py` runs every preset over a committed fixture and
+asserts each trades while the daily-loss / per-trade vetoes still bind.
 
 ---
 

@@ -219,6 +219,7 @@ class ConfigView(_ResponseBase):
     timeframe: Literal["5m"]
     strategy_id: UUID
     params: dict
+    is_active: bool = False  # Feature 012
 
 
 class StrategyView(_ResponseBase):
@@ -348,3 +349,59 @@ class ValidationStudyStatusView(_ResponseBase):
 class StudyListResponse(_ResponseBase):
     studies: list[ValidationStudyView]
     next_cursor: Optional[str] = None
+
+
+# ---------- Feature 012: config management ----------
+
+
+class ConfigCreateRequest(_Base):
+    name: str = Field(min_length=1, max_length=200)
+    source: Literal["scratch", "preset", "duplicate"] = "scratch"
+    preset_name: Optional[str] = None      # required when source == "preset"
+    from_config_id: Optional[UUID] = None  # required when source == "duplicate"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_forbidden_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+        forbidden = {"symbol", "direction", "live_auto_enabled"} & data.keys()
+        if forbidden:
+            raise ValueError(
+                f"forbidden fields not accepted from clients (constitution I/II/V): {sorted(forbidden)}"
+            )
+        return data
+
+    @model_validator(mode="after")
+    def _source_requires_field(self) -> "ConfigCreateRequest":
+        if self.source == "preset" and not self.preset_name:
+            raise ValueError("source='preset' requires preset_name")
+        if self.source == "duplicate" and not self.from_config_id:
+            raise ValueError("source='duplicate' requires from_config_id")
+        return self
+
+
+class ConfigDuplicateRequest(_Base):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class ConfigMutateRequest(_Base):
+    """PATCH body — rename and/or edit knobs. At least one field required."""
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    params: Optional[dict] = None
+
+    @model_validator(mode="after")
+    def _at_least_one(self) -> "ConfigMutateRequest":
+        if self.name is None and self.params is None:
+            raise ValueError("PATCH requires `name` and/or `params`")
+        return self
+
+
+class PresetView(_ResponseBase):
+    name: str
+    description: str
+    params: dict
+
+
+class PresetListResponse(_ResponseBase):
+    presets: list[PresetView]

@@ -5,73 +5,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarField } from '@/components/calendar-field'
 import { clampEnd, maxEndForStart, minIso, MAX_RANGE_DAYS } from '@/lib/date-range'
 import { useBarsCoverage } from '@/hooks/useBarsCoverage'
-import { useConfigs, useUpdateConfig } from '@/hooks/useConfigs'
+import { useActivateConfig, useConfigs, useUpdateConfig } from '@/hooks/useConfigs'
 import { useStartBacktest } from '@/hooks/useStartBacktest'
 import { useStrategies } from '@/hooks/useStrategies'
-import type { Config } from '@/api/types'
-
-/** Read a nested key path, defaulting to undefined. */
-function get(obj: unknown, path: string[]): unknown {
-  let cur: unknown = obj
-  for (const k of path) {
-    if (cur == null || typeof cur !== 'object') return undefined
-    cur = (cur as Record<string, unknown>)[k]
-  }
-  return cur
-}
-
-/** Build the nested params object that the backend / config.yaml shape expects. */
-function buildParams(knobs: KnobValues, enabledSetup: string): Record<string, unknown> {
-  return {
-    risk: {
-      account_value: knobs.account_value,
-      max_risk_per_trade_pct: knobs.max_risk_per_trade_pct,
-      max_position_value_pct: knobs.max_position_value_pct,
-      max_consecutive_losses: knobs.max_consecutive_losses,
-    },
-    strategy: {
-      enabled_setup: enabledSetup,
-      opening_range: { minutes: knobs.opening_range_minutes },
-      vwap_pullback: {
-        max_distance_from_vwap_pct: knobs.max_distance_from_vwap_pct,
-        stop: { buffer_pct: knobs.stop_buffer_pct },
-        target: { risk_reward: knobs.risk_reward },
-      },
-    },
-  }
-}
-
-interface KnobValues {
-  account_value: number
-  max_risk_per_trade_pct: number
-  max_position_value_pct: number
-  max_consecutive_losses: number
-  opening_range_minutes: number
-  risk_reward: number
-  stop_buffer_pct: number
-  max_distance_from_vwap_pct: number
-}
-
-function knobsFromConfig(config: Config | undefined): KnobValues {
-  const p = (config?.params ?? {}) as Record<string, unknown>
-  const num = (v: unknown, fallback: number) => {
-    const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
-    return Number.isFinite(n) ? n : fallback
-  }
-  return {
-    account_value: num(get(p, ['risk', 'account_value']), 25000),
-    max_risk_per_trade_pct: num(get(p, ['risk', 'max_risk_per_trade_pct']), 0.1),
-    max_position_value_pct: num(get(p, ['risk', 'max_position_value_pct']), 100),
-    max_consecutive_losses: num(get(p, ['risk', 'max_consecutive_losses']), 2),
-    opening_range_minutes: num(get(p, ['strategy', 'opening_range', 'minutes']), 15),
-    risk_reward: num(get(p, ['strategy', 'vwap_pullback', 'target', 'risk_reward']), 2.0),
-    stop_buffer_pct: num(get(p, ['strategy', 'vwap_pullback', 'stop', 'buffer_pct']), 0.05),
-    max_distance_from_vwap_pct: num(
-      get(p, ['strategy', 'vwap_pullback', 'max_distance_from_vwap_pct']),
-      0.25,
-    ),
-  }
-}
+import { buildParams, get, knobsFromConfig, type KnobValues } from '@/lib/config-knobs'
 
 function toIso(d: Date): string {
   const y = d.getFullYear()
@@ -119,6 +56,7 @@ export function StrategyConfigDropdown() {
   const strategiesQuery = useStrategies()
   const coverageQuery = useBarsCoverage()
   const update = useUpdateConfig()
+  const activate = useActivateConfig()
   const startBacktest = useStartBacktest()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -137,9 +75,14 @@ export function StrategyConfigDropdown() {
 
   const configs = configsQuery.data?.configs ?? []
   const strategies = strategiesQuery.data ?? []
-  // For v1 we always edit the "default" config (the seeded one).
+  // Feature 012: edit & run whichever config is ACTIVE (pre-selected). The
+  // picker below switches the active config server-side. Fall back to the
+  // seeded `default`, then the first config, before the list/flag loads.
   const config = useMemo(
-    () => configs.find(c => c.name === 'default') ?? configs[0],
+    () =>
+      configs.find(c => c.is_active) ??
+      configs.find(c => c.name === 'default') ??
+      configs[0],
     [configs],
   )
   const initialKnobs = useMemo(() => knobsFromConfig(config), [config])
@@ -241,8 +184,32 @@ export function StrategyConfigDropdown() {
             color: 'var(--text-muted)',
           }}
         >
-          Edits the <code className="mono">default</code> config. Next backtest uses these values.
+          Edits & runs the active config. Manage configs on the Strategies page.
         </p>
+
+        {configs.length > 1 && (
+          <div style={{ marginBottom: 8 }}>
+            <Label>Config</Label>
+            <select
+              aria-label="active config"
+              data-testid="strategy-dropdown-config"
+              value={config?.id ?? ''}
+              disabled={activate.isPending}
+              onChange={e => {
+                const next = configs.find(c => c.id === e.target.value)
+                if (next && !next.is_active) activate.mutate(next.id)
+              }}
+              style={selectStyle}
+            >
+              {configs.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.is_active ? ' (active)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <Label>Strategy</Label>
         <select
