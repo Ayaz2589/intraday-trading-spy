@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 const mutate = vi.fn()
 let coverageData: unknown
 let statusData: unknown
+let statsData: unknown
+let jobsData: unknown
 
 vi.mock('@/hooks/useBarsCoverage', () => ({
   useBarsCoverage: () => ({ data: coverageData, isLoading: false }),
@@ -13,6 +15,13 @@ vi.mock('@/hooks/useStartBackfill', () => ({
 }))
 vi.mock('@/hooks/useBackfillStatus', () => ({
   useBackfillStatus: () => ({ data: statusData }),
+}))
+// Feature 013: stats + job-history hooks (sections render only with data).
+vi.mock('@/hooks/useBarsStats', () => ({
+  useBarsStats: () => ({ data: statsData, isError: false }),
+}))
+vi.mock('@/hooks/useBackfillJobs', () => ({
+  useBackfillJobs: () => ({ data: jobsData, isError: false }),
 }))
 
 import { DataCoveragePanel } from './data-coverage-panel'
@@ -27,6 +36,27 @@ describe('DataCoveragePanel', () => {
     mutate.mockReset()
     coverageData = { earliest: '2020-01-02', latest: '2026-06-01', regimes: REGIMES }
     statusData = undefined
+    statsData = undefined
+    jobsData = undefined
+  })
+
+  it('renders the Feature 013 sections when stats are available', () => {
+    statsData = {
+      totals: { bars: 100, sessions: 2, earliest: '2026-05-01', latest: '2026-05-04', last_updated: '2026-05-04T20:00:00Z', sources: ['alpaca'] },
+      months: [
+        { month: '2026-05', state: 'complete', sessions_present: 2, sessions_expected: 2, bars: 100, sources: ['alpaca'], missing_dates: [] },
+      ],
+      lineage: { runs_count: 1, studies_count: 0, latest_run_at: null },
+    }
+    jobsData = { jobs: [] }
+    render(<DataCoveragePanel />)
+    expect(screen.getByTestId('cache-summary')).toBeInTheDocument()
+    expect(screen.getByTestId('cache-heatmap')).toBeInTheDocument()
+    expect(screen.getByTestId('job-history')).toBeInTheDocument()
+    // The new concepts ship tooltips (constitution VI).
+    for (const key of ['cache_heatmap', 'backfill_job_history', 'data_lineage']) {
+      expect(document.querySelector(`[data-help-key="${key}"]`)).toBeTruthy()
+    }
   })
 
   it('renders the cached span', () => {

@@ -64,7 +64,11 @@ export type HelpContentKey =
   | "active_config"
   | "duplicate_vs_edit"
   | "delete_safe"
-  | "buying_power";
+  | "buying_power"
+  // Feature 013 (data observability) concepts
+  | "cache_heatmap"
+  | "backfill_job_history"
+  | "data_lineage";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -342,5 +346,20 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Intraday buying power",
     description:
       "A pattern-day-trader account can take intraday positions up to 4x its cash (then must close them by the session end — no overnight). That's why the position cap defaults to 400%: it reflects standard 4x day-trading buying power so the strategy can size a realistic intraday position while the per-trade-risk and daily-loss limits still bind.",
+  },
+  cache_heatmap: {
+    title: "Cache completeness heatmap",
+    description:
+      "Each cell is one month of your price-history stockpile: green = every NYSE trading day is cached, orange = some days are missing (hover to see exactly which), blue = the current month (judged only against days that have already happened), grey = not cached / in the future. Market holidays and half-days are already excluded — so any day listed as missing is a REAL gap you could backfill.",
+  },
+  backfill_job_history: {
+    title: "Backfill job history",
+    description:
+      "Every 'Backfill history' click becomes a job: the requested date range is split into ~monthly windows, each fetched and added to the cache. Duplicates are skipped, so re-running over data you already have adds ~0 bars — that's the healthy outcome, not an error. Failed jobs stay listed with their reason so you can see what went wrong even after a later job succeeds.",
+  },
+  data_lineage: {
+    title: "What this data feeds",
+    description:
+      "A quick link between the data and the research built on it: how many backtests and validation studies have run against this cache, and when the most recent one ran. Counts match the Runs page. Deeper per-run lineage (which exact dates each run consumed) is planned for the insights feature.",
   },
 };

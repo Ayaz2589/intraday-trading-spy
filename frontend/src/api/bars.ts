@@ -52,6 +52,46 @@ export type BackfillJobView = {
   bars_added: number
   gap_session_dates: string[]
   failure_reason: string | null
+  // Feature 013: when the job ran + (with updated_at) how long it took.
+  created_at: string | null
+  updated_at: string | null
+}
+
+// ---- Feature 013: data observability ----
+
+export type BackfillJobListResponse = { jobs: BackfillJobView[] }
+
+export type CacheTotals = {
+  bars: number
+  sessions: number
+  earliest: string | null // YYYY-MM-DD
+  latest: string | null
+  last_updated: string | null
+  sources: string[]
+}
+
+export type MonthState = 'complete' | 'partial' | 'current' | 'future'
+
+export type MonthStat = {
+  month: string // "YYYY-MM"
+  state: MonthState
+  sessions_present: number
+  sessions_expected: number
+  bars: number
+  sources: string[]
+  missing_dates: string[] // non-empty iff state === 'partial'
+}
+
+export type Lineage = {
+  runs_count: number
+  studies_count: number
+  latest_run_at: string | null
+}
+
+export type BarsStatsResponse = {
+  totals: CacheTotals
+  months: MonthStat[]
+  lineage: Lineage
 }
 
 export function fetchBarsRange(body: BarsFetchRequest): Promise<BarsFetchResponse> {
@@ -68,4 +108,12 @@ export function startBackfill(body: StartBackfillRequest): Promise<StartBackfill
 
 export function getBackfillStatus(jobId: string): Promise<BackfillJobView> {
   return apiRequest<BackfillJobView>(`/api/bars/backfill/${jobId}`)
+}
+
+export function listBackfillJobs(): Promise<BackfillJobListResponse> {
+  return apiRequest<BackfillJobListResponse>('/api/bars/backfill')
+}
+
+export function getBarsStats(): Promise<BarsStatsResponse> {
+  return apiRequest<BarsStatsResponse>('/api/bars/stats')
 }
