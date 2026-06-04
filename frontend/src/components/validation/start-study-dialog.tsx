@@ -1,9 +1,16 @@
 import { useState } from "react";
+import { useConfigs } from "@/hooks/useConfigs";
 import { useStartStudy } from "@/hooks/useStudies";
 import type { StartStudyRequest, StudyKind } from "@/api/types";
 
-// Feature 011: minimal launcher for a walk-forward or sensitivity study.
-export function StartStudyDialog({ configName = "default" }: { configName?: string }) {
+// Feature 011: launcher for a walk-forward or sensitivity study. The config
+// picker lets each study test a DIFFERENT saved config — walk-forward over a
+// single config is deterministic, so varying the config (or sweeping knobs via
+// sensitivity) is how you actually do research.
+export function StartStudyDialog({ defaultConfig = "default" }: { defaultConfig?: string }) {
+  const configsQuery = useConfigs();
+  const configs = configsQuery.data?.configs ?? [];
+  const [configName, setConfigName] = useState(defaultConfig);
   const [kind, setKind] = useState<StudyKind>("walk_forward");
   const [knob, setKnob] = useState("strategy.vwap_pullback.target.risk_reward");
   const [values, setValues] = useState("1.5, 2.0, 2.5, 3.0");
@@ -19,6 +26,9 @@ export function StartStudyDialog({ configName = "default" }: { configName?: stri
     start.mutate(body);
   }
 
+  // Always offer the chosen default even before the list loads / if empty.
+  const options = configs.length > 0 ? configs.map((c) => c.name) : [defaultConfig];
+
   return (
     <section className="card">
       <header className="card-head">
@@ -26,8 +36,16 @@ export function StartStudyDialog({ configName = "default" }: { configName?: stri
       </header>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
         <label className="stat-label">
+          Config{" "}
+          <select aria-label="config" value={configName} onChange={(e) => setConfigName(e.target.value)}>
+            {options.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="stat-label">
           Kind{" "}
-          <select value={kind} onChange={(e) => setKind(e.target.value as StudyKind)}>
+          <select aria-label="kind" value={kind} onChange={(e) => setKind(e.target.value as StudyKind)}>
             <option value="walk_forward">Walk-forward</option>
             <option value="sensitivity">Sensitivity</option>
           </select>

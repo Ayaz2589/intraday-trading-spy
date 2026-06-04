@@ -17,6 +17,7 @@ import { useReplay, clampCursor } from '@/lib/replay'
 import { computeReplaySummary } from '@/lib/replay-summary'
 import { PlaybackControls } from '@/components/playback-controls'
 import { RunSummaryCards } from './RunSummaryCards'
+import { RunSignificanceSection } from '@/components/validation/run-significance-section'
 import { HelpTooltip } from '@/components/help-tooltip'
 import type { Bar, Run, Signal, Trade, UUID } from '@/api/types'
 import type {
@@ -182,6 +183,7 @@ export function RunDetail({ runId }: Props) {
       ) : (
         <>
           <RunSummaryCards summary={liveSummary} />
+          <RunSignificanceSection runId={runId} />
           {manifestQuery.data && (
             <ConfigStrip
               params={manifestQuery.data.config.params}
