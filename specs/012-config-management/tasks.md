@@ -62,7 +62,7 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 **Independent Test**: edit "low-risk"'s risk-reward, save, confirm `default` is unchanged and past runs are unaffected.
 
-- [ ] T019 [P] [US2] Failing test (integration-style): `update_config` edits only the targeted config (owner+id scoped); other configs and finished runs unchanged — in `backend/tests/storage/test_client_configs.py`.
+- [X] T019 [P] [US2] Failing test (integration-style): `update_config` edits only the targeted config (owner+id scoped); other configs and finished runs unchanged — in `backend/tests/storage/test_client_configs.py`.
 - [X] T020 [P] [US2] Frontend failing test: editing the selected config saves only that config (no cross-config bleed) in `frontend/src/components/strategies/config-manager.test.tsx`.
 - [X] T021 [US2] Wire per-selected-config editing into `config-manager.tsx` (reuse the existing `PATCH /api/configs/{id}` params path); ensure the editor is scoped to the selected config.
 
@@ -105,9 +105,9 @@ description: "Task list for Feature 012 — First-Class Config Management"
 ## Phase 7: Polish & Cross-Cutting
 
 - [X] T032 [P] Guard test: no config path (create/duplicate/preset/edit, any endpoint) can set `live_auto_enabled` true; the CHECK + `Literal[False]` hold — in `backend/tests/api/new/test_configs_api.py`.
-- [ ] T033 [P] Test: config create/duplicate/rename/delete/activate emit `journal_events` lifecycle rows (constitution VII) — in `backend/tests/storage/test_client_configs.py`.
-- [ ] T034 [P] Update `docs/research-tooling-uplift.md` (012 status) + the roadmap §10 feature map (012 done).
-- [ ] T035 Run `quickstart.md` end-to-end against cloud (create→edit→duplicate→safe-delete→activate; confirm a fresh-default backtest trades).
+- [X] T033 [P] Test: config create/duplicate/rename/delete/activate emit `journal_events` lifecycle rows (constitution VII) — in `backend/tests/storage/test_client_configs.py`.
+- [X] T034 [P] Update `docs/research-tooling-uplift.md` (012 status) + the roadmap §10 feature map (012 done).
+- [X] T035 Run `quickstart.md` end-to-end against cloud (create→edit→duplicate→safe-delete→activate; confirm a fresh-default backtest trades).
 - [X] T036 [P] Verify the Feature 011 pickers (study launcher, lockbox) + start-backtest now list multiple configs and pre-select the active one (closes SC-007).
 
 ---
