@@ -15,10 +15,10 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 ## Phase 1: Setup
 
-- [ ] T001 [P] Author migration `backend/db/migrations/0120_configs_active_flag.sql` — ADD `configs.is_active BOOLEAN NOT NULL DEFAULT false`, partial unique index `(user_id) WHERE is_active`, backfill each user's `default` (or earliest) config active.
-- [ ] T002 [P] Author migration `backend/db/migrations/0121_runs_config_id_nullable.sql` — `runs.config_id` DROP NOT NULL; drop the existing FK (verify constraint name first) and re-add `FOREIGN KEY (config_id) REFERENCES configs(id) ON DELETE SET NULL`.
-- [ ] T003 [P] Author migration `backend/db/migrations/0122_workable_default_seed.sql` — `CREATE OR REPLACE FUNCTION seed_default_config_for_user` with `risk.max_position_value_pct=400`; idempotently reseed existing `default` configs still on the mis-sized cap (safe against the already-hand-patched live default).
-- [ ] T004 Apply migrations 0120/0121/0122 to Supabase via direct psycopg + `SUPABASE_DB_URL` (sandbox off if blocked); verify `is_active`, the nullable FK, and the seed function.
+- [X] T001 [P] Author migration `backend/db/migrations/0120_configs_active_flag.sql` — ADD `configs.is_active BOOLEAN NOT NULL DEFAULT false`, partial unique index `(user_id) WHERE is_active`, backfill each user's `default` (or earliest) config active.
+- [X] T002 [P] Author migration `backend/db/migrations/0121_runs_config_id_nullable.sql` — `runs.config_id` DROP NOT NULL; drop the existing FK (verify constraint name first) and re-add `FOREIGN KEY (config_id) REFERENCES configs(id) ON DELETE SET NULL`.
+- [X] T003 [P] Author migration `backend/db/migrations/0122_workable_default_seed.sql` — `CREATE OR REPLACE FUNCTION seed_default_config_for_user` with `risk.max_position_value_pct=400`; idempotently reseed existing `default` configs still on the mis-sized cap (safe against the already-hand-patched live default).
+- [X] T004 Apply migrations 0120/0121/0122 to Supabase via direct psycopg + `SUPABASE_DB_URL` (sandbox off if blocked); verify `is_active`, the nullable FK, and the seed function.
 - [ ] T005 [P] Set `risk.max_position_value_pct: 400` in `backend/config/config.yaml` and adjust each `backend/config/presets/*.yaml` (and its header note) so every preset executes trades while staying a distinct risk profile (the `aggressive` preset's "most signals reject" note must no longer hold).
 
 ---
@@ -29,7 +29,7 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 - [X] T006 [P] Failing test: `ConfigRow` gains `is_active`; `RunRow.config_id` is `Optional` — in `backend/tests/storage/test_models_payload.py`.
 - [X] T007 Add `is_active: bool` to `ConfigRow` and make `RunRow.config_id: Optional[UUID]` in `backend/src/intraday_trade_spy/storage/models.py`.
-- [ ] T008 Failing test: `ConfigView` exposes `is_active` and `GET /api/configs` returns it — in `backend/tests/api/new/test_configs_api.py`.
+- [X] T008 Failing test: `ConfigView` exposes `is_active` and `GET /api/configs` returns it — in `backend/tests/api/new/test_configs_api.py`.
 - [X] T009 Add `is_active` to `ConfigView` in `backend/src/intraday_trade_spy/api/schemas.py` and ensure `list_configs` surfaces it.
 
 **Checkpoint**: model surface ready — stories can begin.
@@ -42,12 +42,12 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 **Independent Test**: create "low-risk" from a preset, launch a backtest selecting it, confirm the run's snapshot reflects that config (SC-001/002).
 
-- [ ] T010 [P] [US1] Failing test: `load_presets()` reads `backend/config/presets/*.yaml` → `{name, description, params}` (nested shape) in `backend/tests/test_config_presets.py`.
-- [ ] T011 [US1] Implement `backend/src/intraday_trade_spy/config_presets.py` (preset loader).
-- [ ] T012 [US1] Failing test (integration-style): `create_config` (duplicate-name → 422, `live_auto_enabled` forced false), `duplicate_config`, `set_active_config` / `get_active_config`, one-active invariant — in `backend/tests/storage/test_client_configs.py`.
-- [ ] T013 [US1] Implement `create_config` / `duplicate_config` / `set_active_config` / `get_active_config` / `list_presets` in `backend/src/intraday_trade_spy/storage/client.py`; create/duplicate emit a `journal_events` lifecycle row.
-- [ ] T014 [US1] Failing test: `POST /api/configs` (scratch/preset/duplicate), `POST /api/configs/{id}/activate`, `GET /api/configs/presets` — in `backend/tests/api/new/test_configs_api.py` (TestClient + stub storage, `pytestmark = pytest.mark.api`).
-- [ ] T015 [US1] Implement create / duplicate / activate / presets endpoints in `backend/src/intraday_trade_spy/api/routers/configs.py` + `ConfigCreateRequest` / `PresetView` / `PresetListResponse` in `api/schemas.py` (reject symbol/direction/live_auto_enabled at the boundary).
+- [X] T010 [P] [US1] Failing test: `load_presets()` reads `backend/config/presets/*.yaml` → `{name, description, params}` (nested shape) in `backend/tests/test_config_presets.py`.
+- [X] T011 [US1] Implement `backend/src/intraday_trade_spy/config_presets.py` (preset loader).
+- [X] T012 [US1] Failing test (integration-style): `create_config` (duplicate-name → 422, `live_auto_enabled` forced false), `duplicate_config`, `set_active_config` / `get_active_config`, one-active invariant — in `backend/tests/storage/test_client_configs.py`.
+- [X] T013 [US1] Implement `create_config` / `duplicate_config` / `set_active_config` / `get_active_config` / `list_presets` in `backend/src/intraday_trade_spy/storage/client.py`; create/duplicate emit a `journal_events` lifecycle row.
+- [X] T014 [US1] Failing test: `POST /api/configs` (scratch/preset/duplicate), `POST /api/configs/{id}/activate`, `GET /api/configs/presets` — in `backend/tests/api/new/test_configs_api.py` (TestClient + stub storage, `pytestmark = pytest.mark.api`).
+- [X] T015 [US1] Implement create / duplicate / activate / presets endpoints in `backend/src/intraday_trade_spy/api/routers/configs.py` + `ConfigCreateRequest` / `PresetView` / `PresetListResponse` in `api/schemas.py` (reject symbol/direction/live_auto_enabled at the boundary).
 - [ ] T016 [P] [US1] Frontend failing test: config manager creates from preset/duplicate, marks the active config, and pickers pre-select active — in `frontend/src/components/strategies/config-manager.test.tsx`.
 - [ ] T017 [US1] Implement `frontend/src/components/strategies/config-manager.tsx` (create/duplicate/activate) + `createConfig`/`duplicateConfig`/`activateConfig`/`listPresets` in `frontend/src/api/configs.ts` + mutations in `frontend/src/hooks/useConfigs.ts` + active pre-selection in the study/backtest/lockbox pickers.
 - [ ] T018 [P] [US1] Add `HELP_CONTENT` keys `saved_config`, `active_config` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `config-manager.tsx`; assert in its test.
@@ -76,10 +76,10 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 **Independent Test**: delete a config a past run used; the run still opens with its original knobs (its `config_id` is now NULL). Last-config delete is blocked.
 
-- [ ] T022 [US3] Failing test (integration-style): `rename_config` (collision → reject), `delete_config` (last-config → 409, active-config deletion promotes another, `ON DELETE SET NULL` preserves run history) — in `backend/tests/storage/test_client_configs.py`.
-- [ ] T023 [US3] Implement `rename_config` + `delete_config` (last-config guard, active promotion, journal lifecycle event) in `backend/src/intraday_trade_spy/storage/client.py`.
-- [ ] T024 [US3] Failing test: `PATCH /api/configs/{id}` rename + `DELETE /api/configs/{id}` (409 last-config, run still resolvable after delete) — in `backend/tests/api/new/test_configs_api.py`.
-- [ ] T025 [US3] Implement rename in `PATCH /configs/{id}` (extend to accept optional `name`) + `DELETE /configs/{id}` in `routers/configs.py` + `ConfigRenameRequest` in `api/schemas.py`.
+- [X] T022 [US3] Failing test (integration-style): `rename_config` (collision → reject), `delete_config` (last-config → 409, active-config deletion promotes another, `ON DELETE SET NULL` preserves run history) — in `backend/tests/storage/test_client_configs.py`.
+- [X] T023 [US3] Implement `rename_config` + `delete_config` (last-config guard, active promotion, journal lifecycle event) in `backend/src/intraday_trade_spy/storage/client.py`.
+- [X] T024 [US3] Failing test: `PATCH /api/configs/{id}` rename + `DELETE /api/configs/{id}` (409 last-config, run still resolvable after delete) — in `backend/tests/api/new/test_configs_api.py`.
+- [X] T025 [US3] Implement rename in `PATCH /configs/{id}` (extend to accept optional `name`) + `DELETE /configs/{id}` in `routers/configs.py` + `ConfigRenameRequest` in `api/schemas.py`.
 - [ ] T026 [P] [US3] Frontend failing test: rename + delete (confirm dialog + run-history-safe note; last-config delete disabled) in `frontend/src/components/strategies/config-manager.test.tsx`.
 - [ ] T027 [US3] Implement rename/delete in `config-manager.tsx` + `renameConfig`/`deleteConfig` in `frontend/src/api/configs.ts` + mutations in `useConfigs.ts`.
 - [ ] T028 [P] [US3] Add `HELP_CONTENT` keys `duplicate_vs_edit`, `delete_safe` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `config-manager.tsx`; assert in its test.
@@ -104,7 +104,7 @@ description: "Task list for Feature 012 — First-Class Config Management"
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T032 [P] Guard test: no config path (create/duplicate/preset/edit, any endpoint) can set `live_auto_enabled` true; the CHECK + `Literal[False]` hold — in `backend/tests/api/new/test_configs_api.py`.
+- [X] T032 [P] Guard test: no config path (create/duplicate/preset/edit, any endpoint) can set `live_auto_enabled` true; the CHECK + `Literal[False]` hold — in `backend/tests/api/new/test_configs_api.py`.
 - [ ] T033 [P] Test: config create/duplicate/rename/delete/activate emit `journal_events` lifecycle rows (constitution VII) — in `backend/tests/storage/test_client_configs.py`.
 - [ ] T034 [P] Update `docs/research-tooling-uplift.md` (012 status) + the roadmap §10 feature map (012 done).
 - [ ] T035 Run `quickstart.md` end-to-end against cloud (create→edit→duplicate→safe-delete→activate; confirm a fresh-default backtest trades).
