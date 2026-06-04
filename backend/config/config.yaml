@@ -105,6 +105,10 @@ api:
   polling_status_max_age_minutes: 15
   # /healthz DB-reachability timeout.
   health_check_timeout_s: 5.0
+  # Max connections in the shared direct-Postgres pool (Feature 013 perf fix —
+  # the R8 aggregates reuse pooled connections instead of paying a ~1s TLS
+  # handshake per request).
+  db_pool_max_size: 4
   # CORS origins for development. Production overrides via the CORS_ALLOW_ORIGINS
   # env var (comma-separated). CORS_ALLOW_ORIGIN_REGEX matches Vercel previews.
   cors_allow_origins:

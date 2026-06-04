@@ -8,6 +8,16 @@ as one session-day) rather than a naive weekday count.
 from __future__ import annotations
 
 from datetime import date
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def _xnys():
+    """The XNYS calendar object, built once per process (perf: construction
+    costs ~100ms; rebuilding it per heatmap month made the Data page ~10s)."""
+    import pandas_market_calendars as mcal
+
+    return mcal.get_calendar("XNYS")
 
 
 def expected_session_dates(
@@ -26,9 +36,7 @@ def expected_session_dates(
     if eff_end < start:
         return []
 
-    import pandas_market_calendars as mcal
-
-    schedule = mcal.get_calendar("XNYS").schedule(
+    schedule = _xnys().schedule(
         start_date=start.isoformat(), end_date=eff_end.isoformat()
     )
     return [ts.date() for ts in schedule.index]

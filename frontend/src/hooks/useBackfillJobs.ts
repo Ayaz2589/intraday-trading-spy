@@ -8,6 +8,8 @@ export function useBackfillJobs() {
     queryKey: ['bars', 'jobs'],
     queryFn: () => listBackfillJobs(),
     staleTime: 30 * 1000,
+    // Persisted to localStorage (stale-while-revalidate) — see query-persist.ts.
+    gcTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
 }

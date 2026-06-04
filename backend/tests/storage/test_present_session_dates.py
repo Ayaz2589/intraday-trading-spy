@@ -19,8 +19,8 @@ def _client():
 
 
 def test_present_session_dates_runs_distinct_date_query(monkeypatch):
-    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://x")
-
+    # Feature 013 perf fix: connections come from the shared pool (db_pool),
+    # not psycopg.connect-per-call — mock the pool seam.
     captured = {}
 
     class FakeCursor:
@@ -37,9 +37,12 @@ def test_present_session_dates_runs_distinct_date_query(monkeypatch):
         def __exit__(self, *a): return False
         def cursor(self): return FakeCursor()
 
-    import psycopg
+    class FakePool:
+        def connection(self): return FakeConn()
 
-    monkeypatch.setattr(psycopg, "connect", lambda dsn: FakeConn())
+    from intraday_trade_spy.storage import db_pool
+
+    monkeypatch.setattr(db_pool, "get_pool", lambda: FakePool())
 
     c = _client()
     out = c.bars_present_session_dates(range_start="2022-01-01", range_end="2022-12-31")
@@ -52,7 +55,10 @@ def test_present_session_dates_runs_distinct_date_query(monkeypatch):
 def test_present_session_dates_requires_db_url(monkeypatch):
     monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
     from intraday_trade_spy.storage import CloudPushError
+    from intraday_trade_spy.storage.db_pool import get_pool
 
+    get_pool.cache_clear()  # a pool cached by another test must not leak in
     c = _client()
     with pytest.raises(CloudPushError):
         c.bars_present_session_dates(range_start="2022-01-01", range_end="2022-12-31")
+    get_pool.cache_clear()  # don't leave a stale no-URL failure cached either

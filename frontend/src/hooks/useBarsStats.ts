@@ -8,6 +8,9 @@ export function useBarsStats() {
     queryKey: ['bars', 'stats'],
     queryFn: () => getBarsStats(),
     staleTime: 60 * 1000,
+    // Persisted to localStorage (stale-while-revalidate): keep restored
+    // snapshots alive at least as long as the persister's maxAge (24h).
+    gcTime: 24 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
 }

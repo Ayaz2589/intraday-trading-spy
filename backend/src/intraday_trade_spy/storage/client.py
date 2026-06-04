@@ -949,12 +949,7 @@ class SupabaseStorageClient:
         pulling ~100k rows through PostgREST just to count distinct days.
         range_end is inclusive.
         """
-        import os
         from datetime import date, timedelta
-
-        db_url = os.environ.get("SUPABASE_DB_URL")
-        if not db_url:
-            raise CloudPushError("bars_present_session_dates requires SUPABASE_DB_URL")
 
         end_exclusive = (date.fromisoformat(range_end) + timedelta(days=1)).isoformat()
         sql = (
@@ -962,9 +957,9 @@ class SupabaseStorageClient:
             "FROM public.bars WHERE bar_start >= %s AND bar_start < %s ORDER BY d"
         )
         try:
-            import psycopg
+            from intraday_trade_spy.storage.db_pool import get_pool
 
-            with psycopg.connect(db_url) as conn:
+            with get_pool().connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(sql, (range_start, end_exclusive))
                     return [r[0].isoformat() for r in cur.fetchall()]
@@ -983,12 +978,6 @@ class SupabaseStorageClient:
                  "totals": {"bars", "sessions", "earliest", "latest",
                             "last_updated", "sources"}}.
         """
-        import os
-
-        db_url = os.environ.get("SUPABASE_DB_URL")
-        if not db_url:
-            raise CloudPushError("bars_monthly_aggregate requires SUPABASE_DB_URL")
-
         per_day_sql = (
             "SELECT (bar_start AT TIME ZONE 'America/New_York')::date AS d, "
             "       count(*) AS bars, array_agg(DISTINCT source) AS sources "
@@ -996,9 +985,9 @@ class SupabaseStorageClient:
         )
         totals_sql = "SELECT count(*), max(created_at) FROM public.bars"
         try:
-            import psycopg
+            from intraday_trade_spy.storage.db_pool import get_pool
 
-            with psycopg.connect(db_url) as conn, conn.cursor() as cur:
+            with get_pool().connection() as conn, conn.cursor() as cur:
                 cur.execute(per_day_sql)
                 days = cur.fetchall()
                 cur.execute(totals_sql)
