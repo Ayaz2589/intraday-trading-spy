@@ -270,6 +270,12 @@ describe("RunViewer route", () => {
       "duplicate_vs_edit",
       "delete_safe",
       "buying_power",
+      // Feature 013 data-observability keys render on the Data route
+      // (heatmap / job history / lineage); coverage lives in
+      // CacheHeatmap/CacheSummary/JobHistoryTable tests + help-content.test.ts.
+      "cache_heatmap",
+      "backfill_job_history",
+      "data_lineage",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

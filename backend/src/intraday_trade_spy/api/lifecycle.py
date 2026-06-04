@@ -584,6 +584,25 @@ def _get_backfill_settings() -> tuple[int, int, int]:
         )
 
 
+DEFAULT_BACKFILL_HISTORY_LIMIT = 20
+
+
+def get_backfill_history_limit() -> int:
+    """How many recent backfill jobs the Data page lists (Feature 013 FR-001).
+
+    Read from `api.backfill.history_limit` in config.yaml so the cap is not a
+    magic number in the router.
+    """
+    try:
+        import yaml
+
+        raw = yaml.safe_load(Path("config/config.yaml").read_text())
+        bf = ((raw or {}).get("api") or {}).get("backfill") or {}
+        return int(bf.get("history_limit", DEFAULT_BACKFILL_HISTORY_LIMIT))
+    except Exception:
+        return DEFAULT_BACKFILL_HISTORY_LIMIT
+
+
 def _get_alpaca_feed() -> str:
     try:
         from intraday_trade_spy.config import load_config
