@@ -69,7 +69,7 @@ export function DataCoveragePanel() {
   const missingCount = months.reduce((n, m) => n + m.missing_dates.length, 0)
 
   return (
-    <div data-testid="data-coverage-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4, 16px)', maxWidth: 980 }}>
+    <div data-testid="data-coverage-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4, 16px)' }}>
       {/* Header */}
       <section>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-lg, 18px)', fontWeight: 700, margin: 0 }}>
