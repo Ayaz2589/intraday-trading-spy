@@ -17,6 +17,7 @@ import { useReplay, clampCursor } from '@/lib/replay'
 import { computeReplaySummary } from '@/lib/replay-summary'
 import { PlaybackControls } from '@/components/playback-controls'
 import { RunSummaryCards } from './RunSummaryCards'
+import { RunStudyBadge } from '@/components/run-study-badge'
 import { RunSignificanceSection } from '@/components/validation/run-significance-section'
 import { HelpTooltip } from '@/components/help-tooltip'
 import type { Bar, Run, Signal, Trade, UUID } from '@/api/types'
@@ -178,6 +179,8 @@ export function RunDetail({ runId }: Props) {
   return (
     <div className="content" data-testid="run-detail" style={{ padding: 16, display: 'grid', gap: 12 }}>
       <RunHeader run={run} />
+      {/* Feature 014 (FR-009): child runs badge back to their study. */}
+      <RunStudyBadge run={run} />
       {pendingStatus ? (
         <PendingSkeleton status={pendingStatus} />
       ) : (

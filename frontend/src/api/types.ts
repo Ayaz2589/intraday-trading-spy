@@ -47,6 +47,11 @@ export type Run = {
   app_version: string
   is_favorite: boolean
   failure_reason: string | null
+  // Feature 014 (FR-009): study membership for child runs; null/absent for
+  // standalone runs. segment is null for combined train+validation children.
+  study_id?: UUID | null
+  segment?: 'train' | 'validation' | 'lockbox' | null
+  window_index?: number | null
 }
 
 export type RunListResponse = { runs: Run[]; next_cursor: string | null }
@@ -181,6 +186,9 @@ export type WindowMetrics = {
   range_start: string
   range_end: string
   run_id: string
+  // Feature 014 (FR-007): true when run_id refers to a stored, drillable run.
+  // Absent in pre-014 stored results — treat missing as false.
+  persisted?: boolean
   total_trades: number
   expectancy_dollars: number | null
   expectancy_r: number | null
@@ -214,6 +222,8 @@ export type SensitivityPoint = {
   trade_count: number
   low_confidence: boolean
   run_id: string
+  // Feature 014 (FR-007): same drillability semantics as WindowMetrics.
+  persisted?: boolean
 }
 
 export type SensitivitySurface = {

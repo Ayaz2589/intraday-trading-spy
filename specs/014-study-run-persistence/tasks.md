@@ -79,8 +79,8 @@ trades/journal; significance works (quickstart §2–§3).
 
 ### Run detail badge (frontend)
 
-- [ ] T016 [P] [US1] Failing tests: study-membership badge renders "Part of study — window N · segment" linking to `/validation/$studyId` when `study_id` present, absent otherwise (+ `?` HelpTooltip for "child run"), in frontend/src/components/run-study-badge.test.tsx
-- [ ] T017 [US1] Implement `RunStudyBadge` in frontend/src/components/run-study-badge.tsx, add `study_id`/`segment`/`window_index` to the run type in frontend/src/api/runs.ts, and mount the badge in frontend/src/routes/_authenticated.runs_.$runId.tsx
+- [x] T016 [P] [US1] Failing tests: study-membership badge renders "Part of study — window N · segment" linking to `/validation/$studyId` when `study_id` present, absent otherwise (+ `?` HelpTooltip for "child run"), in frontend/src/components/run-study-badge.test.tsx
+- [x] T017 [US1] Implement `RunStudyBadge` in frontend/src/components/run-study-badge.tsx, add `study_id`/`segment`/`window_index` to the run type in frontend/src/api/runs.ts, and mount the badge in frontend/src/routes/_authenticated.runs_.$runId.tsx
 
 **Checkpoint**: US1 fully functional — run quickstart §2–§4 against the dev
 stack before proceeding (MVP gate).
@@ -97,16 +97,16 @@ expandable window rows (Option B), sensitivity points table, link gating by
 stat cards + expandable rows with working "View run →"; a pre-014 study renders
 the same page with links hidden (quickstart §2 step 4–5).
 
-- [ ] T018 [P] [US2] Failing tests: `StudyHeaderCard` shows kind + config name, params subtitle, status badge (and a slot for the re-run action) in frontend/src/components/validation/StudyHeaderCard.test.tsx
-- [ ] T019 [P] [US2] Failing tests: `StudyStatCards` — walk-forward variant (mean OOS expectancy, IS→OOS gap, windows, OOS trades) and sensitivity variant (metric, point count, best point) in frontend/src/components/validation/StudyStatCards.test.tsx
-- [ ] T020 [P] [US2] Failing tests: `WindowRows` — collapsed row shows OOS verdict/gap/trades/low-confidence flag; expanding reveals IS/OOS detail pair; "View run →" renders ONLY when `persisted` is true and links to `/runs/$runId`; `?` HelpTooltip for IS/OOS drill-down, in frontend/src/components/validation/WindowRows.test.tsx
-- [ ] T021 [P] [US2] Failing tests: `SensitivityPointsTable` — metric/coords/trade-count rows; run link gated by `persisted`, in frontend/src/components/validation/SensitivityPointsTable.test.tsx
-- [ ] T022 [P] [US2] Implement `StudyHeaderCard` in frontend/src/components/validation/StudyHeaderCard.tsx
-- [ ] T023 [P] [US2] Implement `StudyStatCards` in frontend/src/components/validation/StudyStatCards.tsx
-- [ ] T024 [P] [US2] Implement `WindowRows` in frontend/src/components/validation/WindowRows.tsx
-- [ ] T025 [P] [US2] Implement `SensitivityPointsTable` in frontend/src/components/validation/SensitivityPointsTable.tsx
-- [ ] T026 [US2] Failing tests: `StudyDetailPage` composition — walk-forward fixture renders header/stats/rows; sensitivity fixture renders surface card + points table; pre-014 fixture shows zero run links — in frontend/src/components/validation/StudyDetailPage.test.tsx (NOT under routes/ — TanStack file-based routing scans that folder); plus LockboxCard renders a "View run →" link only when the lockbox status has `run_id`, extending frontend/src/components/validation/LockboxCard.test.tsx
-- [ ] T027 [US2] Implement `StudyDetailPage` in frontend/src/components/validation/StudyDetailPage.tsx (surface plot wrapped in a card; shared section-title), reduce frontend/src/routes/_authenticated.validation_.$studyId.tsx to a thin mount, add the lockbox run link to frontend/src/components/validation/LockboxCard.tsx, and add `persisted` to result types in frontend/src/api/validation.ts
+- [x] T018 [P] [US2] Failing tests: `StudyHeaderCard` shows kind + config name, params subtitle, status badge (and a slot for the re-run action) in frontend/src/components/validation/StudyHeaderCard.test.tsx
+- [x] T019 [P] [US2] Failing tests: `StudyStatCards` — walk-forward variant (mean OOS expectancy, IS→OOS gap, windows, OOS trades) and sensitivity variant (metric, point count, best point) in frontend/src/components/validation/StudyStatCards.test.tsx
+- [x] T020 [P] [US2] Failing tests: `WindowRows` — collapsed row shows OOS verdict/gap/trades/low-confidence flag; expanding reveals IS/OOS detail pair; "View run →" renders ONLY when `persisted` is true and links to `/runs/$runId`; `?` HelpTooltip for IS/OOS drill-down, in frontend/src/components/validation/WindowRows.test.tsx
+- [x] T021 [P] [US2] Failing tests: `SensitivityPointsTable` — metric/coords/trade-count rows; run link gated by `persisted`, in frontend/src/components/validation/SensitivityPointsTable.test.tsx
+- [x] T022 [P] [US2] Implement `StudyHeaderCard` in frontend/src/components/validation/StudyHeaderCard.tsx
+- [x] T023 [P] [US2] Implement `StudyStatCards` in frontend/src/components/validation/StudyStatCards.tsx
+- [x] T024 [P] [US2] Implement `WindowRows` in frontend/src/components/validation/WindowRows.tsx
+- [x] T025 [P] [US2] Implement `SensitivityPointsTable` in frontend/src/components/validation/SensitivityPointsTable.tsx
+- [x] T026 [US2] Failing tests: `StudyDetailPage` composition — walk-forward fixture renders header/stats/rows; sensitivity fixture renders surface card + points table; pre-014 fixture shows zero run links — in frontend/src/components/validation/StudyDetailPage.test.tsx (NOT under routes/ — TanStack file-based routing scans that folder); plus LockboxCard renders a "View run →" link only when the lockbox status has `run_id`, extending frontend/src/components/validation/LockboxCard.test.tsx
+- [x] T027 [US2] Implement `StudyDetailPage` in frontend/src/components/validation/StudyDetailPage.tsx (surface plot wrapped in a card; shared section-title), reduce frontend/src/routes/_authenticated.validation_.$studyId.tsx to a thin mount, add the lockbox run link to frontend/src/components/validation/LockboxCard.tsx, and add `persisted` to result types in frontend/src/api/validation.ts
 
 **Checkpoint**: US1 + US2 work together — drill-down e2e in the browser.
 

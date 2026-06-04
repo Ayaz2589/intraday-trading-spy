@@ -68,7 +68,11 @@ export type HelpContentKey =
   // Feature 013 (data observability) concepts
   | "cache_heatmap"
   | "backfill_job_history"
-  | "data_lineage";
+  | "data_lineage"
+  // Feature 014 (study child-run persistence) concepts
+  | "child_run"
+  | "study_drilldown"
+  | "rerun_study";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -291,6 +295,21 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Out-of-sample (OOS)",
     description:
       "Performance over the window immediately after the training window — data the config never saw. This is the honest number. An edge that holds up out-of-sample is the only kind worth trading.",
+  },
+  child_run: {
+    title: "Child run",
+    description:
+      "A real, saved backtest produced by one evaluation inside a validation study — one walk-forward window, one sensitivity grid point, or the lockbox one-shot. It has the same trades, journal, and chart as any standalone run, so you can see exactly WHY that slice performed the way it did. Child runs are hidden from the main runs list; you reach them through their study.",
+  },
+  study_drilldown: {
+    title: "Study drill-down",
+    description:
+      "Aggregates can hide what actually happened. Each window row expands into its in-sample / out-of-sample pair, and 'View run' opens that evaluation's full backtest — trades, journal, chart, and significance testing. Studies run before this feature shipped have no saved evaluations; re-run the study to get a drillable version.",
+  },
+  rerun_study: {
+    title: "Re-run study",
+    description:
+      "Starts a brand-new study with exactly the same kind, config, and parameters as this one — no tweaking, no re-optimization. The engine and data are deterministic, so the results should reproduce; the new study also saves every evaluation as a drillable child run. The original study is never modified.",
   },
   is_oos_gap: {
     title: "In-sample vs out-of-sample gap",

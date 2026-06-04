@@ -49,6 +49,16 @@ export function LockboxCard({
         </div>
       )}
       <LockboxGate status={status} running={running} onRun={(override) => onRun(configName, override)} />
+      {status.run_id && (
+        // Feature 014 (FR-003): the one-shot evaluation is a real run — link it.
+        // Pre-014 ledger entries have no run_id and show nothing.
+        <a
+          href={`/runs/${status.run_id}`}
+          style={{ color: 'var(--accent, #2563eb)', fontWeight: 600, fontSize: 'var(--fs-sm, 13px)' }}
+        >
+          View lockbox run →
+        </a>
+      )}
     </div>
   )
 }
