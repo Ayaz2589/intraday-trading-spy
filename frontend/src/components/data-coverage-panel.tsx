@@ -5,18 +5,43 @@ import { useBackfillJobs } from '@/hooks/useBackfillJobs'
 import { useStartBackfill } from '@/hooks/useStartBackfill'
 import { useBackfillStatus } from '@/hooks/useBackfillStatus'
 import { HelpTooltip } from '@/components/help-tooltip'
-import { CacheSummary } from '@/components/data/CacheSummary'
-import { CacheHeatmap } from '@/components/data/CacheHeatmap'
+import { DataStatCards } from '@/components/data/DataStatCards'
+import { StatusStrip } from '@/components/data/StatusStrip'
+import { CacheBarChart } from '@/components/data/CacheBarChart'
+import { RegimeCards } from '@/components/data/RegimeCards'
+import { BackfillCard } from '@/components/data/BackfillCard'
 import { JobHistoryTable } from '@/components/data/JobHistoryTable'
 
-// Feature 009 (Phase 0 data foundation) — operator surface for data coverage
-// and the bulk historical backfill. Feature 013 fleshes it out: cache summary
-// strip, month-grid completeness heatmap, and the backfill job history.
-// Sections fail independently (FR-011). Every concept ships a HelpTooltip
-// (constitution VI).
+// The Data page (Features 009 + 013, redesigned to the 2026-06-04 mockup).
+// Thin composer: stat cards → status strip → monthly bar chart → regime cards
+// → backfill launcher → job history. Sections fail independently (FR-011);
+// every concept keeps its HelpTooltip (constitution VI).
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
+function SectionTitle({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string
+  subtitle: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base, 15px)', fontWeight: 700, margin: 0 }}>
+        <span aria-hidden style={{ width: 3, height: 14, borderRadius: 2, background: 'var(--accent, #2563eb)' }} />
+        {title} {children}
+      </h3>
+      <p style={{ margin: '2px 0 0 11px', fontSize: 'var(--fs-xs, 11px)', color: 'var(--text-muted)' }}>{subtitle}</p>
+    </div>
+  )
+}
+
+const cardSection: React.CSSProperties = {
+  padding: '14px 16px',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--r-md, 10px)',
+  background: 'var(--surface, #fff)',
 }
 
 export function DataCoveragePanel() {
@@ -26,41 +51,43 @@ export function DataCoveragePanel() {
   const startBackfill = useStartBackfill()
   const [jobId, setJobId] = useState<string | null>(null)
   const status = useBackfillStatus(jobId)
-  const [start, setStart] = useState('2018-01-01')
-  const [end, setEnd] = useState(todayISO())
 
   const job = status.data
   const running = job?.status === 'queued' || job?.status === 'running'
   const busy = startBackfill.isPending || running
 
-  function onBackfill() {
+  function launch(start: string, end: string) {
     startBackfill.mutate(
       { start, end, source: 'alpaca' },
       { onSuccess: (r) => setJobId(r.job_id) },
     )
   }
 
-  const earliest = coverage.data?.earliest
-  const latest = coverage.data?.latest
   const regimes = coverage.data?.regimes ?? []
+  const jobs = jobsQuery.data?.jobs ?? []
+  const months = stats.data?.months ?? []
+  const missingCount = months.reduce((n, m) => n + m.missing_dates.length, 0)
 
   return (
-    <div data-testid="data-coverage-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5, 20px)', maxWidth: 760 }}>
-      {/* Coverage span */}
+    <div data-testid="data-coverage-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4, 16px)' }}>
+      {/* Header */}
       <section>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-lg, 18px)', fontWeight: 700, margin: 0 }}>
           Data coverage <HelpTooltip helpKey="data_coverage" />
         </h2>
-        <p data-testid="coverage-span" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
-          {coverage.isLoading
-            ? 'Loading…'
-            : earliest && latest
-              ? `Cached SPY 5-min bars: ${earliest} → ${latest}`
-              : 'No bars cached yet — run a backfill below.'}
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm, 13px)', color: 'var(--text-muted)' }}>
+          Historical SPY 5-min bar cache — backfill, completeness, and job history
         </p>
-        {/* Feature 013: summary strip (totals + missing verdict + lineage).
-            Best-effort — a stats failure only hides this strip (FR-011). */}
-        {stats.data && stats.data.months.length > 0 && <CacheSummary stats={stats.data} />}
+        {/* Fallback span line: only when the stats snapshot is unavailable. */}
+        {!stats.data && (
+          <p data-testid="coverage-span" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
+            {coverage.isLoading || stats.isLoading
+              ? 'Loading…'
+              : coverage.data?.earliest && coverage.data?.latest
+                ? `Cached SPY 5-min bars: ${coverage.data.earliest} → ${coverage.data.latest}`
+                : 'No bars cached yet — run a backfill below.'}
+          </p>
+        )}
         {stats.isError && (
           <p data-testid="stats-error" style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm, 13px)' }}>
             Couldn't load cache stats — the rest of the page still works.
@@ -68,113 +95,60 @@ export function DataCoveragePanel() {
         )}
       </section>
 
-      {/* Feature 013: month-grid completeness heatmap */}
-      {stats.data && stats.data.months.length > 0 && (
-        <section>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base, 15px)', fontWeight: 700, margin: 0 }}>
-            Cache completeness <HelpTooltip helpKey="cache_heatmap" />
-          </h3>
-          <CacheHeatmap months={stats.data.months} />
+      {/* Stat cards + status strip */}
+      {stats.data && months.length > 0 && (
+        <>
+          <DataStatCards stats={stats.data} />
+          <StatusStrip stats={stats.data} />
+        </>
+      )}
+
+      {/* Monthly completeness bar chart */}
+      {months.length > 0 && (
+        <section style={cardSection}>
+          <SectionTitle title="Cache completeness" subtitle="Sessions cached per month across the full span">
+            <HelpTooltip helpKey="cache_heatmap" />
+          </SectionTitle>
+          <CacheBarChart months={months} />
         </section>
       )}
 
-      {/* Per-regime completeness */}
-      <section>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base, 15px)', fontWeight: 700, margin: 0 }}>
-          Regime completeness <HelpTooltip helpKey="regime_completeness" />
-        </h3>
-        <table data-testid="regime-table" style={{ width: '100%', marginTop: 8, borderCollapse: 'collapse', fontSize: 'var(--fs-sm, 13px)' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-              <th style={{ padding: '4px 8px' }}>Regime</th>
-              <th style={{ padding: '4px 8px' }}>Sessions</th>
-              <th style={{ padding: '4px 8px' }}>Complete</th>
-              <th style={{ padding: '4px 8px' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {regimes.map((r) => (
-              <tr key={r.name} data-testid={`regime-row-${r.name}`} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '4px 8px' }}>{r.name}</td>
-                <td style={{ padding: '4px 8px' }}>{r.present_sessions}/{r.expected_sessions}</td>
-                <td style={{ padding: '4px 8px' }}>{r.completeness_pct}%</td>
-                <td style={{ padding: '4px 8px' }}>
-                  <span
-                    data-testid={`regime-status-${r.name}`}
-                    style={{
-                      padding: '1px 8px',
-                      borderRadius: 999,
-                      fontWeight: 600,
-                      color: r.covered ? 'var(--pos, #1a7f37)' : 'var(--neg, #b42318)',
-                      background: r.covered ? 'var(--pos-bg, #e6f4ea)' : 'var(--neg-bg, #fdecea)',
-                    }}
-                  >
-                    {r.covered ? 'covered' : 'gap'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Regime completeness */}
+      {regimes.length > 0 && (
+        <section style={cardSection}>
+          <SectionTitle title="Regime completeness" subtitle="Coverage within each labeled market regime">
+            <HelpTooltip helpKey="regime_completeness" />
+          </SectionTitle>
+          <RegimeCards regimes={regimes} />
+        </section>
+      )}
+
+      {/* Backfill */}
+      <section style={cardSection}>
+        <SectionTitle title="Backfill history" subtitle="Fetch and cache any missing 5-min bars for a date range">
+          <HelpTooltip helpKey="backfill" /> <HelpTooltip helpKey="data_source" />
+        </SectionTitle>
+        <BackfillCard
+          onLaunch={launch}
+          busy={busy}
+          job={job}
+          launchError={startBackfill.isError ? startBackfill.error.message : null}
+          jobs={jobs}
+          hasGaps={stats.data ? missingCount > 0 : null}
+        />
       </section>
 
-      {/* Backfill trigger */}
-      <section style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--sp-4, 16px)' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base, 15px)', fontWeight: 700, margin: 0 }}>
-          Backfill history <HelpTooltip helpKey="backfill" /> <HelpTooltip helpKey="data_source" />
-        </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-          <label style={{ fontSize: 'var(--fs-sm, 13px)' }}>
-            From{' '}
-            <input data-testid="backfill-start" type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} />
-          </label>
-          <label style={{ fontSize: 'var(--fs-sm, 13px)' }}>
-            To{' '}
-            <input data-testid="backfill-end" type="date" value={end} max={todayISO()} onChange={(e) => setEnd(e.target.value)} />
-          </label>
-          <button
-            data-testid="backfill-start-btn"
-            type="button"
-            disabled={busy}
-            onClick={onBackfill}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--r-md, 8px)',
-              border: '1px solid var(--border-strong, #ccc)',
-              background: busy ? 'var(--surface-2, #eee)' : 'var(--accent, #2563eb)',
-              color: busy ? 'var(--text-muted)' : '#fff',
-              fontWeight: 600,
-              cursor: busy ? 'default' : 'pointer',
-            }}
-          >
-            {busy ? 'Backfilling…' : 'Backfill history'}
-          </button>
-        </div>
-
-        {job && (
-          <div data-testid="backfill-progress" style={{ marginTop: 10, fontSize: 'var(--fs-sm, 13px)', color: 'var(--text-muted)' }}>
-            Status: <strong>{job.status}</strong> · windows {job.windows_done}/{job.windows_total} · {job.bars_added.toLocaleString()} bars added
-            {job.status === 'failed' && job.failure_reason && (
-              <div style={{ color: 'var(--neg, #b42318)' }}>Failed: {job.failure_reason}</div>
-            )}
-          </div>
-        )}
-        {startBackfill.isError && (
-          <div data-testid="backfill-error" style={{ marginTop: 8, color: 'var(--neg, #b42318)', fontSize: 'var(--fs-sm, 13px)' }}>
-            Could not start backfill: {startBackfill.error.message}
-          </div>
-        )}
-
-        {/* Feature 013 US1: job history — failures stay visible (FR-002). */}
-        <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-sm, 13px)', fontWeight: 700, margin: '14px 0 0' }}>
-          Job history <HelpTooltip helpKey="backfill_job_history" />
-        </h4>
+      {/* Job history */}
+      <section style={cardSection}>
+        <SectionTitle title="Job history" subtitle="Your 20 most recent backfill jobs">
+          <HelpTooltip helpKey="backfill_job_history" />
+        </SectionTitle>
         {jobsQuery.isError ? (
           <p data-testid="jobs-error" style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm, 13px)' }}>
             Couldn't load the job history — the rest of the page still works.
           </p>
         ) : (
-          <JobHistoryTable jobs={jobsQuery.data?.jobs ?? []} />
+          <JobHistoryTable jobs={jobs} onRetry={launch} retryPending={busy} />
         )}
       </section>
     </div>

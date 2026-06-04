@@ -348,9 +348,9 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
       "A pattern-day-trader account can take intraday positions up to 4x its cash (then must close them by the session end — no overnight). That's why the position cap defaults to 400%: it reflects standard 4x day-trading buying power so the strategy can size a realistic intraday position while the per-trade-risk and daily-loss limits still bind.",
   },
   cache_heatmap: {
-    title: "Cache completeness heatmap",
+    title: "Cache completeness chart",
     description:
-      "Each cell is one month of your price-history stockpile: green = every NYSE trading day is cached, orange = some days are missing (hover to see exactly which), blue = the current month (judged only against days that have already happened), grey = not cached / in the future. Market holidays and half-days are already excluded — so any day listed as missing is a REAL gap you could backfill.",
+      "Each bar is one month of your price-history stockpile (height = trading days cached): green = every NYSE trading day is cached, orange = some days are missing (hover to see exactly which), blue = the current month (judged only against days that have already happened), grey = not cached / in the future. Market holidays and half-days are already excluded — so any day listed as missing is a REAL gap you could backfill.",
   },
   backfill_job_history: {
     title: "Backfill job history",
