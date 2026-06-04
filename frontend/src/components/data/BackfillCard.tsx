@@ -11,6 +11,73 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+// Prominent live status for the in-flight (or just-completed) backfill:
+// animated spinner + progress bar while running; green/red verdict after.
+function JobStatusPanel({ job }: { job: BackfillJobView }) {
+  const running = job.status === 'queued' || job.status === 'running'
+  const failed = job.status === 'failed'
+  const pct = job.windows_total > 0 ? Math.round((job.windows_done / job.windows_total) * 100) : 0
+
+  const accent = failed ? 'var(--neg, #b42318)' : running ? 'var(--accent, #2563eb)' : 'var(--pos, #1a7f37)'
+  const tint = failed ? 'var(--neg-bg, #fdecea)' : running ? 'var(--accent-bg, #eef4fe)' : 'var(--pos-bg, #e6f4ea)'
+
+  return (
+    <div
+      data-testid="backfill-progress"
+      style={{
+        marginTop: 12,
+        padding: '12px 14px',
+        borderRadius: 'var(--r-md, 10px)',
+        border: `1px solid ${accent}`,
+        background: tint,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {running ? (
+          <span className="spinner" data-testid="backfill-spinner" aria-hidden />
+        ) : (
+          <span aria-hidden style={{ color: accent, fontWeight: 700, fontSize: 'var(--fs-base, 15px)' }}>
+            {failed ? '✕' : '✓'}
+          </span>
+        )}
+        <span style={{ fontWeight: 700, fontSize: 'var(--fs-sm, 13px)' }}>
+          {running
+            ? `Backfilling ${job.range_start} → ${job.range_end}…`
+            : failed
+              ? 'Backfill failed'
+              : 'Backfill complete'}
+        </span>
+        <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 'var(--fs-sm, 13px)', color: accent, fontWeight: 700 }}>
+          {running ? `${pct}%` : `+${job.bars_added.toLocaleString()} bars`}
+        </span>
+      </div>
+
+      <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+        <div
+          style={{
+            width: `${failed ? 100 : pct}%`,
+            height: '100%',
+            borderRadius: 999,
+            background: accent,
+            transition: 'width 0.5s ease',
+          }}
+        />
+      </div>
+
+      <div style={{ fontSize: 'var(--fs-xs, 11px)', color: 'var(--text-muted)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <span className="mono">windows {job.windows_done}/{job.windows_total}</span>
+        <span className="mono">{job.bars_added.toLocaleString()} bars added</span>
+        {failed && job.failure_reason && (
+          <span className="mono" style={{ color: 'var(--neg, #b42318)' }}>{job.failure_reason}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function BackfillCard({
   onLaunch,
   busy,
@@ -134,14 +201,7 @@ export function BackfillCard({
         {hasGaps === false && ' The cache currently has no gaps, so a full backfill will add few or no bars.'}
       </p>
 
-      {job && (
-        <div data-testid="backfill-progress" style={{ marginTop: 8, fontSize: 'var(--fs-sm, 13px)', color: 'var(--text-muted)' }}>
-          Status: <strong>{job.status}</strong> · windows {job.windows_done}/{job.windows_total} · {job.bars_added.toLocaleString()} bars added
-          {job.status === 'failed' && job.failure_reason && (
-            <div style={{ color: 'var(--neg, #b42318)' }}>Failed: {job.failure_reason}</div>
-          )}
-        </div>
-      )}
+      {job && <JobStatusPanel job={job} />}
       {launchError && (
         <div data-testid="backfill-error" style={{ marginTop: 8, color: 'var(--neg, #b42318)', fontSize: 'var(--fs-sm, 13px)' }}>
           Could not start backfill: {launchError}

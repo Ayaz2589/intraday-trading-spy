@@ -1119,6 +1119,16 @@ table.trades thead th {
   border-top-color: var(--accent);
   animation: spin 0.7s linear infinite;
 }
+/* Generic spinner (Data-page backfill status, etc.) — same spin keyframes. */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-soft, #dbe7fd);
+  border-top-color: var(--accent, #2563eb);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------------- Skeleton placeholders ---------------- */
