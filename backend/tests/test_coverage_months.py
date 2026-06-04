@@ -137,3 +137,12 @@ def test_real_calendar_expected_session_dates_excludes_new_years_day():
     days = expected_session_dates(date(2026, 1, 1), date(2026, 1, 9))
     assert date(2026, 1, 1) not in days
     assert date(2026, 1, 2) in days
+
+
+def test_calendar_object_is_memoized():
+    # Perf (SC-005): building the XNYS calendar costs ~100ms; rebuilding it
+    # per call multiplied across 102 heatmap months made the Data page take
+    # ~10s. The calendar object must be constructed once and reused.
+    from intraday_trade_spy.data.market_calendar import _xnys
+
+    assert _xnys() is _xnys()

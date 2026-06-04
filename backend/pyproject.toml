@@ -18,6 +18,13 @@ dependencies = [
     # Alpaca + NYSE session calendar for per-regime coverage completeness.
     "alpaca-py>=0.30",
     "pandas-market-calendars>=4.4",
+    # Raw Postgres driver + shared pool for the R8 direct-DB aggregates
+    # (bars_present_session_dates, bars_monthly_aggregate). MAIN deps — these
+    # run in production request paths, not just migrations/tests. The pool is
+    # the Feature 013 perf fix: per-request TLS connects to cloud Supabase
+    # cost ~1s each.
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
 ]
 
 [project.optional-dependencies]
@@ -27,9 +34,6 @@ dev = [
     "freezegun>=1.5",
     "ruff>=0.5",
     "pytest-asyncio>=0.24",
-    # Raw Postgres driver for running DDL/migrations directly against Supabase
-    # (SUPABASE_DB_URL) and for the storage integration tests.
-    "psycopg[binary]>=3.2",
 ]
 
 [project.scripts]

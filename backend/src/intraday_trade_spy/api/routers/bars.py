@@ -180,7 +180,6 @@ def bars_stats(
     from zoneinfo import ZoneInfo
 
     from intraday_trade_spy.api.coverage import month_stats
-    from intraday_trade_spy.data.market_calendar import expected_session_dates
 
     today = datetime.now(ZoneInfo("America/New_York")).date()
 
@@ -190,11 +189,23 @@ def bars_stats(
         agg = storage_client.bars_monthly_aggregate()
         raw_totals = agg.get("totals") or {}
         totals = CacheTotalsView(**raw_totals)
+        if totals.earliest is not None:
+            # Perf (SC-005): ONE calendar call for the whole span, sliced per
+            # month — not one schedule per heatmap month (102 × ~100ms ≈ 10s).
+            span_start = _date(totals.earliest.year, totals.earliest.month, 1)
+            from intraday_trade_spy.data import market_calendar
+
+            span_sessions = market_calendar.expected_session_dates(
+                span_start, today, today=today
+            )
+            provider = lambda s, e: [d for d in span_sessions if s <= d <= e]  # noqa: E731
+        else:
+            provider = lambda s, e: []  # noqa: E731 — empty cache
         rows = month_stats(
             months_raw=agg.get("months") or {},
             earliest=totals.earliest,
             latest=totals.latest,
-            expected_dates_provider=lambda s, e: expected_session_dates(s, e, today=today),
+            expected_dates_provider=provider,
             today=today,
         )
         months = [MonthStatView(**r) for r in rows]

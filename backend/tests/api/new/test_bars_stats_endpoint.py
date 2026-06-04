@@ -125,6 +125,32 @@ def test_stats_degrades_when_aggregate_fails(unit_client, stub_storage_client):
 
 
 @freeze_time("2026-06-04 12:00:00-04:00")
+def test_stats_consults_the_calendar_once_per_request(unit_client, stub_storage_client, monkeypatch):
+    # Perf (SC-005): the route must prefetch the whole span's expected sessions
+    # in ONE calendar call and slice per month — not one call per month
+    # (102 calls × ~100ms was the ~10s Data-page load).
+    from intraday_trade_spy.data import market_calendar
+
+    calls = []
+    real = market_calendar.expected_session_dates
+
+    def counting(start, end, **kw):
+        calls.append((start, end))
+        return real(start, end, **kw)
+
+    monkeypatch.setattr(market_calendar, "expected_session_dates", counting)
+    stub_storage_client.bars_monthly_aggregate.return_value = AGG
+    stub_storage_client.runs_count.return_value = 0
+    stub_storage_client.studies_count.return_value = 0
+    stub_storage_client.latest_run_at.return_value = None
+
+    resp = unit_client.get("/api/bars/stats")
+    assert resp.status_code == 200
+    assert len(resp.json()["months"]) == 3  # Apr complete, May future, Jun current
+    assert len(calls) == 1, f"expected one span-wide calendar call, got {len(calls)}"
+
+
+@freeze_time("2026-06-04 12:00:00-04:00")
 def test_stats_empty_cache_yields_empty_months(unit_client, stub_storage_client):
     stub_storage_client.bars_monthly_aggregate.return_value = {
         "months": {},
