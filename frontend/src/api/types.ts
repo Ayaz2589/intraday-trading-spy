@@ -253,6 +253,9 @@ export type ValidationStudy = {
   result: WalkForwardResult | SensitivitySurface | Record<string, unknown> | null
   failure_reason: string | null
   created_at: string
+  // Validation-page redesign: which config the study tested (from launch
+  // params). Optional so pre-redesign cached shapes still type-check.
+  config_name?: string | null
 }
 
 export type StudyListResponse = { studies: ValidationStudy[]; next_cursor: string | null }
