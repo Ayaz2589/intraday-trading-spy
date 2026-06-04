@@ -111,6 +111,23 @@ def test_list_studies(unit_client, stub_storage_client):
     assert len(resp.json()["studies"]) == 2
 
 
+def test_list_studies_exposes_config_name(unit_client, stub_storage_client):
+    # Validation-page redesign: rows show WHICH config a study tested — lifted
+    # from the stored params; absent params degrade to null, never an error.
+    stub_storage_client.list_validation_studies.return_value = SimpleNamespace(
+        studies=[
+            _study_row(params={"config_name": "wf-rr3", "walk_forward": None}),
+            _study_row(params=None),
+        ],
+        next_cursor=None,
+    )
+    resp = unit_client.get("/api/validation/studies")
+    assert resp.status_code == 200
+    studies = resp.json()["studies"]
+    assert studies[0]["config_name"] == "wf-rr3"
+    assert studies[1]["config_name"] is None
+
+
 def test_get_study_200_and_404(unit_client, stub_storage_client):
     row = _study_row()
     stub_storage_client.get_validation_study.return_value = row

@@ -1,72 +1,69 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { StartStudyDialog } from "@/components/validation/start-study-dialog";
-import { LockboxGate } from "@/components/validation/lockbox-gate";
-import { useConfigs } from "@/hooks/useConfigs";
-import { useLockboxStatus, useRunLockbox, useStudies } from "@/hooks/useStudies";
+import { createFileRoute } from '@tanstack/react-router'
+import { ValidationStatCards } from '@/components/validation/ValidationStatCards'
+import { StartStudyCard } from '@/components/validation/StartStudyCard'
+import { StudiesTable } from '@/components/validation/StudiesTable'
+import { LockboxCard } from '@/components/validation/LockboxCard'
+import { SectionTitle, cardSection } from '@/components/section-title'
+import { useConfigs } from '@/hooks/useConfigs'
+import { useLockboxStatus, useRunLockbox, useStudies } from '@/hooks/useStudies'
 
-export const Route = createFileRoute("/_authenticated/validation")({
+export const Route = createFileRoute('/_authenticated/validation')({
   component: ValidationPage,
-});
+})
 
+// The Validation page (Feature 011, redesigned 2026-06-04 in the Data-page
+// card language). Thin composer: stat cards → launcher → studies table →
+// lockbox. Sections fail independently; tooltips per concept (constitution VI).
 function ValidationPage() {
-  const studies = useStudies();
-  const lockbox = useLockboxStatus();
-  const runLockbox = useRunLockbox();
-  const configsQuery = useConfigs();
-  const configs = configsQuery.data?.configs ?? [];
-  // Pre-select the active config to freeze (Feature 012); user can override.
-  const activeName = configs.find((c) => c.is_active)?.name;
-  const [pickedLockbox, setPickedLockbox] = useState<string | null>(null);
-  const lockboxConfig = pickedLockbox ?? activeName ?? "default";
+  const studiesQuery = useStudies()
+  const lockbox = useLockboxStatus()
+  const runLockbox = useRunLockbox()
+  const configsQuery = useConfigs()
+
+  const studies = studiesQuery.data?.studies ?? []
+  const configs = configsQuery.data?.configs ?? []
 
   return (
-    <div style={{ padding: "var(--sp-5)", display: "grid", gap: "var(--sp-5)", maxWidth: 900 }}>
-      <h2>Validation</h2>
-      <StartStudyDialog />
+    <div style={{ padding: 'var(--sp-5, 20px)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4, 16px)' }}>
+      {/* Header */}
+      <section>
+        <h2 style={{ fontSize: 'var(--fs-lg, 18px)', fontWeight: 700, margin: 0 }}>Validation</h2>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm, 13px)', color: 'var(--text-muted)' }}>
+          Walk-forward, sensitivity &amp; the one-shot lockbox — research without self-deception
+        </p>
+      </section>
 
-      <section className="card">
-        <header className="card-head">
-          <h3 className="card-title">Studies</h3>
-        </header>
-        {studies.isLoading ? (
-          <div className="stat-label">Loading…</div>
-        ) : (studies.data?.studies ?? []).length === 0 ? (
-          <div className="stat-label">No studies yet — launch one above.</div>
+      <ValidationStatCards studies={studies} lockboxState={lockbox.data?.state ?? null} />
+
+      <section style={cardSection}>
+        <SectionTitle title="New validation study" subtitle="Test a saved config on data it has never seen" />
+        <StartStudyCard />
+      </section>
+
+      <section style={cardSection}>
+        <SectionTitle title="Studies" subtitle="Your validation studies, newest first" />
+        {studiesQuery.isError ? (
+          <p data-testid="studies-error" style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm, 13px)' }}>
+            Couldn't load studies — the rest of the page still works.
+          </p>
+        ) : studiesQuery.isLoading ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm, 13px)' }}>Loading…</p>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {studies.data!.studies.map((s) => (
-              <li key={s.id} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                <Link to="/validation/$studyId" params={{ studyId: s.id }}>
-                  {s.kind} · {s.status} · {s.progress_completed}/{s.progress_total}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <StudiesTable studies={studies} />
         )}
       </section>
 
       {lockbox.data && (
-        <div style={{ display: "grid", gap: "var(--sp-2)" }}>
-          <label className="stat-label">
-            Candidate config to freeze{" "}
-            <select
-              aria-label="lockbox config"
-              value={lockboxConfig}
-              onChange={(e) => setPickedLockbox(e.target.value)}
-            >
-              {(configs.length > 0 ? configs.map((c) => c.name) : ["default"]).map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </label>
-          <LockboxGate
+        <section style={cardSection}>
+          <SectionTitle title="Lockbox" subtitle="The sealed final exam — spent exactly once, on your best candidate" />
+          <LockboxCard
             status={lockbox.data}
+            configs={configs}
             running={runLockbox.isPending}
-            onRun={(override) => runLockbox.mutate({ config_name: lockboxConfig, override })}
+            onRun={(configName, override) => runLockbox.mutate({ config_name: configName, override })}
           />
-        </div>
+        </section>
       )}
     </div>
-  );
+  )
 }

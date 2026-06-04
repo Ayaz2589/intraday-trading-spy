@@ -30,7 +30,19 @@ export function studyStatusQueryKey(studyId: UUID): readonly unknown[] {
 }
 
 export function useStudies() {
-  return useQuery({ queryKey: studiesQueryKey(), queryFn: () => listStudies() })
+  return useQuery({
+    queryKey: studiesQueryKey(),
+    queryFn: () => listStudies(),
+    // Validation-page redesign: poll gently while any study is in flight so
+    // the table's progress bars and status pills stay live; stop when all
+    // studies are terminal.
+    refetchInterval: (query) => {
+      const studies = query.state.data?.studies ?? []
+      const active = studies.some((s: ValidationStudy) => s.status === 'queued' || s.status === 'running')
+      return active ? 3000 : false
+    },
+    refetchOnWindowFocus: false,
+  })
 }
 
 export function useStudy(studyId: UUID | undefined) {

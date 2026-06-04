@@ -336,6 +336,18 @@ class ValidationStudyView(_ResponseBase):
     result: Optional[dict] = None
     failure_reason: Optional[str] = None
     created_at: datetime
+    # Validation-page redesign: which config the study tested — lifted from the
+    # stored launch params so the studies list can show it. Null when absent.
+    config_name: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _lift_config_name(cls, data):
+        if isinstance(data, dict) and data.get("config_name") is None:
+            params = data.get("params")
+            if isinstance(params, dict):
+                data = {**data, "config_name": params.get("config_name")}
+        return data
 
 
 class ValidationStudyStatusView(_ResponseBase):
