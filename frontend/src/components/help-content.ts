@@ -48,7 +48,18 @@ export type HelpContentKey =
   | "equity_curve"
   | "per_bucket"
   | "confidence_interval"
-  | "sample_size";
+  | "sample_size"
+  // Feature 011 (validation engine) concepts
+  | "walk_forward"
+  | "in_sample"
+  | "out_of_sample"
+  | "is_oos_gap"
+  | "parameter_sensitivity"
+  | "plateau_vs_peak"
+  | "bootstrap_ci"
+  | "permutation_test"
+  | "lockbox"
+  | "burned_lockbox";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -255,5 +266,56 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Sample size (N)",
     description:
       "How many trades a result is based on. Small samples are dominated by luck — an '83% win rate on 6 trades' is a coin-flip story. We flag results below a threshold as low-confidence so a tiny sample is never mistaken for a real, durable edge.",
+  },
+  // Feature 011 (validation engine)
+  walk_forward: {
+    title: "Walk-forward",
+    description:
+      "Tune on one window of history, then measure on the very next window you did NOT look at — and roll that forward across the data. It's the closest thing to forward testing you can do on past data, and the cleanest way to tell a real edge from one fit to noise.",
+  },
+  in_sample: {
+    title: "In-sample (IS)",
+    description:
+      "Performance over the training window — the data the config was chosen on. It is optimistic by construction: a config always looks at least decent on the data used to pick it. Judge an edge by out-of-sample, not this.",
+  },
+  out_of_sample: {
+    title: "Out-of-sample (OOS)",
+    description:
+      "Performance over the window immediately after the training window — data the config never saw. This is the honest number. An edge that holds up out-of-sample is the only kind worth trading.",
+  },
+  is_oos_gap: {
+    title: "In-sample vs out-of-sample gap",
+    description:
+      "How much worse the out-of-sample result is than the in-sample one (OOS − IS). A small gap means the edge generalizes; a large drop means the config was fit to the noise of the training window — the classic overfitting signature.",
+  },
+  parameter_sensitivity: {
+    title: "Parameter sensitivity",
+    description:
+      "How performance changes as you nudge a knob across a range of values. We evaluate an explicit grid of values and plot the result, so you can see whether the edge is stable or fragile to small changes.",
+  },
+  plateau_vs_peak: {
+    title: "Plateau vs spike",
+    description:
+      "On the sensitivity surface, prefer a broad PLATEAU — a block of neighboring values that all work — over a lone SPIKE that only works at one exact setting. A plateau is a robust edge; a spike is usually a config fit to noise that will not survive live.",
+  },
+  bootstrap_ci: {
+    title: "Bootstrap confidence interval",
+    description:
+      "Resample your own trades (with replacement) thousands of times to see how much a metric like expectancy could have varied by luck. The resulting range is the confidence interval — if it comfortably excludes zero, the edge is less likely to be a fluke.",
+  },
+  permutation_test: {
+    title: "Permutation / Monte-Carlo test",
+    description:
+      "Asks: could random entries — under the SAME session rules, stop/target geometry, and costs — have produced this result? We build a null distribution from random-entry runs; the p-value is the fraction that did at least as well. p < 0.05 means random timing rarely matches you, so your entry timing likely has real edge.",
+  },
+  lockbox: {
+    title: "Lockbox",
+    description:
+      "A slice of the most recent history held completely out of sight while you research. You spend it exactly once: run your single frozen candidate on it. Because you never tuned against it, that one result is an honest final check before risking anything forward.",
+  },
+  burned_lockbox: {
+    title: "Burned / contaminated lockbox",
+    description:
+      "Once you run a SECOND, different config against the lockbox, it is no longer untouched — you've started fitting to it. The system blocks this by default; doing it deliberately permanently marks the lockbox 'burned', and its results can no longer be trusted as a clean out-of-sample test.",
   },
 };

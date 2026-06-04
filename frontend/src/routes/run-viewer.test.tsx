@@ -250,6 +250,19 @@ describe("RunViewer route", () => {
       "regime_completeness",
       "backfill",
       "data_source",
+      // Feature 011 validation keys render in the Validation route's components
+      // (walk-forward-table / sensitivity-surface / significance-panel /
+      // lockbox-gate), not the run-viewer; coverage lives in those tests.
+      "walk_forward",
+      "in_sample",
+      "out_of_sample",
+      "is_oos_gap",
+      "parameter_sensitivity",
+      "plateau_vs_peak",
+      "bootstrap_ci",
+      "permutation_test",
+      "lockbox",
+      "burned_lockbox",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

@@ -159,6 +159,131 @@ export type DataDownloadJob = {
   failure_reason: string | null
 }
 
+// ---- Feature 011: validation engine ----
+
+export type StudyKind = 'walk_forward' | 'sensitivity'
+
+export type WindowMetrics = {
+  segment: 'train' | 'validation' | 'lockbox'
+  range_start: string
+  range_end: string
+  run_id: string
+  total_trades: number
+  expectancy_dollars: number | null
+  expectancy_r: number | null
+  win_rate: number
+  profit_factor: number | null
+  sharpe: number | null
+  total_net_pnl_dollars: number
+  low_confidence: boolean
+}
+
+export type WalkForwardWindowResult = {
+  window_index: number
+  in_sample: WindowMetrics
+  out_of_sample: WindowMetrics
+  gap: Record<string, number | null>
+}
+
+export type WalkForwardResult = {
+  mode: 'rolling' | 'anchored'
+  train_months: number
+  step_months: number
+  validation_months: number
+  windows: WalkForwardWindowResult[]
+  mean_oos: Record<string, number | null>
+  mean_gap: Record<string, number | null>
+}
+
+export type SensitivityPoint = {
+  coords: Record<string, number>
+  metric: number | null
+  trade_count: number
+  low_confidence: boolean
+  run_id: string
+}
+
+export type SensitivitySurface = {
+  metric_name: string
+  knobs: string[]
+  axes: Record<string, number[]>
+  points: SensitivityPoint[]
+  segment: 'train' | 'validation' | 'train_validation'
+}
+
+export type BootstrapCI = {
+  statistic: string
+  point: number | null
+  low: number | null
+  high: number | null
+}
+
+export type SignificanceResult = {
+  confidence: number
+  bootstrap: BootstrapCI[]
+  permutation_metric: string
+  observed: number
+  p_value: number | null
+  alpha: number
+  significant: boolean
+  bootstrap_iterations: number
+  permutation_iterations: number
+  seed: number
+}
+
+export type ValidationStudy = {
+  id: UUID
+  kind: StudyKind
+  status: RunStatus
+  progress_completed: number
+  progress_total: number
+  result: WalkForwardResult | SensitivitySurface | Record<string, unknown> | null
+  failure_reason: string | null
+  created_at: string
+}
+
+export type StudyListResponse = { studies: ValidationStudy[]; next_cursor: string | null }
+
+export type ValidationStudyStatus = {
+  id: UUID
+  status: RunStatus
+  progress_completed: number
+  progress_total: number
+  failure_reason: string | null
+}
+
+export type StartStudyRequest = {
+  kind: StudyKind
+  config_name: string
+  walk_forward?: Record<string, unknown>
+  grid?: Array<{ knob: string; values: number[] }>
+  metric?: string
+  segment?: 'train' | 'validation' | 'train_validation'
+  confirm_large?: boolean
+}
+export type StartStudyResponse = { study_id: UUID; status: 'queued'; planned_evaluations: number }
+
+export type SignificanceRequest = { run_id: UUID }
+
+export type LockboxState = 'unspent' | 'spent' | 'burned'
+export type LockboxStatus = {
+  lockbox_start: string
+  lockbox_end: string
+  state: LockboxState
+  config_fingerprint: string | null
+  run_id: UUID | null
+  result: Record<string, unknown> | null
+  history: Array<Record<string, unknown>>
+}
+export type LockboxRunRequest = { config_name: string; override?: boolean }
+export type LockboxRunResponse = {
+  state: 'spent' | 'burned'
+  contaminated: boolean
+  config_fingerprint: string
+  run_id: UUID | null
+  summary: Record<string, unknown>
+}
+
 export type HealthResponse = { status: 'ok'; db: 'ok' | 'unreachable' }
 
 export type ApiErrorBody = {

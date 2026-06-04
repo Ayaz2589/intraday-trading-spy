@@ -33,6 +33,16 @@ export function AuthenticatedTopbar({ strategyLabel, configLabel }: Props) {
       </div>
       <div className="tb-actions">
         <Link
+          to="/validation"
+          data-testid="nav-validation"
+          className="text-xs text-muted-foreground"
+          style={{ textDecoration: 'none', fontWeight: 600 }}
+          activeProps={{ style: { color: 'var(--text)' } }}
+        >
+          Validation
+        </Link>
+        <span className="tb-div" />
+        <Link
           to="/data"
           data-testid="nav-data"
           className="text-xs text-muted-foreground"

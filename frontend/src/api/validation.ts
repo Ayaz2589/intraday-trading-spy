@@ -1,0 +1,42 @@
+import { apiRequest } from './client'
+import type {
+  LockboxRunRequest,
+  LockboxRunResponse,
+  LockboxStatus,
+  SignificanceRequest,
+  SignificanceResult,
+  StartStudyRequest,
+  StartStudyResponse,
+  StudyListResponse,
+  UUID,
+  ValidationStudy,
+  ValidationStudyStatus,
+} from './types'
+
+export function startStudy(body: StartStudyRequest): Promise<StartStudyResponse> {
+  return apiRequest<StartStudyResponse>('/api/validation/studies', { method: 'POST', body })
+}
+
+export function listStudies(opts: { limit?: number; cursor?: string } = {}): Promise<StudyListResponse> {
+  return apiRequest<StudyListResponse>('/api/validation/studies', { searchParams: opts })
+}
+
+export function getStudy(studyId: UUID): Promise<ValidationStudy> {
+  return apiRequest<ValidationStudy>(`/api/validation/studies/${studyId}`)
+}
+
+export function getStudyStatus(studyId: UUID): Promise<ValidationStudyStatus> {
+  return apiRequest<ValidationStudyStatus>(`/api/validation/studies/${studyId}/status`)
+}
+
+export function computeSignificance(body: SignificanceRequest): Promise<SignificanceResult> {
+  return apiRequest<SignificanceResult>('/api/validation/significance', { method: 'POST', body })
+}
+
+export function getLockboxStatus(): Promise<LockboxStatus> {
+  return apiRequest<LockboxStatus>('/api/validation/lockbox')
+}
+
+export function runLockbox(body: LockboxRunRequest): Promise<LockboxRunResponse> {
+  return apiRequest<LockboxRunResponse>('/api/validation/lockbox/run', { method: 'POST', body })
+}

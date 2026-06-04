@@ -65,8 +65,8 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 
 - [X] T021 Failing test: validation router mounts; `GET /api/validation/studies`, `/{id}`, `/{id}/status` are owner-scoped (404 cross-user) in `backend/tests/api/test_validation_api.py`.
 - [X] T022 Implement `backend/src/intraday_trade_spy/api/routers/validation.py` (list/get/status) + `ValidationStudyView`/`ValidationStudyStatusView`/`StartStudyResponse` in `api/schemas.py`; mount in `api/app.py`.
-- [ ] T023 [P] Failing test: Validation route shell renders + nav entry present in `frontend/src/routes/_authenticated.validation.test.tsx`.
-- [ ] T024 Implement the Validation route shell `frontend/src/routes/_authenticated.validation.tsx` + study-detail route `frontend/src/routes/_authenticated.validation_.$studyId.tsx` (empty panels), nav entry in the authenticated shell, `frontend/src/api/validation.ts` client + `useStudies`/`useStudy`/`useStudyStatus` hooks + base types in `frontend/src/api/types.ts`.
+- [X] T023 [P] Failing test: Validation route shell renders + nav entry present in `frontend/src/routes/_authenticated.validation.test.tsx`.
+- [X] T024 Implement the Validation route shell `frontend/src/routes/_authenticated.validation.tsx` + study-detail route `frontend/src/routes/_authenticated.validation_.$studyId.tsx` (empty panels), nav entry in the authenticated shell, `frontend/src/api/validation.ts` client + `useStudies`/`useStudy`/`useStudyStatus` hooks + base types in `frontend/src/api/types.ts`.
 
 **Checkpoint**: foundation ready — user stories can begin.
 
@@ -86,9 +86,9 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T030 [US1] Implement `backend/src/intraday_trade_spy/validation/walk_forward.py` (uses study core + window + split guard).
 - [X] T031 [US1] Failing test: `POST /api/validation/studies kind=walk_forward` returns `planned_evaluations`, enforces `large_study`/`confirm_large`, and rejects lockbox-overlap, in `backend/tests/api/test_validation_api.py`.
 - [X] T032 [US1] Implement the walk_forward launch path in `api/routers/validation.py` + `StartStudyRequest` (walk_forward params) in `api/schemas.py`; wire orchestrator via `validation_lifecycle`.
-- [ ] T033 [P] [US1] Failing test: `walk-forward-table` renders IS/OOS columns + color-coded gap + low-confidence flag in `frontend/src/components/validation/walk-forward-table.test.tsx`.
-- [ ] T034 [US1] Implement `frontend/src/components/validation/walk-forward-table.tsx` + `start-study-dialog.tsx` (WF mode) + mount in the study-detail route + `useStartStudy` hook + WF result types.
-- [ ] T035 [P] [US1] Add `HELP_CONTENT` keys `walk_forward`, `in_sample`, `out_of_sample`, `is_oos_gap` + `HelpTooltip`s; test in `frontend/src/components/validation/walk-forward-table.test.tsx`.
+- [X] T033 [P] [US1] Failing test: `walk-forward-table` renders IS/OOS columns + color-coded gap + low-confidence flag in `frontend/src/components/validation/walk-forward-table.test.tsx`.
+- [X] T034 [US1] Implement `frontend/src/components/validation/walk-forward-table.tsx` + `start-study-dialog.tsx` (WF mode) + mount in the study-detail route + `useStartStudy` hook + WF result types.
+- [X] T035 [P] [US1] Add `HELP_CONTENT` keys `walk_forward`, `in_sample`, `out_of_sample`, `is_oos_gap` + `HelpTooltip`s; test in `frontend/src/components/validation/walk-forward-table.test.tsx`.
 
 **Checkpoint**: US1 fully functional and independently testable (MVP).
 
@@ -106,9 +106,9 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T039 [US2] Add `SensitivityPoint`/`SensitivitySurface` to `backend/src/intraday_trade_spy/models.py` (per data-model §B2).
 - [X] T040 [US2] Failing test: `POST /api/validation/studies kind=sensitivity` (grid + metric, `confirm_large` over threshold, ≥3-D 422) in `backend/tests/api/test_validation_api.py`.
 - [X] T041 [US2] Implement the sensitivity launch path in `api/routers/validation.py` + `grid`/`metric` request fields; wire orchestrator.
-- [ ] T042 [P] [US2] Failing test: `sensitivity-surface` heatmap (color scale, 1-D row + 2-D grid, low-confidence cells marked, legend) in `frontend/src/components/validation/sensitivity-surface.test.tsx`.
-- [ ] T043 [US2] Implement `frontend/src/components/validation/sensitivity-surface.tsx` (dependency-free SVG/CSS) + sensitivity mode in `start-study-dialog.tsx` + mount in study-detail.
-- [ ] T044 [P] [US2] Add `HELP_CONTENT` keys `parameter_sensitivity`, `plateau_vs_peak` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `sensitivity-surface.tsx`; assert in its test.
+- [X] T042 [P] [US2] Failing test: `sensitivity-surface` heatmap (color scale, 1-D row + 2-D grid, low-confidence cells marked, legend) in `frontend/src/components/validation/sensitivity-surface.test.tsx`.
+- [X] T043 [US2] Implement `frontend/src/components/validation/sensitivity-surface.tsx` (dependency-free SVG/CSS) + sensitivity mode in `start-study-dialog.tsx` + mount in study-detail.
+- [X] T044 [P] [US2] Add `HELP_CONTENT` keys `parameter_sensitivity`, `plateau_vs_peak` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `sensitivity-surface.tsx`; assert in its test.
 
 **Checkpoint**: US1 + US2 both independently functional.
 
@@ -128,9 +128,9 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T050 [US3] Implement the permutation test + verdict in `validation/significance.py`.
 - [X] T051 [US3] Failing test: `POST /api/validation/significance` (run_id, determinism, 0-trade label, overrides) in `backend/tests/api/test_validation_api.py`.
 - [X] T052 [US3] Implement the significance endpoint in `api/routers/validation.py` + `SignificanceRequest`/`SignificanceResult` schemas (loads the run's trades).
-- [ ] T053 [P] [US3] Failing test: `significance-panel` (CI bar, p-value, verdict badge, undefined-when-thin) in `frontend/src/components/validation/significance-panel.test.tsx`.
-- [ ] T054 [US3] Implement `frontend/src/components/validation/significance-panel.tsx` + `useSignificance` hook + mount in study-detail / run-detail.
-- [ ] T055 [P] [US3] Add `HELP_CONTENT` keys `bootstrap_ci`, `permutation_test` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `significance-panel.tsx`; assert in its test.
+- [X] T053 [P] [US3] Failing test: `significance-panel` (CI bar, p-value, verdict badge, undefined-when-thin) in `frontend/src/components/validation/significance-panel.test.tsx`.
+- [X] T054 [US3] Implement `frontend/src/components/validation/significance-panel.tsx` + `useSignificance` hook + mount in study-detail / run-detail.
+- [X] T055 [P] [US3] Add `HELP_CONTENT` keys `bootstrap_ci`, `permutation_test` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `significance-panel.tsx`; assert in its test.
 
 **Checkpoint**: US1–US3 independently functional.
 
@@ -149,9 +149,9 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 - [X] T060 [US4] Implement `backend/src/intraday_trade_spy/validation/lockbox.py` (freeze fingerprint + state machine + `LockboxStatus` model + journal `lockbox_spent`/`lockbox_burned` events).
 - [X] T061 [US4] Failing test: `GET /api/validation/lockbox` + `POST /api/validation/lockbox/run` (spent, idempotent, 409 block, override→burned) in `backend/tests/api/test_validation_api.py`.
 - [X] T062 [US4] Implement the lockbox endpoints in `api/routers/validation.py` + `LockboxRunRequest`/`LockboxRunResponse`/`LockboxStatusView` schemas (runs the one-shot eval via `run_evaluation`, segment=`lockbox`).
-- [ ] T063 [P] [US4] Failing test: `lockbox-gate` (unspent/spent/burned states, override confirm dialog, contaminated banner) in `frontend/src/components/validation/lockbox-gate.test.tsx`.
-- [ ] T064 [US4] Implement `frontend/src/components/validation/lockbox-gate.tsx` + `useLockboxStatus`/`useLockboxRun` hooks + mount in study-detail/Validation route + types.
-- [ ] T065 [P] [US4] Add `HELP_CONTENT` keys `lockbox`, `burned_lockbox` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `lockbox-gate.tsx`; assert in its test.
+- [X] T063 [P] [US4] Failing test: `lockbox-gate` (unspent/spent/burned states, override confirm dialog, contaminated banner) in `frontend/src/components/validation/lockbox-gate.test.tsx`.
+- [X] T064 [US4] Implement `frontend/src/components/validation/lockbox-gate.tsx` + `useLockboxStatus`/`useLockboxRun` hooks + mount in study-detail/Validation route + types.
+- [X] T065 [P] [US4] Add `HELP_CONTENT` keys `lockbox`, `burned_lockbox` to `frontend/src/components/help-content.ts` + `HelpTooltip`s in `lockbox-gate.tsx`; assert in its test.
 
 **Checkpoint**: all four stories independently functional.
 
@@ -160,7 +160,7 @@ description: "Task list for Feature 011 — Validation Engine (Phase 2)"
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [X] T066 [P] Principle-II/V guard test: assert no `validation/` code path imports or calls a broker live-order path (`live_auto_enabled` unreachable from validation) in `backend/tests/validation/test_no_live_path.py`.
-- [ ] T067 Decide and set the `walk_forward.overfit_gap_warn` default threshold in `backend/config/config.yaml` + surface it as the WF table's "overfit" highlight rule (the one knob deferred from plan; add a test for the highlight rule in `walk-forward-table.test.tsx`).
+- [X] T067 Decide and set the `walk_forward.overfit_gap_warn` default threshold in `backend/config/config.yaml` + surface it as the WF table's "overfit" highlight rule (the one knob deferred from plan; add a test for the highlight rule in `walk-forward-table.test.tsx`).
 - [ ] T068 [P] Run `quickstart.md` end-to-end against live Supabase (WF → sensitivity → significance → lockbox); record outcomes.
 - [ ] T069 [P] Determinism sweep: re-run a study + significance with the same seed; assert byte-identical verdicts (SC-004) in `backend/tests/validation/test_determinism.py`.
 - [ ] T070 [P] Update `docs/automated-trading-roadmap.md` Phase 2 status + the feature↔phase map (011 status) and add an `EXPERIMENTS.md` note that the methodology is live.
