@@ -86,10 +86,34 @@ describe('JobHistoryTable', () => {
     expect(onRetry).toHaveBeenCalledWith('2018-01-01', '2026-06-04')
   })
 
-  it('finished rows do not expand', () => {
+  it('every row expands to a detail panel (job id, source, timestamps)', () => {
     render(<JobHistoryTable jobs={[base]} onRetry={vi.fn()} />)
+    expect(screen.queryByTestId('job-detail-job-finished')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('job-row-job-finished'))
+    const detail = screen.getByTestId('job-detail-job-finished')
+    expect(detail.textContent).toContain('job-finished') // job id
+    expect(detail.textContent).toContain('alpaca') // source
+    expect(detail.textContent).toContain('2018-01-01 → 2026-06-04')
+    // Clicking again collapses.
+    fireEvent.click(screen.getByTestId('job-row-job-finished'))
+    expect(screen.queryByTestId('job-detail-job-finished')).not.toBeInTheDocument()
+  })
+
+  it('a finished row offers "run this range again"; no failure panel', () => {
+    const onRetry = vi.fn()
+    render(<JobHistoryTable jobs={[base]} onRetry={onRetry} />)
     fireEvent.click(screen.getByTestId('job-row-job-finished'))
     expect(screen.queryByTestId(/failure-panel/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /run this range again/i }))
+    expect(onRetry).toHaveBeenCalledWith('2018-01-01', '2026-06-04')
+  })
+
+  it('lists the gap sessions a job filled', () => {
+    render(<JobHistoryTable jobs={[{ ...base, gap_session_dates: ['2026-03-12', '2026-03-13'] }]} />)
+    fireEvent.click(screen.getByTestId('job-row-job-finished'))
+    const detail = screen.getByTestId('job-detail-job-finished')
+    expect(detail.textContent).toContain('2026-03-12')
+    expect(detail.textContent).toContain('2026-03-13')
   })
 
   it('shows bars added in +N form', () => {

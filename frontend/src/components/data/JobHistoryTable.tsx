@@ -62,6 +62,40 @@ function WindowsCell({ j }: { j: BackfillJobView }) {
   )
 }
 
+function Detail({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <span>
+      <span style={{ display: 'block', fontSize: 'var(--fs-xs, 10px)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {label}
+      </span>
+      <span className={mono ? 'mono' : undefined} style={{ wordBreak: 'break-all' }}>{value}</span>
+    </span>
+  )
+}
+
+function ActionButton({ pending, onClick, children }: { pending: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      style={{
+        padding: '5px 12px',
+        borderRadius: 'var(--r-sm, 6px)',
+        border: '1px solid var(--border-strong, #ccc)',
+        background: 'var(--surface, #fff)',
+        fontWeight: 600,
+        cursor: pending ? 'wait' : 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function JobHistoryTable({
   jobs,
   onRetry,
@@ -122,19 +156,17 @@ export function JobHistoryTable({
               <Fragment key={j.job_id}>
                 <tr
                   data-testid={`job-row-${j.job_id}`}
-                  onClick={() => failedRow && setExpanded(isOpen ? null : j.job_id)}
+                  onClick={() => setExpanded(isOpen ? null : j.job_id)}
                   style={{
                     borderTop: '1px solid var(--border)',
-                    cursor: failedRow ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     background: isOpen ? 'var(--surface-2, #f6f7f9)' : undefined,
                   }}
                 >
                   <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>
-                    {failedRow && (
-                      <span aria-hidden style={{ color: 'var(--text-muted)', marginRight: 4 }}>
-                        {isOpen ? '▾' : '▸'}
-                      </span>
-                    )}
+                    <span aria-hidden style={{ color: 'var(--text-muted)', marginRight: 4 }}>
+                      {isOpen ? '▾' : '▸'}
+                    </span>
                     {started(j)}
                   </td>
                   <td style={{ padding: '6px 8px', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>
@@ -149,48 +181,75 @@ export function JobHistoryTable({
                     <StatusPill j={j} />
                   </td>
                 </tr>
-                {failedRow && isOpen && (
+                {isOpen && (
                   <tr>
-                    <td colSpan={6} style={{ padding: '0 8px 10px' }}>
+                    <td colSpan={6} style={{ padding: '0 8px 12px' }}>
                       <div
-                        data-testid={`failure-panel-${j.job_id}`}
+                        data-testid={`job-detail-${j.job_id}`}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 12,
                           padding: '10px 12px',
                           borderRadius: 'var(--r-md, 8px)',
-                          border: '1px solid var(--neg, #b42318)',
-                          background: 'var(--neg-bg, #fdecea)',
-                          flexWrap: 'wrap',
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface, #fff)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
                         }}
                       >
-                        <span style={{ fontSize: 'var(--fs-sm, 13px)' }}>
-                          <span style={{ display: 'block', fontSize: 'var(--fs-xs, 10px)', color: 'var(--neg, #b42318)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            Failure reason
-                          </span>
-                          <span className="mono">{j.failure_reason ?? 'unknown'}</span>
-                        </span>
-                        {onRetry && (
-                          <button
-                            type="button"
-                            disabled={retryPending}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRetry(j.range_start, j.range_end)
-                            }}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, fontSize: 'var(--fs-sm, 13px)' }}>
+                          <Detail label="Job ID" value={j.job_id} mono />
+                          <Detail label="Source" value={j.source} mono />
+                          <Detail label="Range" value={`${j.range_start} → ${j.range_end}`} mono />
+                          <Detail label="Started" value={started(j)} />
+                          <Detail label="Completed" value={j.updated_at ? new Date(j.updated_at).toLocaleString() : '—'} />
+                          <Detail label="Duration" value={duration(j)} />
+                          <Detail label="Windows" value={`${j.windows_done}/${j.windows_total}`} mono />
+                          <Detail label="Bars added" value={`+${j.bars_added.toLocaleString()}`} mono />
+                          <Detail
+                            label="Gap sessions filled"
+                            value={
+                              j.gap_session_dates.length > 0
+                                ? j.gap_session_dates.join(', ')
+                                : 'none — everything already cached'
+                            }
+                            mono={j.gap_session_dates.length > 0}
+                          />
+                        </div>
+
+                        {failedRow && (
+                          <div
+                            data-testid={`failure-panel-${j.job_id}`}
                             style={{
-                              padding: '5px 12px',
-                              borderRadius: 'var(--r-sm, 6px)',
-                              border: '1px solid var(--border-strong, #ccc)',
-                              background: 'var(--surface, #fff)',
-                              fontWeight: 600,
-                              cursor: retryPending ? 'wait' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 12,
+                              padding: '8px 12px',
+                              borderRadius: 'var(--r-md, 8px)',
+                              border: '1px solid var(--neg, #b42318)',
+                              background: 'var(--neg-bg, #fdecea)',
+                              flexWrap: 'wrap',
                             }}
                           >
-                            ↻ Retry this range
-                          </button>
+                            <span style={{ fontSize: 'var(--fs-sm, 13px)' }}>
+                              <span style={{ display: 'block', fontSize: 'var(--fs-xs, 10px)', color: 'var(--neg, #b42318)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                Failure reason
+                              </span>
+                              <span className="mono">{j.failure_reason ?? 'unknown'}</span>
+                            </span>
+                            {onRetry && (
+                              <ActionButton pending={retryPending} onClick={() => onRetry(j.range_start, j.range_end)}>
+                                ↻ Retry this range
+                              </ActionButton>
+                            )}
+                          </div>
+                        )}
+                        {!failedRow && onRetry && (
+                          <div>
+                            <ActionButton pending={retryPending} onClick={() => onRetry(j.range_start, j.range_end)}>
+                              ↻ Run this range again
+                            </ActionButton>
+                          </div>
                         )}
                       </div>
                     </td>
