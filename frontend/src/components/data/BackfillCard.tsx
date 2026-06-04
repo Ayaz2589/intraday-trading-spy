@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CalendarField } from '@/components/calendar-field'
 import { PRESETS, presetRange, type PresetKey } from '@/lib/backfill-presets'
 import { estimateWindows, estimateDurationMs, formatMs } from '@/lib/backfill-estimate'
 import type { BackfillJobView } from '@/api/bars'
@@ -168,35 +169,38 @@ export function BackfillCard({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
-        <label style={{ fontSize: 'var(--fs-xs, 11px)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          From{' '}
-          <input
-            data-testid="backfill-start"
-            type="date"
+        <div>
+          <span style={{ display: 'block', marginBottom: 3, fontSize: 'var(--fs-xs, 11px)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            From
+          </span>
+          <CalendarField
             value={start}
             max={end}
-            onChange={(e) => {
-              setStart(e.target.value)
+            onChange={(iso) => {
+              setStart(iso)
               setPreset(null)
             }}
-            style={{ display: 'block', fontFamily: 'var(--mono)' }}
+            ariaLabel="Backfill start date"
+            testid="backfill-start"
           />
-        </label>
-        <span aria-hidden style={{ color: 'var(--accent, #2563eb)', paddingBottom: 4 }}>→</span>
-        <label style={{ fontSize: 'var(--fs-xs, 11px)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          To{' '}
-          <input
-            data-testid="backfill-end"
-            type="date"
+        </div>
+        <span aria-hidden style={{ color: 'var(--accent, #2563eb)', paddingBottom: 6 }}>→</span>
+        <div>
+          <span style={{ display: 'block', marginBottom: 3, fontSize: 'var(--fs-xs, 11px)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            To
+          </span>
+          <CalendarField
             value={end}
+            min={start}
             max={todayISO()}
-            onChange={(e) => {
-              setEnd(e.target.value)
+            onChange={(iso) => {
+              setEnd(iso)
               setPreset(null)
             }}
-            style={{ display: 'block', fontFamily: 'var(--mono)' }}
+            ariaLabel="Backfill end date"
+            testid="backfill-end"
           />
-        </label>
+        </div>
 
         <div data-testid="backfill-estimate" style={{ fontSize: 'var(--fs-sm, 13px)' }}>
           <strong className="mono" style={{ fontSize: 'var(--fs-base, 15px)' }}>{windows}</strong> windows
