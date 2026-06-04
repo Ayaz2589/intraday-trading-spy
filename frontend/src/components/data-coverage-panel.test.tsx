@@ -40,7 +40,7 @@ describe('DataCoveragePanel', () => {
     jobsData = undefined
   })
 
-  it('renders the Feature 013 sections when stats are available', () => {
+  it('renders the redesigned sections when stats are available', () => {
     statsData = {
       totals: { bars: 100, sessions: 2, earliest: '2026-05-01', latest: '2026-05-04', last_updated: '2026-05-04T20:00:00Z', sources: ['alpaca'] },
       months: [
@@ -50,10 +50,12 @@ describe('DataCoveragePanel', () => {
     }
     jobsData = { jobs: [] }
     render(<DataCoveragePanel />)
-    expect(screen.getByTestId('cache-summary')).toBeInTheDocument()
-    expect(screen.getByTestId('cache-heatmap')).toBeInTheDocument()
+    expect(screen.getByTestId('stat-cards')).toBeInTheDocument()
+    expect(screen.getByTestId('status-strip')).toBeInTheDocument()
+    expect(screen.getByTestId('cache-bar-chart')).toBeInTheDocument()
     expect(screen.getByTestId('job-history')).toBeInTheDocument()
-    // The new concepts ship tooltips (constitution VI).
+    expect(screen.getByTestId('backfill-estimate')).toBeInTheDocument()
+    // Concepts keep their tooltips (constitution VI).
     for (const key of ['cache_heatmap', 'backfill_job_history', 'data_lineage']) {
       expect(document.querySelector(`[data-help-key="${key}"]`)).toBeTruthy()
     }

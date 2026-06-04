@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { JobHistoryTable } from './JobHistoryTable'
 import type { BackfillJobView } from '@/api/bars'
 
@@ -61,5 +61,39 @@ describe('JobHistoryTable', () => {
   it('renders an empty state when there are no jobs', () => {
     render(<JobHistoryTable jobs={[]} />)
     expect(screen.getByText(/no backfills yet/i)).toBeInTheDocument()
+  })
+
+  // ---- Data-page redesign additions ----
+
+  it('shows the stats row over the listed jobs', () => {
+    render(<JobHistoryTable jobs={[base, failed]} />)
+    const stats = screen.getByTestId('job-stats')
+    expect(stats.textContent).toContain('2') // total
+    expect(stats.textContent?.toLowerCase()).toContain('finished')
+    expect(stats.textContent?.toLowerCase()).toContain('failed')
+    expect(stats.textContent?.toLowerCase()).toContain('bars added')
+  })
+
+  it('expanding a failed row reveals the failure reason panel and retry', () => {
+    const onRetry = vi.fn()
+    render(<JobHistoryTable jobs={[base, failed]} onRetry={onRetry} />)
+    // Collapsed by default.
+    expect(screen.queryByTestId('failure-panel-job-failed')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('job-row-job-failed'))
+    const panel = screen.getByTestId('failure-panel-job-failed')
+    expect(panel.textContent).toContain("No module named 'alpaca'")
+    fireEvent.click(screen.getByRole('button', { name: /retry this range/i }))
+    expect(onRetry).toHaveBeenCalledWith('2018-01-01', '2026-06-04')
+  })
+
+  it('finished rows do not expand', () => {
+    render(<JobHistoryTable jobs={[base]} onRetry={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('job-row-job-finished'))
+    expect(screen.queryByTestId(/failure-panel/)).not.toBeInTheDocument()
+  })
+
+  it('shows bars added in +N form', () => {
+    render(<JobHistoryTable jobs={[{ ...base, bars_added: 92 }]} />)
+    expect(screen.getByTestId('job-row-job-finished').textContent).toContain('+92')
   })
 })
