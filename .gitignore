@@ -27,3 +27,6 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 backend/.supabase/
+
+# superpowers visual-companion sessions
+.superpowers/
