@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PRESETS, presetRange, type PresetKey } from '@/lib/backfill-presets'
 import { estimateWindows, estimateDurationMs, formatMs } from '@/lib/backfill-estimate'
 import type { BackfillJobView } from '@/api/bars'
@@ -11,12 +11,23 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+// A finished panel celebrates briefly, then gets out of the way; a failed
+// panel stays until dismissed (the job history keeps the record either way).
+const SUCCESS_AUTO_DISMISS_MS = 6000
+
 // Prominent live status for the in-flight (or just-completed) backfill:
 // animated spinner + progress bar while running; green/red verdict after.
-function JobStatusPanel({ job }: { job: BackfillJobView }) {
+function JobStatusPanel({ job, onDismiss }: { job: BackfillJobView; onDismiss: () => void }) {
   const running = job.status === 'queued' || job.status === 'running'
   const failed = job.status === 'failed'
   const pct = job.windows_total > 0 ? Math.round((job.windows_done / job.windows_total) * 100) : 0
+
+  // Success panels close themselves after a moment; failures wait for the ×.
+  useEffect(() => {
+    if (job.status !== 'finished') return
+    const t = setTimeout(onDismiss, SUCCESS_AUTO_DISMISS_MS)
+    return () => clearTimeout(t)
+  }, [job.status, job.job_id, onDismiss])
 
   const accent = failed ? 'var(--neg, #b42318)' : running ? 'var(--accent, #2563eb)' : 'var(--pos, #1a7f37)'
   const tint = failed ? 'var(--neg-bg, #fdecea)' : running ? 'var(--accent-bg, #eef4fe)' : 'var(--pos-bg, #e6f4ea)'
@@ -53,6 +64,24 @@ function JobStatusPanel({ job }: { job: BackfillJobView }) {
         <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 'var(--fs-sm, 13px)', color: accent, fontWeight: 700 }}>
           {running ? `${pct}%` : `+${job.bars_added.toLocaleString()} bars`}
         </span>
+        {!running && (
+          <button
+            type="button"
+            aria-label="dismiss"
+            onClick={onDismiss}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontSize: 'var(--fs-base, 15px)',
+              lineHeight: 1,
+              padding: '0 2px',
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -98,6 +127,7 @@ export function BackfillCard({
   const [start, setStart] = useState(full.start)
   const [end, setEnd] = useState(full.end)
   const [preset, setPreset] = useState<PresetKey | null>('full')
+  const [dismissedJobId, setDismissedJobId] = useState<string | null>(null)
 
   const windows = estimateWindows(start, end)
   const estMs = estimateDurationMs(jobs, windows)
@@ -201,7 +231,9 @@ export function BackfillCard({
         {hasGaps === false && ' The cache currently has no gaps, so a full backfill will add few or no bars.'}
       </p>
 
-      {job && <JobStatusPanel job={job} />}
+      {job && job.job_id !== dismissedJobId && (
+        <JobStatusPanel job={job} onDismiss={() => setDismissedJobId(job.job_id)} />
+      )}
       {launchError && (
         <div data-testid="backfill-error" style={{ marginTop: 8, color: 'var(--neg, #b42318)', fontSize: 'var(--fs-sm, 13px)' }}>
           Could not start backfill: {launchError}

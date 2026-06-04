@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 const mutate = vi.fn()
 let coverageData: unknown
@@ -105,6 +105,37 @@ describe('DataCoveragePanel', () => {
     expect(panel.textContent).toMatch(/complete/i)
     expect(panel.textContent).toContain('+92')
     expect(screen.queryByTestId('backfill-spinner')).not.toBeInTheDocument()
+  })
+
+  it('auto-dismisses the success panel after a few seconds', () => {
+    vi.useFakeTimers()
+    try {
+      statusData = { job_id: 'j1', status: 'finished', source: 'alpaca', range_start: '2018-01-01', range_end: '2026-06-01', windows_total: 100, windows_done: 100, bars_added: 92, gap_session_dates: [], failure_reason: null }
+      render(<DataCoveragePanel />)
+      expect(screen.getByTestId('backfill-progress')).toBeInTheDocument()
+      act(() => {
+        vi.advanceTimersByTime(7000)
+      })
+      expect(screen.queryByTestId('backfill-progress')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('failed panel stays until manually dismissed', () => {
+    vi.useFakeTimers()
+    try {
+      statusData = { job_id: 'j1', status: 'failed', source: 'alpaca', range_start: '2018-01-01', range_end: '2026-06-01', windows_total: 100, windows_done: 0, bars_added: 0, gap_session_dates: [], failure_reason: 'boom' }
+      render(<DataCoveragePanel />)
+      act(() => {
+        vi.advanceTimersByTime(60000)
+      })
+      expect(screen.getByTestId('backfill-progress')).toBeInTheDocument() // no auto-dismiss
+      fireEvent.click(screen.getByRole('button', { name: /dismiss/i }))
+      expect(screen.queryByTestId('backfill-progress')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows a failure panel when the job fails', () => {
