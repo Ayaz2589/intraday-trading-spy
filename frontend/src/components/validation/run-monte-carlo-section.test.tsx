@@ -41,6 +41,11 @@ const FIXTURE = {
     ],
   },
   terminal_equity: dist(27940, 23100, 25820, 27940, 30060, 33310),
+  ruin: [
+    { threshold_pct: 5, probability: 0.38 },
+    { threshold_pct: 10, probability: 0.12 },
+    { threshold_pct: 20, probability: 0.014 },
+  ],
   iterations: 2000,
   seed: 20260604,
   trade_count: 312,

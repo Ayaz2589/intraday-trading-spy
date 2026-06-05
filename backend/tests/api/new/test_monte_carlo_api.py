@@ -147,3 +147,20 @@ def test_monte_carlo_response_includes_cone_and_terminal(unit_client, stub_stora
         assert step["p5"] <= step["p25"] <= step["p50"] <= step["p75"] <= step["p95"]
     t = body["terminal_equity"]
     assert t["observed"] == pytest.approx(1000.0 + 100.0)  # start + sum(pnls)
+
+
+# ---- T021 (US3): response includes ruin probabilities -----------------------
+
+
+def test_monte_carlo_response_includes_ruin(unit_client, stub_storage_client):
+    _arm(stub_storage_client)
+    resp = unit_client.post(
+        "/api/validation/monte-carlo", json={"run_id": str(uuid4())}
+    )
+    assert resp.status_code == 200, resp.text
+    ruin = resp.json()["ruin"]
+    # config.yaml defaults: thresholds 5/10/20, in order, monotone.
+    assert [r["threshold_pct"] for r in ruin] == [5.0, 10.0, 20.0]
+    probs = [r["probability"] for r in ruin]
+    assert all(0.0 <= p <= 1.0 for p in probs)
+    assert probs[0] >= probs[1] >= probs[2]

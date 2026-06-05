@@ -24,6 +24,11 @@ const FIXTURE: MonteCarloResult = {
     ],
   },
   terminal_equity: dist(27940, 23100, 25820, 27940, 30060, 33310),
+  ruin: [
+    { threshold_pct: 5, probability: 0.38 },
+    { threshold_pct: 10, probability: 0.12 },
+    { threshold_pct: 20, probability: 0.014 },
+  ],
   iterations: 2000,
   seed: 20260604,
   trade_count: 312,
@@ -97,5 +102,23 @@ describe("MonteCarloPanel (US2 — forward cone)", () => {
   it("pairs the cone with its HelpTooltip", () => {
     const { container } = render(createElement(MonteCarloPanel, { result: FIXTURE }));
     expect(container.querySelector('[data-help-key="forward_cone"]')).toBeTruthy();
+  });
+});
+
+describe("MonteCarloPanel (US3 — risk of ruin)", () => {
+  it("renders one probability per configured threshold", () => {
+    render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    const row = screen.getByTestId("mc-ruin-row");
+    expect(row).toHaveTextContent("−5%");
+    expect(row).toHaveTextContent("38%");
+    expect(row).toHaveTextContent("−10%");
+    expect(row).toHaveTextContent("12%");
+    expect(row).toHaveTextContent("−20%");
+    expect(row).toHaveTextContent("1.4%");
+  });
+
+  it("pairs risk of ruin with its HelpTooltip", () => {
+    const { container } = render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    expect(container.querySelector('[data-help-key="risk_of_ruin"]')).toBeTruthy();
   });
 });

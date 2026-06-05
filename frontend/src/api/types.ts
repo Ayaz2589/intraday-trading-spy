@@ -327,11 +327,17 @@ export type MonteCarloCone = {
   steps: MonteCarloConeStep[]
 }
 
+export type MonteCarloRuinPoint = {
+  threshold_pct: number
+  probability: number
+}
+
 export type MonteCarloResult = {
   shuffle: MonteCarloShuffleStats
   cone: MonteCarloCone
   // observed = the run's actual ending equity (start + sum of real PnLs).
   terminal_equity: MonteCarloDistribution
+  ruin: MonteCarloRuinPoint[]
   iterations: number
   seed: number
   trade_count: number

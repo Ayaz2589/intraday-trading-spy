@@ -356,6 +356,16 @@ class MonteCarloCone(BaseModel):
     steps: list[MonteCarloConeStep]
 
 
+class MonteCarloRuinPoint(BaseModel):
+    """Fraction of bootstrap paths whose equity dipped below starting equity
+    by at least threshold_pct at any point during the horizon. Monotone
+    non-increasing in threshold depth (FR-013)."""
+
+    model_config = ConfigDict(frozen=True)
+    threshold_pct: float
+    probability: float
+
+
 class MonteCarloResult(BaseModel):
     """On-demand, deterministic, never persisted (FR-005/FR-006/FR-011): the
     echoed seed/iterations/trade_count regenerate every number exactly."""
@@ -365,6 +375,7 @@ class MonteCarloResult(BaseModel):
     cone: MonteCarloCone
     # observed = the run's actual ending equity (start + sum of real PnLs).
     terminal_equity: MonteCarloDistribution
+    ruin: list[MonteCarloRuinPoint]
     iterations: int
     seed: int
     trade_count: int

@@ -28,6 +28,7 @@ from intraday_trade_spy.models import (
     MonteCarloConeStep,
     MonteCarloDistribution,
     MonteCarloResult,
+    MonteCarloRuinPoint,
     MonteCarloShuffleStats,
 )
 
@@ -181,6 +182,27 @@ def run_bootstrap(
     return MonteCarloCone(horizon_trades=horizon, steps=steps), terminal, equity
 
 
+def compute_ruin(
+    equity: np.ndarray,
+    *,
+    starting_equity: float,
+    thresholds_pct: Sequence[float],
+) -> list[MonteCarloRuinPoint]:
+    """A path is ruined at threshold t iff its minimum equity reached
+    starting_equity x (1 - t/100) or lower at any step (research.md R11).
+    Reuses the bootstrap equity matrix — no second simulation."""
+    min_equity = equity.min(axis=1)
+    return [
+        MonteCarloRuinPoint(
+            threshold_pct=float(t),
+            probability=float(
+                np.mean(min_equity <= starting_equity * (1.0 - t / 100.0))
+            ),
+        )
+        for t in thresholds_pct
+    ]
+
+
 def run_monte_carlo(
     pnls: Sequence[float],
     *,
@@ -196,13 +218,18 @@ def run_monte_carlo(
             f"this run has {arr.size} trade{'s' if arr.size != 1 else ''} — "
             "at least 2 are needed to simulate reorderings"
         )
-    cone, terminal, _equity = run_bootstrap(
+    cone, terminal, equity = run_bootstrap(
         arr, starting_equity=starting_equity, cfg=cfg
     )
     return MonteCarloResult(
         shuffle=run_shuffle(arr, starting_equity=starting_equity, cfg=cfg),
         cone=cone,
         terminal_equity=terminal,
+        ruin=compute_ruin(
+            equity,
+            starting_equity=starting_equity,
+            thresholds_pct=cfg.ruin_thresholds_pct,
+        ),
         iterations=cfg.iterations,
         seed=cfg.seed,
         trade_count=int(arr.size),

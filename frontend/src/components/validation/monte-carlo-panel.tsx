@@ -154,6 +154,23 @@ export function MonteCarloPanel({ result }: { result: MonteCarloResult }) {
         </div>
       </div>
 
+      <div data-testid="mc-ruin-row">
+        <div className="stat-label" style={{ marginBottom: "var(--sp-2)" }}>
+          Risk of ruin — chance of dipping below your starting equity by…{" "}
+          <HelpTooltip helpKey="risk_of_ruin" />
+        </div>
+        <div style={{ display: "flex", gap: "var(--sp-5)", flexWrap: "wrap" }}>
+          {result.ruin.map((r) => (
+            <span key={r.threshold_pct} className="mono">
+              −{r.threshold_pct}%:{" "}
+              <strong>
+                {(r.probability * 100).toFixed(r.probability * 100 < 10 ? 1 : 0)}%
+              </strong>
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="stat-label mono" data-testid="mc-meta">
         {result.iterations.toLocaleString()} iterations · seed {result.seed} ·{" "}
         {result.trade_count} trades — rerunning reproduces these numbers exactly{" "}

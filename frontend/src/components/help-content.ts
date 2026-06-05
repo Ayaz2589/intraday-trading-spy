@@ -371,6 +371,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Draw trades at random (with replacement) from this run's real trade distribution and walk forward — thousands of times. The shaded bands show where equity landed in 50% (dark) and 90% (light) of simulated futures; the line is the median path. Wide cone = high outcome uncertainty. It assumes the future behaves like this sample, so treat it as a range of plausibility, not a forecast.",
   },
+  risk_of_ruin: {
+    title: "Risk of ruin",
+    description:
+      "Across all simulated forward paths, the fraction where equity dipped below your STARTING account value by at least each threshold — at any point, even if it recovered later. A 12% chance of a −10% dip means roughly 1 in 8 futures touches that pain level. Pick the threshold you genuinely couldn't stomach and check its probability before trading a strategy forward.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

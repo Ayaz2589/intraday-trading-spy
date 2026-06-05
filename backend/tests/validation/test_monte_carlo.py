@@ -234,3 +234,63 @@ def test_terminal_equity_observed_is_actual_ending_equity():
     t = res.terminal_equity
     assert t.observed == pytest.approx(FIX_START + sum(FIX_PNLS))
     assert t.p5 <= t.p25 <= t.p50 <= t.p75 <= t.p95
+
+
+# ---- T020: risk of ruin (US3) -----------------------------------------------
+
+
+def test_ruin_one_probability_per_threshold_in_config_order():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo(FIX_PNLS, starting_equity=FIX_START,
+                          cfg=_mc_cfg(ruin_thresholds_pct=[5, 10, 20]),
+                          low_confidence_threshold=30)
+    assert [r.threshold_pct for r in res.ruin] == [5.0, 10.0, 20.0]
+    for r in res.ruin:
+        assert 0.0 <= r.probability <= 1.0
+
+
+def test_ruin_monotone_non_increasing_with_threshold_depth():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo(FIX_PNLS, starting_equity=FIX_START,
+                          cfg=_mc_cfg(ruin_thresholds_pct=[5, 10, 20]),
+                          low_confidence_threshold=30)
+    p5, p10, p20 = (r.probability for r in res.ruin)
+    assert p5 >= p10 >= p20
+
+
+def test_ruin_certain_when_every_trade_loses():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo([-100.0, -50.0], starting_equity=1000.0,
+                          cfg=_mc_cfg(horizon_trades=10,
+                                      ruin_thresholds_pct=[5, 10, 20]),
+                          low_confidence_threshold=30)
+    # 10 draws from {-100, -50} lose at least $500 -> every path breaches
+    # every threshold (deepest = $200 below start).
+    assert all(r.probability == pytest.approx(1.0) for r in res.ruin)
+
+
+def test_ruin_zero_when_every_trade_wins():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo([10.0, 25.0], starting_equity=1000.0,
+                          cfg=_mc_cfg(ruin_thresholds_pct=[5, 10, 20]),
+                          low_confidence_threshold=30)
+    assert all(r.probability == 0.0 for r in res.ruin)
+
+
+def test_ruin_uses_dip_below_starting_equity_at_any_point():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    # Single possible draw value -100 with horizon 1: equity dips to 900,
+    # exactly -10% of start -> ruined at 5% and 10%, NOT at 20%.
+    res = run_monte_carlo([-100.0, -100.0], starting_equity=1000.0,
+                          cfg=_mc_cfg(horizon_trades=1,
+                                      ruin_thresholds_pct=[5, 10, 20]),
+                          low_confidence_threshold=30)
+    p5, p10, p20 = (r.probability for r in res.ruin)
+    assert p5 == pytest.approx(1.0)
+    assert p10 == pytest.approx(1.0)  # <= start*(1-10%) counts as breached
+    assert p20 == pytest.approx(0.0)
