@@ -8,6 +8,11 @@ const distMock = vi.fn();
 vi.mock("@/api/insights", () => ({
   getEdgeTimeseries: (...a: unknown[]) => edgeMock(...a),
   getConfigDistribution: (...a: unknown[]) => distMock(...a),
+  getClaudeAnalysis: () => Promise.resolve(null),
+  postClaudeAnalysis: () => Promise.resolve(null),
+  getClaudeSettings: () =>
+    Promise.resolve({ claude_enabled: true, disabled_reason: null, configured: true }),
+  patchClaudeSettings: () => Promise.resolve(null),
 }));
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
@@ -60,5 +65,18 @@ describe("InsightsPage", () => {
       expect(screen.getByText(/no out-of-sample windows yet/i)).toBeInTheDocument()
     );
     expect(screen.getByText(/no configs to compare yet/i)).toBeInTheDocument();
+  });
+});
+
+describe("InsightsPage — Claude rail (US3)", () => {
+  it("hosts the ClaudeReadCard in the right rail", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue(DIST);
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    await waitFor(() => expect(screen.getByTestId("claude-read")).toBeInTheDocument());
+    expect(screen.getByTestId("insights-right-rail")).toContainElement(
+      screen.getByTestId("claude-read")
+    );
   });
 });

@@ -349,6 +349,42 @@ export type MonteCarloResult = {
 
 export type MonteCarloRequest = { run_id: UUID }
 
+// ---- Feature 016 (advisory Claude narrative) -------------------------------
+
+export type ClaudeFinding = {
+  claim: string
+  evidence_metric: string
+  confidence: 'low' | 'medium' | 'high'
+}
+
+export type ClaudeExperiment = { hypothesis: string; how_to_test: string }
+
+export type ClaudeAnalysis = {
+  summary: string
+  findings: ClaudeFinding[]
+  risks: string[]
+  suggested_experiments: ClaudeExperiment[]
+  truncated?: boolean
+  fingerprints?: Record<string, string | null>
+}
+
+export type StoredAnalysisView = {
+  id: string | null
+  scope: 'study' | 'insights'
+  scope_id: string | null
+  payload_hash: string
+  model: string
+  analysis: ClaudeAnalysis
+  created_at: string | null
+  truncated: boolean
+}
+
+export type InsightSettingsView = {
+  claude_enabled: boolean
+  disabled_reason: 'billing' | 'manual' | null
+  configured: boolean
+}
+
 // ---- Feature 016 (pooled study gate) ---------------------------------------
 
 export type CIStat = { point: number | null; low: number | null; high: number | null }

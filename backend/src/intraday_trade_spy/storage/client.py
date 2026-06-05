@@ -1594,3 +1594,80 @@ class SupabaseStorageClient:
             "rows": out,
             "snapshot_fingerprint": self._insights_fingerprint([list(map(str, r)) for r in rows]),
         }
+
+    # ---------- Feature 016: Claude analyses + settings (PostgREST) ----------
+
+    def insert_insight_analysis(
+        self, *, user_id=None, scope: str, scope_id: str | None,
+        payload_hash: str, model: str, analysis: dict,
+    ) -> dict | None:
+        """Store one immutable advisory analysis row."""
+        try:
+            response = (
+                self._client.table("insight_analyses")
+                .insert({
+                    "user_id": str(user_id or self.user_id),
+                    "scope": scope,
+                    "scope_id": scope_id,
+                    "payload_hash": payload_hash,
+                    "model": model,
+                    "analysis": analysis,
+                })
+                .execute()
+            )
+            return response.data[0] if response.data else None
+        except Exception as exc:
+            raise CloudPushError(f"insert_insight_analysis failed: {exc}") from exc
+
+    def get_latest_insight_analysis(
+        self, *, user_id=None, scope: str, scope_id=None
+    ) -> dict | None:
+        """Newest stored analysis for a scope (None if never generated)."""
+        try:
+            q = (
+                self._client.table("insight_analyses")
+                .select("*")
+                .eq("user_id", str(user_id or self.user_id))
+                .eq("scope", scope)
+            )
+            q = q.eq("scope_id", str(scope_id)) if scope_id is not None else q.is_("scope_id", "null")
+            response = q.order("created_at", desc=True).limit(1).execute()
+            return response.data[0] if response.data else None
+        except Exception as exc:
+            raise CloudPushError(f"get_latest_insight_analysis failed: {exc}") from exc
+
+    def get_insight_settings(self, *, user_id=None) -> dict:
+        """The analysis feature's switch; lazily upserts the enabled default."""
+        uid = str(user_id or self.user_id)
+        try:
+            response = (
+                self._client.table("insight_settings").select("*").eq("user_id", uid).execute()
+            )
+            if response.data:
+                return response.data[0]
+            inserted = (
+                self._client.table("insight_settings")
+                .upsert({"user_id": uid, "claude_enabled": True, "disabled_reason": None})
+                .execute()
+            )
+            return inserted.data[0] if inserted.data else {"claude_enabled": True, "disabled_reason": None}
+        except Exception as exc:
+            raise CloudPushError(f"get_insight_settings failed: {exc}") from exc
+
+    def update_insight_settings(
+        self, *, user_id=None, claude_enabled: bool, disabled_reason: str | None
+    ) -> None:
+        """Flip the switch (manual toggle, or the billing auto-pause)."""
+        uid = str(user_id or self.user_id)
+        try:
+            (
+                self._client.table("insight_settings")
+                .upsert({
+                    "user_id": uid,
+                    "claude_enabled": claude_enabled,
+                    "disabled_reason": disabled_reason,
+                })
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"update_insight_settings failed: {exc}") from exc

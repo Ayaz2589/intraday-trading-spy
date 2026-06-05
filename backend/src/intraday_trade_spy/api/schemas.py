@@ -369,6 +369,34 @@ class ConfigDistributionResponse(_ResponseBase):
     snapshot_fingerprint: str
 
 
+class ClaudeAnalysisRequest(_Base):
+    # Feature 016 US3: advisory analysis over a scope's gathered statistics.
+    scope: Literal["study", "insights"]
+    scope_id: Optional[UUID] = None
+    force: bool = False
+
+
+class StoredAnalysisView(_ResponseBase):
+    id: Optional[str] = None
+    scope: str
+    scope_id: Optional[str] = None
+    payload_hash: str
+    model: str
+    analysis: dict
+    created_at: Optional[str] = None
+    truncated: bool = False
+
+
+class InsightSettingsView(_ResponseBase):
+    claude_enabled: bool
+    disabled_reason: Optional[str] = None
+    configured: bool
+
+
+class ClaudeSettingsPatch(_Base):
+    enabled: bool
+
+
 class LockboxRunRequest(_Base):
     config_name: str = Field(min_length=1, max_length=200)
     override: bool = False

@@ -300,6 +300,8 @@ describe("RunViewer route", () => {
       "fisher_combined",
       "edge_timeseries",
       "window_distribution",
+      "claude_advisory",
+      "snapshot_pin",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

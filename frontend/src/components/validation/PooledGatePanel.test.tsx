@@ -7,6 +7,13 @@ const runPooledGateMock = vi.fn();
 vi.mock("@/api/validation", () => ({
   runPooledGate: (...a: unknown[]) => runPooledGateMock(...a),
 }));
+vi.mock("@/api/insights", () => ({
+  getClaudeAnalysis: () => Promise.resolve(null),
+  postClaudeAnalysis: () => Promise.resolve(null),
+  getClaudeSettings: () =>
+    Promise.resolve({ claude_enabled: true, disabled_reason: null, configured: true }),
+  patchClaudeSettings: () => Promise.resolve(null),
+}));
 
 // Error-state injection (015 pattern: rejecting a real mutation leaks an
 // unhandled internal thenable in this react-query version).
@@ -180,5 +187,19 @@ describe("PooledGatePanel", () => {
     for (const key of ["pooled_gate", "sign_test", "fisher_combined"]) {
       expect(container.querySelector(`[data-help-key="${key}"]`)).toBeTruthy();
     }
+  });
+});
+
+describe("PooledGatePanel — Claude's read (US3)", () => {
+  it("hosts the study-scope ClaudeReadCard beneath a computed gate", async () => {
+    const { PooledGatePanel } = await import("./PooledGatePanel");
+    wrap(createElement(PooledGatePanel, { study: study(GATE_FAST) }));
+    expect(await screen.findByTestId("claude-read")).toBeInTheDocument();
+  });
+
+  it("does not offer Claude's read before the gate is computed", async () => {
+    const { PooledGatePanel } = await import("./PooledGatePanel");
+    wrap(createElement(PooledGatePanel, { study: study(null) }));
+    expect(screen.queryByTestId("claude-read")).not.toBeInTheDocument();
   });
 });

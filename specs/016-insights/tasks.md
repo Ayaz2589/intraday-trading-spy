@@ -71,18 +71,18 @@ distribution compares configs; empty archive shows instructive empty states.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T014 [P] [US2] Failing storage tests in backend/tests/storage/test_insights_aggregates.py (mock `get_pool()`/cursor per the 013 pattern): `insights_edge_timeseries(user_id)` SQL parameterization (user-scoped, segment='validation' only, optional config filter) + row mapping; `insights_config_distribution(user_id)` mapping; `snapshot_fingerprint` determinism and sensitivity to (count, max created_at, sum trades)
-- [ ] T015 [US2] Implement `insights_edge_timeseries()` + `insights_config_distribution()` (+ fingerprint helper) in backend/src/intraday_trade_spy/storage/client.py per research R4
-- [ ] T016 [P] [US2] Failing API contract tests in backend/tests/api/new/test_insights_api.py: GET /api/insights/edge-timeseries 200 shape (+ `config_name` filter, empty archive → `points: []` + `"empty"` fingerprint); GET /api/insights/config-distribution 200 shape + empty state
-- [ ] T017 [US2] Implement backend/src/intraday_trade_spy/api/routers/insights.py (the two GETs), response schemas in backend/src/intraday_trade_spy/api/schemas.py, and register the router in the FastAPI app
-- [ ] T018 [P] [US2] Failing component tests: frontend/src/components/charts/line-scatter.test.tsx (multi-series render, zero-line, point click callback with datum); frontend/src/components/insights/EdgeTimeseries.test.tsx (one point per window per config from fixture, click → run link, empty state); frontend/src/components/insights/ConfigDistribution.test.tsx (side-by-side rows, empty state)
+- [x] T014 [P] [US2] Failing storage tests in backend/tests/storage/test_insights_aggregates.py (mock `get_pool()`/cursor per the 013 pattern): `insights_edge_timeseries(user_id)` SQL parameterization (user-scoped, segment='validation' only, optional config filter) + row mapping; `insights_config_distribution(user_id)` mapping; `snapshot_fingerprint` determinism and sensitivity to (count, max created_at, sum trades)
+- [x] T015 [US2] Implement `insights_edge_timeseries()` + `insights_config_distribution()` (+ fingerprint helper) in backend/src/intraday_trade_spy/storage/client.py per research R4
+- [x] T016 [P] [US2] Failing API contract tests in backend/tests/api/new/test_insights_api.py: GET /api/insights/edge-timeseries 200 shape (+ `config_name` filter, empty archive → `points: []` + `"empty"` fingerprint); GET /api/insights/config-distribution 200 shape + empty state
+- [x] T017 [US2] Implement backend/src/intraday_trade_spy/api/routers/insights.py (the two GETs), response schemas in backend/src/intraday_trade_spy/api/schemas.py, and register the router in the FastAPI app
+- [x] T018 [P] [US2] Failing component tests: frontend/src/components/charts/line-scatter.test.tsx (multi-series render, zero-line, point click callback with datum); frontend/src/components/insights/EdgeTimeseries.test.tsx (one point per window per config from fixture, click → run link, empty state); frontend/src/components/insights/ConfigDistribution.test.tsx (side-by-side rows, empty state)
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Add `EdgeTimeseriesResponse`/`ConfigDistributionResponse` TS types in frontend/src/api/types.ts; create frontend/src/api/insights.ts (client fns) and frontend/src/hooks/useInsights.ts (queries)
-- [ ] T020 [US2] Implement frontend/src/components/charts/line-scatter.tsx (reusable SVG multi-series line/scatter) + frontend/src/components/insights/EdgeTimeseries.tsx + frontend/src/components/insights/ConfigDistribution.tsx, with `edge_timeseries` + `window_distribution` help-content entries (+ census counts)
-- [ ] T021 [US2] Failing tests: InsightsPage split Layout A renders charts column + right rail placeholder, empty states wire through (frontend/src/components/insights/InsightsPage.test.tsx); side-nav contains an Insights item (extend the existing side-nav test if present, else create frontend/src/components/side-nav.test.tsx)
-- [ ] T022 [US2] Implement frontend/src/components/insights/InsightsPage.tsx (Layout A split), frontend/src/routes/_authenticated.insights.tsx (TanStack file route), add the Insights entry to NAV_ITEMS in frontend/src/components/side-nav.tsx + `InsightsIcon` in frontend/src/components/nav-icons.tsx
+- [x] T019 [US2] Add `EdgeTimeseriesResponse`/`ConfigDistributionResponse` TS types in frontend/src/api/types.ts; create frontend/src/api/insights.ts (client fns) and frontend/src/hooks/useInsights.ts (queries)
+- [x] T020 [US2] Implement frontend/src/components/charts/line-scatter.tsx (reusable SVG multi-series line/scatter) + frontend/src/components/insights/EdgeTimeseries.tsx + frontend/src/components/insights/ConfigDistribution.tsx, with `edge_timeseries` + `window_distribution` help-content entries (+ census counts)
+- [x] T021 [US2] Failing tests: InsightsPage split Layout A renders charts column + right rail placeholder, empty states wire through (frontend/src/components/insights/InsightsPage.test.tsx); side-nav contains an Insights item (extend the existing side-nav test if present, else create frontend/src/components/side-nav.test.tsx)
+- [x] T022 [US2] Implement frontend/src/components/insights/InsightsPage.tsx (Layout A split), frontend/src/routes/_authenticated.insights.tsx (TanStack file route), add the Insights entry to NAV_ITEMS in frontend/src/components/side-nav.tsx + `InsightsIcon` in frontend/src/components/nav-icons.tsx
 
 **Checkpoint**: US1 + US2 independently shippable.
 

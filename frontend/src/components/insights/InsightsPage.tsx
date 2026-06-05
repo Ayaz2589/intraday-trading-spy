@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useConfigDistribution, useEdgeTimeseries } from '@/hooks/useInsights'
 import { EdgeTimeseries } from './EdgeTimeseries'
 import { ConfigDistribution } from './ConfigDistribution'
+import { ClaudeReadCard, flattenMetrics } from './ClaudeReadCard'
 
 // Feature 016: the Insights page — split Layout A (chosen via visual
 // companion): charts column left 2/3, advisory right rail. US3 mounts the
@@ -36,7 +37,17 @@ export function InsightsPage() {
         data-testid="insights-right-rail"
         style={{ position: 'sticky', top: 12, display: 'grid', gap: 12 }}
       >
-        {/* US3: ClaudeReadCard mounts here (insights scope). */}
+        <ClaudeReadCard
+          scope="insights"
+          currentFingerprints={{
+            timeseries: edge.data?.snapshot_fingerprint ?? null,
+            distribution: dist.data?.snapshot_fingerprint ?? null,
+          }}
+          metricValues={flattenMetrics({
+            timeseries: { points: edge.data?.points ?? [] },
+            distribution: { rows: dist.data?.rows ?? [] },
+          })}
+        />
       </div>
     </div>
   )

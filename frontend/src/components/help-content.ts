@@ -406,6 +406,16 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Compares configs window-by-window instead of by one pooled number: how many windows ended positive, and the quartiles of window outcomes. Two configs can pool similarly but distribute very differently — the one that wins MORE windows with SHALLOWER losers is the more livable edge.",
   },
+  claude_advisory: {
+    title: "Claude's read (advisory)",
+    description:
+      "An LLM's narrative perspective on YOUR already-computed statistics. It is strictly advisory: it never trades, never tunes knobs, and is outside the strategy → risk → broker path. Every claim must cite the metric backing it — the app renders that metric's real value beside the claim so hallucinated numbers are immediately visible. Treat it as a skeptical colleague, not an authority.",
+  },
+  snapshot_pin: {
+    title: "Snapshot pinning",
+    description:
+      "Each analysis is stored with a hash of the exact data it analyzed. Re-opening the page shows the stored analysis free of charge; regeneration only makes sense (and is only enabled) when the underlying data actually changed. Unlike the seeded gate numbers, LLM output is NOT deterministic — the pin tells you exactly which data a narrative described.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

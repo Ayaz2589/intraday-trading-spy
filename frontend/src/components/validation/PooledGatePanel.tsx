@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePooledGate } from "@/hooks/useStudies";
+import { ClaudeReadCard, flattenMetrics } from "../insights/ClaudeReadCard";
 import { DistributionStrip } from "./monte-carlo-panel";
 import { HelpTooltip } from "../help-tooltip";
 import type { PooledGateResult, ValidationStudy } from "@/api/types";
@@ -158,6 +159,17 @@ export function PooledGatePanel({ study }: { study: ValidationStudy }) {
           </span>
         )}
       </div>
+
+      {gate && (
+        <div style={{ marginTop: "var(--sp-4)" }}>
+          <ClaudeReadCard
+            scope="study"
+            scopeId={study.id}
+            currentFingerprints={{ gate_computed_at: gate.computed_at }}
+            metricValues={flattenMetrics({ pooled_gate: gate })}
+          />
+        </div>
+      )}
     </section>
   );
 }

@@ -305,6 +305,38 @@ class SignificanceResult(BaseModel):
     seed: int
 
 
+# ---- Feature 016 (advisory Claude narrative) --------------------------------
+
+
+class ClaudeFinding(BaseModel):
+    """One claim with the payload metric that backs it. The UI renders the
+    cited metric's value FROM OUR DATA beside the claim — a metric absent
+    from the payload renders as visibly unverifiable (no number laundering)."""
+
+    model_config = ConfigDict(frozen=True)
+    claim: str
+    evidence_metric: str
+    confidence: Literal["low", "medium", "high"]
+
+
+class ClaudeExperiment(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    hypothesis: str
+    how_to_test: str
+
+
+class ClaudeAnalysis(BaseModel):
+    """The structured advisory output — also the output_format schema passed
+    to client.messages.parse(). Experiments are for the OPERATOR to run; the
+    LLM never trades or tunes (Principle II boundary)."""
+
+    model_config = ConfigDict(frozen=True)
+    summary: str
+    findings: list[ClaudeFinding]
+    risks: list[str]
+    suggested_experiments: list[ClaudeExperiment]
+
+
 # ---- Feature 016 (pooled study gate) result value objects -------------------
 
 
