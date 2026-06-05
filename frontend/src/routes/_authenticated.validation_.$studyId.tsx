@@ -1,10 +1,15 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { StudyDetailPage } from "@/components/validation/StudyDetailPage";
-import { HelpTooltip } from "@/components/help-tooltip";
+import { RerunAction } from "@/components/validation/RerunAction";
 import { useRerunStudy, useStudy, useStudyStatus } from "@/hooks/useStudies";
 
 // Feature 014: thin mount — the page composition lives in
 // components/validation/StudyDetailPage.tsx (testable without the router).
+//
+// Re-run UX: stay on THIS study (results remain visible) while the clone
+// runs — its progress shows inline in the header action — then jump to the
+// new study once it reaches a terminal state.
 
 export const Route = createFileRoute("/_authenticated/validation_/$studyId")({
   component: StudyDetailRoute,
@@ -17,33 +22,36 @@ function StudyDetailRoute() {
   const rerun = useRerunStudy();
   const navigate = useNavigate();
 
-  const rerunAction = (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-      <button
-        type="button"
-        disabled={rerun.isPending}
-        onClick={() =>
-          rerun.mutate(studyId, {
-            // Jump straight to the fresh (drillable) study.
-            onSuccess: (r) =>
-              navigate({ to: "/validation/$studyId", params: { studyId: r.study_id } }),
-          })
+  // The cloned study we're waiting on (null = no re-run in flight).
+  const [cloneId, setCloneId] = useState<string | null>(null);
+  const cloneStatus = useStudyStatus(cloneId ?? "");
+
+  useEffect(() => {
+    const s = cloneStatus.data?.status;
+    if (cloneId && (s === "finished" || s === "failed")) {
+      setCloneId(null);
+      navigate({ to: "/validation/$studyId", params: { studyId: cloneId } });
+    }
+  }, [cloneId, cloneStatus.data?.status, navigate]);
+
+  const cloneInFlight =
+    cloneId && cloneStatus.data
+      ? {
+          completed: cloneStatus.data.progress_completed,
+          total: cloneStatus.data.progress_total,
         }
-        style={{
-          padding: "5px 12px",
-          borderRadius: "var(--r-sm, 6px)",
-          border: "1px solid var(--border)",
-          background: "var(--surface-2, #f6f7f9)",
-          color: "var(--text)",
-          fontSize: "var(--fs-sm, 13px)",
-          fontWeight: 600,
-          cursor: rerun.isPending ? "wait" : "pointer",
-        }}
-      >
-        {rerun.isPending ? "Re-running…" : "↻ Re-run study"}
-      </button>
-      <HelpTooltip helpKey="rerun_study" />
-    </span>
+      : cloneId
+        ? { completed: 0, total: 0 } // clone started, first status poll pending
+        : null;
+
+  const rerunAction = (
+    <RerunAction
+      pending={rerun.isPending}
+      progress={cloneInFlight}
+      onRerun={() =>
+        rerun.mutate(studyId, { onSuccess: (r) => setCloneId(r.study_id) })
+      }
+    />
   );
 
   return (

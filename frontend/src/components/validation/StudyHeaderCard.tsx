@@ -73,6 +73,20 @@ export function StudyHeaderCard({
         >
           {subtitle(study)}
         </p>
+        {(study.status === 'running' || study.status === 'queued') && (
+          <div style={{ marginTop: 8, maxWidth: 320 }}>
+            <div style={{ height: 4, borderRadius: 999, background: 'var(--surface-2, #eee)', overflow: 'hidden' }}>
+              <div
+                data-testid="study-header-progress-bar"
+                style={{
+                  width: `${study.progress_total > 0 ? Math.round((study.progress_completed / study.progress_total) * 100) : 0}%`,
+                  height: '100%',
+                  background: 'var(--accent, #2563eb)',
+                }}
+              />
+            </div>
+          </div>
+        )}
         {study.status === 'failed' && study.failure_reason && (
           <p className="mono" style={{ margin: '6px 0 0', fontSize: 'var(--fs-sm, 13px)', color: 'var(--neg, #b42318)' }}>
             {study.failure_reason}
