@@ -1,37 +1,29 @@
-import { useState } from 'react'
-import { Link, useMatchRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useSidebarMode } from '@/lib/sidebar-mode'
-import { useRuns, flattenRuns } from '@/hooks/useRuns'
-import { useDeleteAllRuns } from '@/hooks/useDeleteRun'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { RunMiniCard, CollapsedRunChip } from '@/components/runs/RunMiniCard'
+
+// SideNav — pure navigation (redesigned post-014). The runs list moved out of
+// the sidebar (year-spanning study children made it unscalable); the rail now
+// links the app's four surfaces, collapsing to icons only. Delete-all-runs is
+// intentionally removed for now (will be re-enabled later, likely with 015's
+// soft-delete retention).
+
+const NAV_ITEMS = [
+  { to: '/validation', label: 'Validation', icon: '🧪' },
+  { to: '/data', label: 'Data', icon: '🗄' },
+  { to: '/strategies', label: 'Strategy', icon: '⚙️' },
+  { to: '/runs', label: 'Backtests', icon: '📈' },
+] as const
 
 export function SideNav() {
   const { mode, toggle } = useSidebarMode()
   const collapsed = mode === 'collapsed'
-  const runsQuery = useRuns()
-  const allRuns = flattenRuns(runsQuery.data)
-  // Favorites sort to the top; the list returned by useRuns is already
-  // newest-first, so within each group recency is preserved.
-  const runs = [
-    ...allRuns.filter(r => r.is_favorite),
-    ...allRuns.filter(r => !r.is_favorite),
-  ]
-  const matchRoute = useMatchRoute()
-  const currentRun = matchRoute({ to: '/runs/$runId', fuzzy: false }) as
-    | { runId: string }
-    | false
-  const currentRunId = currentRun && typeof currentRun === 'object' ? currentRun.runId : null
-
-  const [confirmDeleteAllOpen, setConfirmDeleteAllOpen] = useState(false)
-  const deleteAll = useDeleteAllRuns()
 
   return (
     <aside
       data-testid="side-nav"
       data-collapsed={collapsed}
       style={{
-        width: collapsed ? 56 : 240,
+        width: collapsed ? 56 : 200,
         borderRight: '1px solid var(--border)',
         background: 'var(--surface-1)',
         display: 'flex',
@@ -45,16 +37,11 @@ export function SideNav() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
+          justifyContent: collapsed ? 'center' : 'flex-end',
           padding: '8px 10px',
           borderBottom: '1px solid var(--border)',
         }}
       >
-        {!collapsed && (
-          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>
-            Runs {runs.length > 0 && <span style={{ opacity: 0.6 }}>· {runs.length}</span>}
-          </span>
-        )}
         <button
           type="button"
           onClick={toggle}
@@ -74,177 +61,51 @@ export function SideNav() {
         </button>
       </div>
 
-      {collapsed ? (
-        // Collapsed rail: a clickable, colored P&L chip per run so you can
-        // still scan and switch runs without expanding.
-        <div
-          data-testid="side-nav-icon-rail"
-          style={{ flex: 1, overflowY: 'auto', padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}
-        >
-          {runsQuery.isLoading ? (
-            <span style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', padding: 4 }}>…</span>
-          ) : runs.length === 0 ? (
-            <IconLink to="/runs" label="Runs" icon="◴" />
-          ) : (
-            <>
-              <span
-                style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color: 'var(--text-muted)',
-                  textAlign: 'center',
-                  paddingBottom: 2,
-                }}
-              >
-                {runs.length}
-              </span>
-              {runs.map(run => (
-                <CollapsedRunChip key={run.id} run={run} active={run.id === currentRunId} />
-              ))}
-            </>
-          )}
-        </div>
-      ) : (
-        <div
-          data-testid="side-nav-runs-list"
-          style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 4px' }}
-        >
-          {runsQuery.isLoading ? (
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', padding: 8 }}>Loading…</p>
-          ) : runs.length === 0 ? (
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', padding: 8 }}>
-              No backtests yet. Open the Strategy dropdown to run one.
-            </p>
-          ) : (
-            runs.map(run => (
-              <RunMiniCard key={run.id} run={run} active={run.id === currentRunId} />
-            ))
-          )}
-        </div>
-      )}
-
-      <div
+      <nav
+        aria-label="Primary"
         style={{
-          marginTop: 'auto',
-          borderTop: '1px solid var(--border)',
-          padding: '8px',
+          flex: 1,
+          overflowY: 'auto',
+          padding: '8px 6px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 4,
+          gap: 2,
         }}
       >
-        {runs.length > 0 &&
-          (collapsed ? (
-            <button
-              type="button"
-              onClick={() => setConfirmDeleteAllOpen(true)}
-              data-testid="side-nav-delete-all"
-              aria-label="Delete all runs"
-              title="Delete all runs"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--danger, #dc2626)',
-                padding: '8px 10px',
-                borderRadius: 'var(--r-sm)',
-                cursor: 'pointer',
-                fontSize: 14,
-                lineHeight: 1,
-              }}
-            >
-              🗑
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmDeleteAllOpen(true)}
-              data-testid="side-nav-delete-all"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--danger, #dc2626)',
-                fontSize: 'var(--fs-xs)',
-                padding: '6px 10px',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              Delete all runs
-            </button>
-          ))}
-      </div>
-
-      <ConfirmDialog
-        open={confirmDeleteAllOpen}
-        title={`Delete all ${runs.length} backtests?`}
-        message="This permanently deletes every run and all its trades, signals, and journal events. This cannot be undone."
-        confirmLabel={deleteAll.isPending ? 'Deleting…' : 'Delete all'}
-        variant="destructive"
-        onConfirm={() =>
-          deleteAll.mutate(undefined, {
-            onSuccess: () => setConfirmDeleteAllOpen(false),
-          })
-        }
-        onCancel={() => setConfirmDeleteAllOpen(false)}
-      />
+        {NAV_ITEMS.map(({ to, label, icon }) => (
+          <Link
+            key={to}
+            to={to}
+            aria-label={label}
+            title={label}
+            data-testid={`side-nav-link-${to.slice(1)}`}
+            activeProps={{
+              style: {
+                background: 'var(--surface-2, #f6f7f9)',
+                color: 'var(--text)',
+                fontWeight: 700,
+              },
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 10,
+              padding: collapsed ? '10px 0' : '8px 10px',
+              borderRadius: 'var(--r-sm, 6px)',
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              fontSize: 'var(--fs-sm, 13px)',
+              fontWeight: 600,
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>
+              {icon}
+            </span>
+            {!collapsed && <span>{label}</span>}
+          </Link>
+        ))}
+      </nav>
     </aside>
-  )
-}
-
-function IconLink({
-  to,
-  label,
-  icon,
-  badge,
-}: {
-  to: '/runs'
-  label: string
-  icon: string
-  badge?: number
-}) {
-  return (
-    <Link
-      to={to}
-      data-testid={`side-nav-icon-${to.slice(1)}`}
-      activeProps={{ style: { background: 'var(--surface-2)', color: 'var(--text)' } }}
-      title={label}
-      aria-label={label}
-      style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '10px 0',
-        borderRadius: 'var(--r-sm)',
-        color: 'var(--text-muted)',
-        textDecoration: 'none',
-      }}
-    >
-      <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>
-        {icon}
-      </span>
-      {badge != null && (
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 6,
-            background: 'var(--accent, #2563eb)',
-            color: 'white',
-            fontSize: 9,
-            fontWeight: 700,
-            padding: '1px 5px',
-            borderRadius: 999,
-            lineHeight: 1.2,
-          }}
-        >
-          {badge}
-        </span>
-      )}
-    </Link>
   )
 }

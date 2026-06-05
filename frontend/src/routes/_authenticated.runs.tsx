@@ -1,24 +1,24 @@
-import { createFileRoute, Navigate } from '@tanstack/react-router'
-import { useRuns, flattenRuns } from '@/hooks/useRuns'
-import { RunsEmptyState } from '@/components/runs/RunsEmptyState'
-import { RunsLoadingSkeleton } from '@/components/runs/RunsLoadingSkeleton'
+import { createFileRoute } from '@tanstack/react-router'
+import { RunsList } from '@/components/runs/RunsList'
 import { openStrategyMenu } from '@/lib/strategy-menu-controller'
 
+// SideNav redesign: the sidebar no longer lists runs, so /runs is now the
+// backtests LIST page (the 007-era RunsList finally wired in) instead of a
+// redirect-to-first-run.
 export const Route = createFileRoute('/_authenticated/runs')({
   component: RunsLanding,
 })
 
 function RunsLanding() {
-  const runsQuery = useRuns()
-  const runs = flattenRuns(runsQuery.data)
-
-  if (runsQuery.isLoading) {
-    return <RunsLoadingSkeleton />
-  }
-
-  if (runs.length > 0) {
-    return <Navigate to="/runs/$runId" params={{ runId: runs[0].id }} replace />
-  }
-
-  return <RunsEmptyState onCreateRun={openStrategyMenu} />
+  return (
+    <div style={{ padding: 'var(--sp-5, 20px)' }}>
+      <section style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 'var(--fs-lg, 18px)', fontWeight: 700, margin: 0 }}>Backtests</h2>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm, 13px)', color: 'var(--text-muted)' }}>
+          Every saved run — open one to inspect its trades, journal, and chart
+        </p>
+      </section>
+      <RunsList onStartBacktest={openStrategyMenu} />
+    </div>
+  )
 }
