@@ -345,3 +345,42 @@ def test_delete_all_runs_returns_count(unit_client, stub_storage_client):
     assert r.status_code == 200
     assert r.json() == {"deleted_count": 7}
     stub_storage_client.delete_all_runs.assert_called_once()
+
+
+def test_list_runs_includes_study_kind(unit_client, stub_storage_client):
+    """Origin badge data: study children carry study_kind from the FK embed."""
+    from uuid import UUID
+    TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")
+
+    class _Page:
+        next_cursor = None
+    page = _Page()
+    row = _make_run_row(uuid4(), TEST_USER_ID)
+    row["study_id"] = str(uuid4())
+    row["segment"] = "validation"
+    row["window_index"] = 3
+    row["study_kind"] = "walk_forward"
+    page.runs = [row]
+    stub_storage_client.list_runs.return_value = page
+
+    r = unit_client.get("/api/runs")
+    assert r.status_code == 200
+    run = r.json()["runs"][0]
+    assert run["study_kind"] == "walk_forward"
+    assert run["segment"] == "validation"
+    assert run["window_index"] == 3
+
+
+def test_list_runs_study_kind_null_for_standalone(unit_client, stub_storage_client):
+    from uuid import UUID
+    TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")
+
+    class _Page:
+        next_cursor = None
+    page = _Page()
+    page.runs = [_make_run_row(uuid4(), TEST_USER_ID)]
+    stub_storage_client.list_runs.return_value = page
+
+    r = unit_client.get("/api/runs")
+    assert r.status_code == 200
+    assert r.json()["runs"][0]["study_kind"] is None

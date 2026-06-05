@@ -136,6 +136,11 @@ class RunView(_ResponseBase):
     study_id: Optional[UUID] = None
     segment: Optional[Literal["train", "validation", "lockbox"]] = None
     window_index: Optional[int] = None
+    # /runs origin badge: study kind flattened from the validation_studies FK
+    # embed by storage list_runs. None for standalone rows, children whose
+    # study was deleted, and the detail endpoint (which doesn't embed — the
+    # detail badge only needs study_id/segment/window).
+    study_kind: Optional[Literal["walk_forward", "sensitivity"]] = None
 
 
 class RunListResponse(_ResponseBase):
