@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useStrategies } from '@/hooks/useStrategies'
 import { HelpTooltip } from '@/components/help-tooltip'
 import { STRATEGY_EXPLAINERS } from './strategy-explainers'
@@ -27,7 +27,7 @@ export function StrategyHero() {
   )
 }
 
-const registryChip: React.CSSProperties = {
+const registryChip: CSSProperties = {
   background: 'var(--surface-2)',
   color: 'var(--text-muted)',
   fontFamily: 'var(--mono)',
@@ -68,7 +68,7 @@ function StrategyHeroCard({ strategy }: { strategy: Strategy }) {
             <span className="chip" style={registryChip}>{strategy.direction}</span>
             <span className="chip" style={registryChip}>{strategy.kind}</span>
             <span className="chip chip-profit" style={{ marginLeft: 'auto' }}>
-              ● active strategy
+              <span aria-hidden>● </span>active strategy
             </span>
           </div>
           <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', maxWidth: 720 }}>
