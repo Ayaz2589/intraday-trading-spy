@@ -177,9 +177,22 @@ validation:
     ruin_thresholds_pct: [5, 10, 20]
     horizon_trades: null  # null -> match the run's observed trade count
     max_cone_steps: 200
+  # Feature 016: the pooled study gate (pre-registered lockbox precondition).
+  # passed iff pooled expectancy-$ CI low (at 1 - alpha) > 0. Seeded.
+  pooled_gate:
+    alpha: 0.05
+    seed: 20260605
   # Single fan-out guard: total planned evaluations (grid points × windows)
   # beyond which a study launch must be explicitly confirmed.
   max_evaluations_warn: 200
+
+# Feature 016: advisory Claude narrative (insights). Strictly advisory —
+# manual trigger only; the app is fully functional without an API key.
+insights:
+  claude:
+    model: claude-opus-4-8
+    max_tokens: 8000
+    max_timeseries_windows: 200
 
 # Data-retention policy (Feature 006, clarification Q5).
 # DECLARED here; not enforced in this feature. Future feature or pg_cron job

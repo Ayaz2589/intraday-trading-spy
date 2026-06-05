@@ -15,6 +15,7 @@ import { SideNav } from './side-nav'
 
 const LINKS: Array<[string, string]> = [
   ['Validation', '/validation'],
+  ['Insights', '/insights'],
   ['Data', '/data'],
   ['Strategy', '/strategies'],
   ['Backtests', '/runs'],
@@ -25,7 +26,7 @@ describe('<SideNav />', () => {
     localStorage.clear()
   })
 
-  it('renders the four nav links with labels when expanded', () => {
+  it('renders the five nav links with labels when expanded', () => {
     render(<SideNav />)
     for (const [label, href] of LINKS) {
       const link = screen.getByRole('link', { name: new RegExp(label, 'i') })

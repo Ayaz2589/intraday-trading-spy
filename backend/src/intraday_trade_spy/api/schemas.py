@@ -327,6 +327,100 @@ class MonteCarloRequest(_Base):
     run_id: UUID
 
 
+class PooledGateRequest(_Base):
+    # Feature 016: fast = sync verdict; full = background per-window tests.
+    mode: Literal["fast", "full"] = "fast"
+
+
+class EdgeTimeseriesPoint(_ResponseBase):
+    run_id: str
+    study_id: str
+    window_index: Optional[int] = None
+    config_name: Optional[str] = None
+    range_start: str
+    range_end: str
+    trades: int
+    net_pnl: float
+    expectancy_dollars: Optional[float] = None
+    expectancy_r: Optional[float] = None
+    pnl_std: Optional[float] = None
+    # 016-polish: account size — $ values are NOT comparable across configs
+    # run at different account sizes; the UI normalizes (R / % of account).
+    account_value: Optional[float] = None
+
+
+class RegimeView(_ResponseBase):
+    # 016-polish: labeled market regimes (config data.regimes) for the
+    # time-series overlay — "which regimes bleed?" at a glance.
+    name: str
+    start: str
+    end: str
+
+
+class EdgeTimeseriesResponse(_ResponseBase):
+    points: list[EdgeTimeseriesPoint]
+    snapshot_fingerprint: str
+    regimes: list[RegimeView] = []
+
+
+class ConfigDistributionRow(_ResponseBase):
+    config_name: Optional[str] = None
+    windows: int
+    windows_positive: int
+    pnl_q25: Optional[float] = None
+    pnl_q50: Optional[float] = None
+    pnl_q75: Optional[float] = None
+    expectancy_q25: Optional[float] = None
+    expectancy_q50: Optional[float] = None
+    expectancy_q75: Optional[float] = None
+    # 016-polish enrichment
+    r_q25: Optional[float] = None
+    r_q50: Optional[float] = None
+    r_q75: Optional[float] = None
+    win_rate: Optional[float] = None
+    profit_factor: Optional[float] = None
+    account_value: Optional[float] = None
+    gate_passed: Optional[bool] = None
+    gate_ci_low: Optional[float] = None
+    gate_ci_high: Optional[float] = None
+    gate_computed_at: Optional[str] = None
+    gate_study_id: Optional[str] = None
+    total_trades: int
+
+
+class ConfigDistributionResponse(_ResponseBase):
+    rows: list[ConfigDistributionRow]
+    snapshot_fingerprint: str
+
+
+class ClaudeAnalysisRequest(_Base):
+    # Feature 016 US3: advisory analysis over a scope's gathered statistics.
+    scope: Literal["study", "insights"]
+    scope_id: Optional[UUID] = None
+    force: bool = False
+
+
+class StoredAnalysisView(_ResponseBase):
+    id: Optional[str] = None
+    scope: str
+    scope_id: Optional[str] = None
+    payload_hash: str
+    model: str
+    analysis: dict
+    created_at: Optional[str] = None
+    truncated: bool = False
+
+
+class InsightSettingsView(_ResponseBase):
+    claude_enabled: bool
+    disabled_reason: Optional[str] = None
+    configured: bool
+
+
+class ClaudeSettingsPatch(_Base):
+    enabled: bool
+
+
 class LockboxRunRequest(_Base):
     config_name: str = Field(min_length=1, max_length=200)
     override: bool = False

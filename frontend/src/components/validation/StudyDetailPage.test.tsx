@@ -1,9 +1,18 @@
 // T026 (Feature 014, FR-011) — study detail page composition (extracted from
 // the route so TanStack file-based routing never sees a test file).
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
 import { StudyDetailPage } from './StudyDetailPage'
 import type { ValidationStudy, ValidationStudyStatus } from '@/api/types'
+
+
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: 0 }, mutations: { retry: 0 } },
+  })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 function study(over: Partial<ValidationStudy> = {}): ValidationStudy {
   return {
@@ -47,7 +56,7 @@ const DONE: ValidationStudyStatus = {
 
 describe('StudyDetailPage — walk-forward', () => {
   it('composes header card, stat cards, and expandable window rows', () => {
-    render(<StudyDetailPage study={study({ result: WF_RESULT })} status={DONE} />)
+    renderWithClient(<StudyDetailPage study={study({ result: WF_RESULT })} status={DONE} />)
     expect(screen.getByTestId('study-header-card')).toBeInTheDocument()
     expect(screen.getByTestId('study-stat-cards')).toBeInTheDocument()
     expect(screen.getByTestId('window-row-0')).toBeInTheDocument()
@@ -65,7 +74,7 @@ describe('StudyDetailPage — walk-forward', () => {
         },
       ],
     }
-    render(<StudyDetailPage study={study({ result: old })} status={DONE} />)
+    renderWithClient(<StudyDetailPage study={study({ result: old })} status={DONE} />)
     expect(screen.getByTestId('window-row-0')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /view run/i })).not.toBeInTheDocument()
   })
@@ -103,5 +112,19 @@ describe('StudyDetailPage — in flight / failed', () => {
       />,
     )
     expect(screen.getByTestId('study-header-card').textContent).toContain('window produced no bars')
+  })
+})
+
+describe('StudyDetailPage — pooled gate mount (Feature 016)', () => {
+  it('mounts the pooled gate panel for walk-forward studies', () => {
+    renderWithClient(<StudyDetailPage study={study({ result: WF_RESULT })} status={DONE} />)
+    expect(screen.getByTestId('pooled-gate')).toBeInTheDocument()
+  })
+
+  it('does NOT mount the gate panel for sensitivity studies', () => {
+    renderWithClient(
+      <StudyDetailPage study={study({ kind: 'sensitivity', result: SURFACE })} status={DONE} />,
+    )
+    expect(screen.queryByTestId('pooled-gate')).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,7 @@
 import { apiRequest } from './client'
 import type {
   LockboxRunRequest,
+  PooledGateResult,
   MonteCarloRequest,
   MonteCarloResult,
   LockboxRunResponse,
@@ -47,6 +48,18 @@ export function computeSignificance(body: SignificanceRequest): Promise<Signific
 // Feature 015: on-demand Monte Carlo path-risk for one owned run.
 export function computeMonteCarlo(body: MonteCarloRequest): Promise<MonteCarloResult> {
   return apiRequest<MonteCarloResult>('/api/validation/monte-carlo', { method: 'POST', body })
+}
+
+// Feature 016: the pooled study gate. fast -> PooledGateResult (200);
+// full -> {study_id, status: 'running'} (202, background).
+export function runPooledGate(
+  studyId: UUID,
+  mode: 'fast' | 'full',
+): Promise<PooledGateResult | { study_id: UUID; status: 'running' }> {
+  return apiRequest(`/api/validation/studies/${studyId}/pooled-gate`, {
+    method: 'POST',
+    body: { mode },
+  })
 }
 
 export function getLockboxStatus(): Promise<LockboxStatus> {

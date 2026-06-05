@@ -359,6 +359,175 @@ def run_significance_for_run(
     )
 
 
+# ---- Feature 016: pooled study gate -----------------------------------------
+
+# In-process guard: study ids with an active full-gate background task.
+# Adequate for the single-process uvicorn deployment (research R3).
+_ACTIVE_POOLED_GATES: set[str] = set()
+
+
+class PooledGateNotComputable(Exception):
+    """Carries the plain-English refusal surfaced to the operator (400)."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class PooledGateAlreadyRunning(Exception):
+    pass
+
+
+def gather_pooled_oos(*, study_id, user_id, storage):
+    """Resolve a walk-forward study's persisted validation children from its
+    own WindowMetrics references (the 014 drill-down links), fetch each
+    window's trades in window order, and verify the frozen configs agree.
+    Returns (study_row, [WindowTrades], starting_equity, [(idx, run_id)])."""
+    from intraday_trade_spy.validation.pooled import WindowTrades
+
+    study = storage.get_validation_study(study_id=study_id, user_id=user_id)
+    if study is None:
+        raise StudyNotFound(str(study_id))
+    if study.get("kind") != "walk_forward":
+        raise PooledGateNotComputable(
+            "the pooled gate applies to walk-forward studies — sensitivity "
+            "studies have no out-of-sample windows to pool"
+        )
+    windows_meta = ((study.get("result") or {}).get("windows")) or []
+    refs = sorted(
+        (w["window_index"], (w.get("out_of_sample") or {}))
+        for w in windows_meta
+        if (w.get("out_of_sample") or {}).get("persisted")
+    )
+    if not refs:
+        raise PooledGateNotComputable(
+            "this study has no persisted validation windows — re-run the "
+            "study to persist them, then run the gate"
+        )
+
+    window_trades: list = []
+    accounts: list = []
+    run_refs: list[tuple[int, str]] = []
+    for idx, oos in refs:
+        run_id = oos["run_id"]
+        run_refs.append((idx, run_id))
+        run_row = storage.get_run(run_id=run_id, user_id=user_id) or {}
+        snapshot = run_row.get("config_snapshot") or {}
+        accounts.append((snapshot.get("risk") or {}).get("account_value"))
+        page = storage.list_trades(run_id=run_id, user_id=user_id, limit=100000, cursor=None)
+        trades = getattr(page, "trades", page) or []
+        window_trades.append(
+            WindowTrades(
+                window_index=idx,
+                pnls=[float(t["pnl"]) for t in trades if t.get("pnl") is not None],
+                r_multiples=[
+                    float(t["r_multiple"]) for t in trades if t.get("r_multiple") is not None
+                ],
+            )
+        )
+
+    uniq = {round(float(a), 6) for a in accounts if a is not None}
+    if len(uniq) != 1:
+        raise PooledGateNotComputable(
+            "study children carry inconsistent config snapshots (differing "
+            "starting account values) — the pooled gate needs one frozen config"
+        )
+    return study, window_trades, float(next(iter(uniq))), run_refs
+
+
+def _persist_pooled_gate(*, storage, study, gate) -> None:
+    """Read-modify-write (research R2): update_validation_study replaces the
+    whole result jsonb, so merge the additive pooled_gate key into a copy.
+    NEVER writes study status/progress (analyze I1)."""
+    merged = dict(study.get("result") or {})
+    merged["pooled_gate"] = gate.model_dump(mode="json")
+    storage.update_validation_study(study_id=study["id"], result=merged)
+
+
+def _stamped(gate):
+    from datetime import datetime, timezone
+
+    return gate.model_copy(update={"computed_at": datetime.now(timezone.utc).isoformat()})
+
+
+def run_pooled_gate_fast(*, study_id, user_id, storage, base_cfg: Config | None = None):
+    """Synchronous fast gate: pooled CIs + MC + sign test + verdict; persists
+    into result.pooled_gate and returns the stamped result."""
+    from intraday_trade_spy.validation.pooled import compute_pooled_gate
+
+    cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    study, windows, equity, _refs = gather_pooled_oos(
+        study_id=study_id, user_id=user_id, storage=storage
+    )
+    try:
+        gate = compute_pooled_gate(
+            windows,
+            starting_equity=equity,
+            cfg=cfg.validation.pooled_gate,
+            mc_cfg=cfg.validation.monte_carlo,
+            low_confidence_threshold=cfg.metrics.low_confidence_trade_count,
+        )
+    except ValueError as exc:
+        raise PooledGateNotComputable(str(exc)) from exc
+    stamped = _stamped(gate)
+    _persist_pooled_gate(storage=storage, study=study, gate=stamped)
+    return stamped
+
+
+def start_pooled_gate_full(*, study_id, user_id, storage, background_tasks) -> None:
+    """Validate + guard synchronously, then enqueue the full gate."""
+    sid = str(study_id)
+    if sid in _ACTIVE_POOLED_GATES:
+        raise PooledGateAlreadyRunning()
+    # Validate refusals BEFORE returning 202 (sensitivity / no children / etc.)
+    gather_pooled_oos(study_id=study_id, user_id=user_id, storage=storage)
+    _ACTIVE_POOLED_GATES.add(sid)
+    background_tasks.add_task(
+        _run_pooled_gate_full_task, study_id=study_id, user_id=user_id, storage=storage
+    )
+
+
+def _run_pooled_gate_full_task(*, study_id, user_id, storage) -> None:
+    """Background full gate: fast result + per-window permutation tests +
+    Fisher. Signals completion ONLY via result.pooled_gate.mode == 'full'
+    (never study status/progress — analyze I1). Swallows its own errors like
+    the study task does; the guard is always released."""
+    from intraday_trade_spy.models import FisherStat, PerWindowP
+    from intraday_trade_spy.validation.pooled import compute_pooled_gate, fisher_combined
+
+    try:
+        cfg = load_config(DEFAULT_CONFIG_PATH)
+        study, windows, equity, run_refs = gather_pooled_oos(
+            study_id=study_id, user_id=user_id, storage=storage
+        )
+        gate = compute_pooled_gate(
+            windows,
+            starting_equity=equity,
+            cfg=cfg.validation.pooled_gate,
+            mc_cfg=cfg.validation.monte_carlo,
+            low_confidence_threshold=cfg.metrics.low_confidence_trade_count,
+        )
+        per: list[PerWindowP] = []
+        for idx, run_id in run_refs:
+            sig = run_significance_for_run(
+                run_id=run_id, user_id=user_id, storage=storage, base_cfg=cfg
+            )
+            per.append(
+                PerWindowP(window_index=idx, p_value=sig.p_value, significant=sig.significant)
+            )
+        ps = [p.p_value for p in per if p.p_value is not None]
+        fisher = None
+        if ps:
+            x2, df, p = fisher_combined(ps)
+            fisher = FisherStat(x2=x2, df=df, p=p)
+        full = gate.model_copy(update={"mode": "full", "per_window_p": per, "fisher": fisher})
+        _persist_pooled_gate(storage=storage, study=study, gate=_stamped(full))
+    except Exception:  # noqa: BLE001 — background task must not crash the app
+        pass
+    finally:
+        _ACTIVE_POOLED_GATES.discard(str(study_id))
+
+
 class MonteCarloNotComputable(Exception):
     """Feature 015: the run cannot be simulated; carries the plain-English
     reason surfaced to the operator (400 validation_error at the router)."""

@@ -1363,3 +1363,17 @@ table.trades thead th {
 .rdp-day_button:disabled { color: var(--text-faint, #94a3b8); opacity: 0.4; }
 .rdp-chevron { fill: var(--text-muted); }
 .rdp-nav button:hover { background: var(--surface-2); }
+
+/* ---------------- Data tables (016-polish: .data-table had no rules — columns
+   collided on Insights; styled to match table.trades) ---------------- */
+.data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.data-table thead th {
+  text-align: left;
+  padding: 6px 16px 6px 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td { padding: 5px 16px 5px 0; white-space: nowrap; }
+.data-table tbody tr + tr td { border-top: 1px solid var(--border); }

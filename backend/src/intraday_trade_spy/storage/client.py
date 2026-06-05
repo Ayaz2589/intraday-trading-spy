@@ -1463,3 +1463,268 @@ class SupabaseStorageClient:
             return len(ids)
         except Exception as exc:
             raise CloudPushError(f"sweep_stale_runs failed: {exc}") from exc
+
+    # ---------- Feature 016: insights aggregates (R4 — db_pool psycopg) ----------
+
+    @staticmethod
+    def _insights_fingerprint(rows: list) -> str:
+        """Deterministic snapshot identity over the contributing rows. Pins
+        Claude analyses (idempotency) and signals staleness to the UI."""
+        import hashlib
+        import json
+
+        if not rows:
+            return "empty"
+        blob = json.dumps(rows, sort_keys=True, default=str, separators=(",", ":"))
+        return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+    def insights_edge_timeseries(self, *, config_name: str | None = None) -> dict:
+        """One point per OOS child run across the archive, computed FROM THE
+        TRADES TABLE (not summary jsonb) and restricted to provably-OOS rows
+        (segment='validation'); user-scoped in SQL (FR-005/FR-016)."""
+        sql = (
+            "SELECT r.id, r.study_id, r.window_index, "
+            "       s.params->>'config_name' AS config_name, "
+            "       r.range_start, r.range_end, "
+            "       count(t.pnl) AS trades, "
+            "       coalesce(sum(t.pnl), 0) AS net_pnl, "
+            "       avg(t.pnl) AS expectancy_dollars, "
+            "       avg(t.r_multiple) AS expectancy_r, "
+            "       stddev_samp(t.pnl) AS pnl_std, "
+            # 016-polish: account size per point — $ values are NOT comparable
+            # across configs run at different account sizes ($2.5M vs $1k).
+            "       (r.config_snapshot->'risk'->>'account_value')::float AS account_value, "
+            "       r.created_at "
+            "FROM public.runs r "
+            "JOIN public.validation_studies s ON s.id = r.study_id "
+            "LEFT JOIN public.trades t ON t.run_id = r.id "
+            "WHERE r.user_id = %s AND r.segment = 'validation' "
+        )
+        params: list = [self.user_id]
+        if config_name is not None:
+            sql += "AND s.params->>'config_name' = %s "
+            params.append(config_name)
+        sql += (
+            "GROUP BY r.id, r.study_id, r.window_index, s.params->>'config_name', "
+            "         r.range_start, r.range_end, r.config_snapshot, r.created_at "
+            "ORDER BY r.range_start, config_name"
+        )
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"insights_edge_timeseries failed: {exc}") from exc
+
+        points = [
+            {
+                "run_id": str(r[0]),
+                "study_id": str(r[1]),
+                "window_index": r[2],
+                "config_name": r[3],
+                "range_start": str(r[4]),
+                "range_end": str(r[5]),
+                "trades": int(r[6] or 0),
+                "net_pnl": float(r[7] or 0.0),
+                "expectancy_dollars": float(r[8]) if r[8] is not None else None,
+                "expectancy_r": float(r[9]) if r[9] is not None else None,
+                "pnl_std": float(r[10]) if r[10] is not None else None,
+                "account_value": float(r[11]) if r[11] is not None else None,
+            }
+            for r in rows
+        ]
+        return {
+            "points": points,
+            "snapshot_fingerprint": self._insights_fingerprint([list(map(str, r)) for r in rows]),
+        }
+
+    def insights_config_distribution(self) -> dict:
+        """Per-config distribution of per-window OOS outcomes (FR-006), with
+        016-polish enrichment: R quartiles (cross-config comparable), win rate,
+        profit factor, account size, and each config's latest pooled-gate
+        verdict (lateral against validation_studies)."""
+        sql = (
+            "WITH per_window AS ("
+            "  SELECT s.params->>'config_name' AS config_name, r.id, "
+            "         coalesce(sum(t.pnl), 0) AS window_pnl, "
+            "         avg(t.pnl) AS window_expectancy, "
+            "         avg(t.r_multiple) AS window_expectancy_r, "
+            "         count(t.pnl) AS trades "
+            "  FROM public.runs r "
+            "  JOIN public.validation_studies s ON s.id = r.study_id "
+            "  LEFT JOIN public.trades t ON t.run_id = r.id "
+            "  WHERE r.user_id = %s AND r.segment = 'validation' "
+            "  GROUP BY config_name, r.id"
+            "), per_config_trades AS ("
+            "  SELECT s.params->>'config_name' AS config_name, "
+            "         avg((t.pnl > 0)::int)::float AS win_rate, "
+            "         sum(t.pnl) FILTER (WHERE t.pnl > 0) AS gross_win, "
+            "         abs(sum(t.pnl) FILTER (WHERE t.pnl < 0)) AS gross_loss, "
+            "         max((r.config_snapshot->'risk'->>'account_value')::float) AS account_value "
+            "  FROM public.runs r "
+            "  JOIN public.validation_studies s ON s.id = r.study_id "
+            "  LEFT JOIN public.trades t ON t.run_id = r.id "
+            "  WHERE r.user_id = %s AND r.segment = 'validation' "
+            "  GROUP BY config_name"
+            "), per_config AS ("
+            "  SELECT config_name, count(*) AS windows, "
+            "         count(*) FILTER (WHERE window_pnl > 0) AS windows_positive, "
+            "         percentile_cont(0.25) WITHIN GROUP (ORDER BY window_pnl) AS pnl_q25, "
+            "         percentile_cont(0.50) WITHIN GROUP (ORDER BY window_pnl) AS pnl_q50, "
+            "         percentile_cont(0.75) WITHIN GROUP (ORDER BY window_pnl) AS pnl_q75, "
+            "         percentile_cont(0.25) WITHIN GROUP (ORDER BY window_expectancy) AS exp_q25, "
+            "         percentile_cont(0.50) WITHIN GROUP (ORDER BY window_expectancy) AS exp_q50, "
+            "         percentile_cont(0.75) WITHIN GROUP (ORDER BY window_expectancy) AS exp_q75, "
+            "         percentile_cont(0.25) WITHIN GROUP (ORDER BY window_expectancy_r) AS r_q25, "
+            "         percentile_cont(0.50) WITHIN GROUP (ORDER BY window_expectancy_r) AS r_q50, "
+            "         percentile_cont(0.75) WITHIN GROUP (ORDER BY window_expectancy_r) AS r_q75, "
+            "         sum(trades) AS total_trades "
+            "  FROM per_window GROUP BY config_name"
+            ") "
+            "SELECT c.config_name, c.windows, c.windows_positive, "
+            "       c.pnl_q25, c.pnl_q50, c.pnl_q75, "
+            "       c.exp_q25, c.exp_q50, c.exp_q75, "
+            "       c.r_q25, c.r_q50, c.r_q75, "
+            "       c.total_trades, t.win_rate, "
+            "       t.gross_win / nullif(t.gross_loss, 0) AS profit_factor, "
+            "       t.account_value, gate.g, gate.sid "
+            "FROM per_config c "
+            "LEFT JOIN per_config_trades t ON t.config_name = c.config_name "
+            "LEFT JOIN LATERAL ("
+            "  SELECT s2.result->'pooled_gate' AS g, s2.id::text AS sid "
+            "  FROM public.validation_studies s2 "
+            "  WHERE s2.user_id = %s AND s2.params->>'config_name' = c.config_name "
+            "    AND s2.result ? 'pooled_gate' "
+            "  ORDER BY s2.result->'pooled_gate'->>'computed_at' DESC NULLS LAST "
+            "  LIMIT 1"
+            ") gate ON true "
+            "ORDER BY c.config_name"
+        )
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, [self.user_id, self.user_id, self.user_id])
+                rows = cur.fetchall()
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"insights_config_distribution failed: {exc}") from exc
+
+        def _gate_fields(g: dict | None, sid) -> dict:
+            ci = (g or {}).get("expectancy_dollars_ci") or {}
+            return {
+                "gate_passed": (g or {}).get("passed"),
+                "gate_ci_low": ci.get("low"),
+                "gate_ci_high": ci.get("high"),
+                "gate_computed_at": (g or {}).get("computed_at"),
+                "gate_study_id": str(sid) if sid is not None else None,
+            }
+
+        out = [
+            {
+                "config_name": r[0],
+                "windows": int(r[1] or 0),
+                "windows_positive": int(r[2] or 0),
+                "pnl_q25": float(r[3]) if r[3] is not None else None,
+                "pnl_q50": float(r[4]) if r[4] is not None else None,
+                "pnl_q75": float(r[5]) if r[5] is not None else None,
+                "expectancy_q25": float(r[6]) if r[6] is not None else None,
+                "expectancy_q50": float(r[7]) if r[7] is not None else None,
+                "expectancy_q75": float(r[8]) if r[8] is not None else None,
+                "r_q25": float(r[9]) if r[9] is not None else None,
+                "r_q50": float(r[10]) if r[10] is not None else None,
+                "r_q75": float(r[11]) if r[11] is not None else None,
+                "total_trades": int(r[12] or 0),
+                "win_rate": float(r[13]) if r[13] is not None else None,
+                "profit_factor": float(r[14]) if r[14] is not None else None,
+                "account_value": float(r[15]) if r[15] is not None else None,
+                **_gate_fields(r[16], r[17]),
+            }
+            for r in rows
+        ]
+        return {
+            "rows": out,
+            "snapshot_fingerprint": self._insights_fingerprint([list(map(str, r)) for r in rows]),
+        }
+
+    # ---------- Feature 016: Claude analyses + settings (PostgREST) ----------
+
+    def insert_insight_analysis(
+        self, *, user_id=None, scope: str, scope_id: str | None,
+        payload_hash: str, model: str, analysis: dict,
+    ) -> dict | None:
+        """Store one immutable advisory analysis row."""
+        try:
+            response = (
+                self._client.table("insight_analyses")
+                .insert({
+                    "user_id": str(user_id or self.user_id),
+                    "scope": scope,
+                    "scope_id": scope_id,
+                    "payload_hash": payload_hash,
+                    "model": model,
+                    "analysis": analysis,
+                })
+                .execute()
+            )
+            return response.data[0] if response.data else None
+        except Exception as exc:
+            raise CloudPushError(f"insert_insight_analysis failed: {exc}") from exc
+
+    def get_latest_insight_analysis(
+        self, *, user_id=None, scope: str, scope_id=None
+    ) -> dict | None:
+        """Newest stored analysis for a scope (None if never generated)."""
+        try:
+            q = (
+                self._client.table("insight_analyses")
+                .select("*")
+                .eq("user_id", str(user_id or self.user_id))
+                .eq("scope", scope)
+            )
+            q = q.eq("scope_id", str(scope_id)) if scope_id is not None else q.is_("scope_id", "null")
+            response = q.order("created_at", desc=True).limit(1).execute()
+            return response.data[0] if response.data else None
+        except Exception as exc:
+            raise CloudPushError(f"get_latest_insight_analysis failed: {exc}") from exc
+
+    def get_insight_settings(self, *, user_id=None) -> dict:
+        """The analysis feature's switch; lazily upserts the enabled default."""
+        uid = str(user_id or self.user_id)
+        try:
+            response = (
+                self._client.table("insight_settings").select("*").eq("user_id", uid).execute()
+            )
+            if response.data:
+                return response.data[0]
+            inserted = (
+                self._client.table("insight_settings")
+                .upsert({"user_id": uid, "claude_enabled": True, "disabled_reason": None})
+                .execute()
+            )
+            return inserted.data[0] if inserted.data else {"claude_enabled": True, "disabled_reason": None}
+        except Exception as exc:
+            raise CloudPushError(f"get_insight_settings failed: {exc}") from exc
+
+    def update_insight_settings(
+        self, *, user_id=None, claude_enabled: bool, disabled_reason: str | None
+    ) -> None:
+        """Flip the switch (manual toggle, or the billing auto-pause)."""
+        uid = str(user_id or self.user_id)
+        try:
+            (
+                self._client.table("insight_settings")
+                .upsert({
+                    "user_id": uid,
+                    "claude_enabled": claude_enabled,
+                    "disabled_reason": disabled_reason,
+                })
+                .execute()
+            )
+        except Exception as exc:
+            raise CloudPushError(f"update_insight_settings failed: {exc}") from exc
