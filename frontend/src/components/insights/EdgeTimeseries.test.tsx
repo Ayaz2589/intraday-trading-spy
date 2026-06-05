@@ -29,8 +29,10 @@ describe("EdgeTimeseries", () => {
   it("renders one point per OOS window grouped into per-config series", () => {
     const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
     expect(container.querySelectorAll("[data-testid='ls-point']")).toHaveLength(3);
-    expect(screen.getByText("wf-rr3")).toBeInTheDocument();
-    expect(screen.getByText("default")).toBeInTheDocument();
+    // Config names appear in both the legend and the in-chart series-end
+    // labels (016-polish round 3), so assert presence, not uniqueness.
+    expect(screen.getAllByText("wf-rr3").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("default").length).toBeGreaterThan(0);
   });
 
   it("clicking a point opens its child run", () => {
@@ -83,7 +85,7 @@ describe("EdgeTimeseries — metric toggle (016-polish)", () => {
 describe("EdgeTimeseries — taller detailed chart (016-polish round 3)", () => {
   it("renders a tall chart with window-extent bars and rich hover detail", () => {
     const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
-    const svg = container.querySelector("svg")\!;
+    const svg = container.querySelector("svg")!;
     expect(parseInt(svg.style.height, 10)).toBeGreaterThanOrEqual(300);
     expect(container.querySelectorAll("[data-testid='ls-extent']").length).toBe(3);
     fireEvent.mouseEnter(container.querySelectorAll("[data-testid='ls-point']")[0]);

@@ -112,7 +112,7 @@ const FEATURE_007_KEYS = [
 describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
   it('every Feature 007 concept has at least one rendered HelpTooltip', async () => {
     const { AuthenticatedTopbar } = await import('./authenticated-topbar')
-    const { StrategyList } = await import('./strategies/StrategyList')
+    const { StrategyHero } = await import('./strategies/strategy-hero')
     const { StartBacktestDialog } = await import('./runs/StartBacktestDialog')
     const { SignalsTable } = await import('./runs/SignalsTable')
     const { RunDetail } = await import('./runs/RunDetail')
@@ -125,8 +125,8 @@ describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
     const tree = (
       <QueryClientProvider client={client}>
         <AuthenticatedTopbar />
-        <RunsList onStartBacktest={() => {}} />
-        <StrategyList />
+        <RunsList />
+        <StrategyHero />
         <StartBacktestDialog open onClose={() => {}} />
         <SignalsTable runId="11111111-1111-1111-1111-111111111111" />
         <RunDetail runId="11111111-1111-1111-1111-111111111111" />
