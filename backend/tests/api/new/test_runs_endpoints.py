@@ -393,3 +393,10 @@ def test_list_runs_study_kind_null_for_standalone(unit_client, stub_storage_clie
     r = unit_client.get("/api/runs")
     assert r.status_code == 200
     assert r.json()["runs"][0]["study_kind"] is None
+
+
+def test_backtest_creation_endpoint_removed(unit_client):
+    """Individual backtests can no longer be created — runs come only from
+    validation studies and CLI pushes."""
+    r = unit_client.post("/api/backtests", json={"config_name": "default"})
+    assert r.status_code == 404
