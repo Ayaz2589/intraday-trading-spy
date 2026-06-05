@@ -45,20 +45,6 @@ def test_user_a_cannot_see_user_b_run_via_get(
     assert r.status_code == 404
 
 
-def test_user_a_cannot_see_user_b_config_via_backtests(
-    fastapi_client, user_a_id, user_b_id, local_supabase_jwt_secret, clean_db
-):
-    """POST /api/backtests with A's JWT and a config_name that belongs to B → 404."""
-    token_a = _make_token_for(user_a_id, local_supabase_jwt_secret)
-    r = fastapi_client.post(
-        "/api/backtests",
-        json={"config_name": "B-only-config-that-does-not-exist-for-A"},
-        headers=_auth_header(token_a),
-    )
-    assert r.status_code == 404
-    assert r.json()["detail"]["error"] == "config_not_found"
-
-
 def test_anon_request_to_protected_endpoint_returns_401(fastapi_client):
     """No JWT → 401 on every protected endpoint."""
     for path in [

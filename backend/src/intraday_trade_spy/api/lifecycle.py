@@ -1,10 +1,13 @@
-"""Run + data-download lifecycle orchestrator (Feature 006).
+"""Data-download + backfill lifecycle orchestrator (Feature 006/009).
 
-Owns the in-memory concurrent-cap tracker (`_active_runs`), the FastAPI
-BackgroundTask body for executing a backtest, and the startup-time sweep
-that reaps stale `running` rows from a prior process crash.
+Owns the FastAPI BackgroundTask bodies for data downloads and bulk
+backfills, the shared bars-CSV materializer used by the validation
+engine, and the startup-time sweep that reaps stale `running` rows from
+a prior process crash. (The individual-backtest task body was removed:
+runs are created only by validation studies and CLI pushes.)
 
-See contracts/background-tasks.md for the full contract.
+See contracts/background-tasks.md (Feature 006) for the download/backfill task contract;
+its backtest sections are historical.
 """
 
 from __future__ import annotations
@@ -12,9 +15,8 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-import threading
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
@@ -22,7 +24,6 @@ from zoneinfo import ZoneInfo
 
 from fastapi import BackgroundTasks
 
-from intraday_trade_spy.run_spec import compute_spec_hash
 from intraday_trade_spy.storage import SupabaseStorageClient
 
 _log = logging.getLogger(__name__)
@@ -33,7 +34,6 @@ _ET = ZoneInfo("America/New_York")
 def _today_et() -> date:
     return datetime.now(_ET).date()
 
-DEFAULT_MAX_CONCURRENT_RUNS_PER_USER = 5
 DEFAULT_MAX_CONCURRENT_DOWNLOADS_PER_USER = 3
 DEFAULT_POLLING_STATUS_MAX_AGE_MINUTES = 15
 
@@ -42,44 +42,12 @@ DEFAULT_BACKFILL_WINDOW_DAYS = 30
 DEFAULT_MAX_CONCURRENT_BACKFILLS_PER_USER = 1
 DEFAULT_BACKFILL_STALE_TTL_MINUTES = 60
 
-_active_runs: dict[UUID, set[UUID]] = {}
-_active_runs_lock = threading.Lock()
-
-
-class ConfigNotFoundError(Exception):
-    """No config with the given name exists for this user."""
-
 
 class ConcurrentRunCapExceeded(Exception):
     def __init__(self, active: int, cap: int) -> None:
         super().__init__(f"user has {active} active runs; cap is {cap}")
         self.active = active
         self.cap = cap
-
-
-def _reserve_slot(user_id: UUID, run_id: UUID, cap: int) -> None:
-    with _active_runs_lock:
-        active = _active_runs.setdefault(user_id, set())
-        if len(active) >= cap:
-            raise ConcurrentRunCapExceeded(active=len(active), cap=cap)
-        active.add(run_id)
-
-
-def _release_slot(user_id: UUID, run_id: UUID) -> None:
-    with _active_runs_lock:
-        active = _active_runs.get(user_id)
-        if active is not None:
-            active.discard(run_id)
-
-
-def _get_max_concurrent_runs() -> int:
-    try:
-        from intraday_trade_spy.config import load_config
-
-        cfg = load_config("config/config.yaml")
-        return getattr(cfg.api, "max_concurrent_runs_per_user", DEFAULT_MAX_CONCURRENT_RUNS_PER_USER)
-    except Exception:
-        return DEFAULT_MAX_CONCURRENT_RUNS_PER_USER
 
 
 def _get_max_concurrent_downloads() -> int:
@@ -284,169 +252,6 @@ def _fetch_and_cache_range(
     finally:
         tmp.unlink(missing_ok=True)
         tmp.with_suffix(tmp.suffix + ".fetch.yaml").unlink(missing_ok=True)
-
-
-def start_backtest(
-    *,
-    user_id: UUID,
-    config_name: str,
-    data_csv_path: Optional[str],
-    storage_client: SupabaseStorageClient,
-    background_tasks: BackgroundTasks,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-) -> UUID:
-    """Validate, reserve a slot, insert the queued row, enqueue the task.
-
-    Returns the new run_id. Raises ConfigNotFoundError if the config doesn't
-    exist for the user; ConcurrentRunCapExceeded if at the cap.
-    """
-    config = storage_client.get_config_by_name(config_name)
-    if config is None:
-        raise ConfigNotFoundError(config_name)
-
-    strategy_id = config["strategy_id"]
-
-    # Dedup: an identical, already-finished backtest over a COMPLETED range
-    # returns the existing run instead of recomputing/duplicating. Gated on a
-    # completed range (range_end < today ET) because only then is the bar data
-    # frozen — a range touching today may have changed since the prior run, so
-    # those always re-run (the unique index still dedups them at finalize).
-    spec_hash = compute_spec_hash(
-        strategy_id=strategy_id,
-        params=config.get("params") or {},
-        symbol="SPY",
-        range_start=start_date,
-        range_end=end_date,
-    )
-    if start_date and end_date and end_date < _today_et():
-        existing = storage_client.find_finished_run_by_spec(spec_hash=spec_hash)
-        if existing is not None:
-            return UUID(existing)
-
-    cap = _get_max_concurrent_runs()
-    run_id = uuid4()
-    _reserve_slot(user_id, run_id, cap)
-
-    started_at = datetime.now(timezone.utc).isoformat()
-    # Use the caller's requested range as the placeholder so the UI's
-    # pending-state header reads correctly. The finalize step overwrites
-    # these with the actual range derived from the engine's bars.
-    placeholder_start = start_date.isoformat() if start_date else "2026-01-01"
-    placeholder_end = end_date.isoformat() if end_date else "2026-01-01"
-    try:
-        storage_client.insert_queued_run(
-            run_id=run_id,
-            config_id=UUID(config["id"]),
-            strategy_id=UUID(strategy_id),
-            started_at=started_at,
-            range_start=placeholder_start,
-            range_end=placeholder_end,
-            bar_count=1,
-            data_fingerprint="pending",
-            app_version="api-0.2.0",
-        )
-    except Exception:
-        _release_slot(user_id, run_id)
-        raise
-
-    # Stamp the dedup spec hash (best-effort; no-op pre-migration).
-    storage_client.set_run_spec_hash(run_id=run_id, spec_hash=spec_hash)
-
-    background_tasks.add_task(
-        _run_backtest_task,
-        run_id=run_id,
-        user_id=user_id,
-        config_id=UUID(config["id"]),
-        strategy_id=UUID(strategy_id),
-        config_params=config.get("params") or {},
-        data_csv_path=data_csv_path,
-        storage_client=storage_client,
-        start_date=start_date,
-        end_date=end_date,
-    )
-    return run_id
-
-
-def _run_backtest_task(
-    *,
-    run_id: UUID,
-    user_id: UUID,
-    config_id: UUID,
-    strategy_id: UUID,
-    config_params: Optional[dict] = None,
-    data_csv_path: Optional[str],
-    storage_client: SupabaseStorageClient,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-) -> None:
-    """BackgroundTask body. Transitions queued → running → finished (via atomic
-    finalize) or → failed. Always releases the active-runs slot."""
-    try:
-        storage_client.update_run_status(run_id=run_id, status="running")
-        _log.info("backtest %s: started", run_id)
-
-        from intraday_trade_spy.backtest.engine import BacktestEngine
-        from intraday_trade_spy.config import build_effective_config
-        from intraday_trade_spy.storage.push import gather_run_outputs, write_run_outputs
-
-        # Run with the user's saved knobs (risk/strategy) merged over the base
-        # config.yaml — NOT the static defaults. This is what makes the UI knobs
-        # actually affect results.
-        cfg = build_effective_config(config_params)
-
-        # Record the effective knobs this run used so the detail view shows
-        # per-run config (not the shared, mutable live config) and the run stays
-        # reproducible. Best-effort; no-ops pre-migration 0092.
-        storage_client.set_run_config_snapshot(
-            run_id=run_id,
-            config_snapshot={
-                "risk": cfg.risk.model_dump(mode="json"),
-                "strategy": cfg.strategy.model_dump(mode="json"),
-            },
-        )
-        if start_date is not None and end_date is not None:
-            csv_path = materialize_bars_csv(
-                storage_client=storage_client, start=start_date, end=end_date
-            )
-        elif data_csv_path:
-            csv_path = Path(data_csv_path)
-        else:
-            csv_path = Path(cfg.data.csv_path)
-        out_dir = Path(cfg.data.output_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        engine = BacktestEngine(cfg)
-        result = engine.run(csv_path=csv_path, output_dir=out_dir)
-
-        # Persist the local outputs via the SHARED writer (same code path as the
-        # CLI). The previous inline copy used model_dump() without mode="json",
-        # which crashed on equity-curve timestamps for any run with trades —
-        # every API backtest with trades failed at persist (found by 014's
-        # parity test). gather_run_outputs() reads these files for the payload.
-        run_dir = write_run_outputs(result, out_dir)
-
-        payload = gather_run_outputs(
-            run_dir,
-            user_id=user_id,
-            config_id=config_id,
-            strategy_id=strategy_id,
-            run_uuid=run_id,
-        )
-        storage_client.push_run_finalize(payload)
-        _log.info("backtest %s: finished", run_id)
-
-    except Exception as exc:
-        _log.exception("backtest %s: failed: %s", run_id, exc)
-        try:
-            storage_client.update_run_status(
-                run_id=run_id,
-                status="failed",
-                failure_reason=str(exc)[:500],
-            )
-        except Exception:
-            _log.exception("backtest %s: failed AND status update failed", run_id)
-    finally:
-        _release_slot(user_id, run_id)
 
 
 def start_data_download(

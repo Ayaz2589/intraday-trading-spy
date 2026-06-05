@@ -19,9 +19,6 @@ export const POLLING_LIST_MS = 5_000
 /** Polling cadence for the /healthz probe. */
 export const POLLING_HEALTH_MS = 10_000
 
-/** Maximum concurrent in-flight runs background-tracked client-side (clarification Q2). */
-export const ACTIVE_RUNS_TRACKER_CAP = 3
-
 /**
  * Backoff in milliseconds for the refresh-token retry loop (clarification Q5).
  * Three attempts at 1s/2s/4s; if all fail, the session is treated as expired.

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useDeleteRun } from '@/hooks/useDeleteRun'
+import { RunOriginBadge } from './RunOriginBadge'
 import type { Run, RunStatus } from '@/api/types'
 
 const STATUS_LABEL: Record<RunStatus, string> = {
@@ -41,7 +42,7 @@ export function RunRow({ run, failureReason }: Props) {
         data-testid={`run-row-${run.id}`}
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 120px 120px 120px 40px',
+          gridTemplateColumns: '1fr 170px 120px 120px 120px 40px',
           gap: 12,
           alignItems: 'center',
           padding: '8px 12px',
@@ -64,6 +65,7 @@ export function RunRow({ run, failureReason }: Props) {
             </div>
           )}
         </div>
+        <RunOriginBadge run={run} />
         <span
           data-testid="run-row-status"
           data-status={run.status}

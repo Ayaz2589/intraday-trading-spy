@@ -15,7 +15,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from intraday_trade_spy.api.routers import (
-    backtests,
     bars,
     configs,
     data,
@@ -131,7 +130,6 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
 
     # Authenticated /api/* routes
-    app.include_router(backtests.router, prefix="/api")
     app.include_router(runs.router, prefix="/api")
     app.include_router(strategies.router, prefix="/api")
     app.include_router(data.router, prefix="/api")

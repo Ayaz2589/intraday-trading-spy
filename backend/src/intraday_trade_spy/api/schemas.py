@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _Base(BaseModel):
@@ -32,38 +32,6 @@ class _ResponseBase(BaseModel):
 # ---------- Request bodies ----------
 
 
-class StartBacktestRequest(_Base):
-    config_name: str = Field(min_length=1, max_length=200)
-    data_csv_path: Optional[str] = None
-    # Optional explicit date range. When supplied, the lifecycle materializes
-    # a CSV from the shared bars cache (auto-fetching from yfinance for any
-    # missing trading days) and uses that as the backtest input — overriding
-    # both `data_csv_path` and the YAML's default `data.csv_path`.
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _reject_forbidden_fields(cls, data):
-        if not isinstance(data, dict):
-            return data
-        forbidden = {"symbol", "direction", "live_auto_enabled", "kind"}
-        intersect = forbidden & data.keys()
-        if intersect:
-            raise ValueError(
-                f"forbidden fields not accepted from clients (constitution I/II/V): {sorted(intersect)}"
-            )
-        return data
-
-    @model_validator(mode="after")
-    def _range_valid(self) -> "StartBacktestRequest":
-        if (self.start_date is None) != (self.end_date is None):
-            raise ValueError("start_date and end_date must be supplied together")
-        if self.start_date and self.end_date and self.end_date < self.start_date:
-            raise ValueError("end_date must be >= start_date")
-        return self
-
-
 class StartDataDownloadRequest(_Base):
     start_date: date
     end_date: date
@@ -78,11 +46,6 @@ class StartDataDownloadRequest(_Base):
 
 
 # ---------- Response bodies ----------
-
-
-class StartBacktestResponse(_ResponseBase):
-    run_id: UUID
-    status: Literal["queued"]
 
 
 class StartDataDownloadResponse(_ResponseBase):
@@ -136,6 +99,11 @@ class RunView(_ResponseBase):
     study_id: Optional[UUID] = None
     segment: Optional[Literal["train", "validation", "lockbox"]] = None
     window_index: Optional[int] = None
+    # /runs origin badge: study kind flattened from the validation_studies FK
+    # embed by storage list_runs. None for standalone rows, children whose
+    # study was deleted, and the detail endpoint (which doesn't embed — the
+    # detail badge only needs study_id/segment/window).
+    study_kind: Optional[Literal["walk_forward", "sensitivity"]] = None
 
 
 class RunListResponse(_ResponseBase):

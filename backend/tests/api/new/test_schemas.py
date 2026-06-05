@@ -7,44 +7,6 @@ from datetime import date
 import pytest
 
 
-def test_start_backtest_request_requires_config_name():
-    from intraday_trade_spy.api.schemas import StartBacktestRequest
-
-    with pytest.raises(ValueError):
-        StartBacktestRequest()
-
-
-def test_start_backtest_request_rejects_symbol():
-    """Constitution I: no symbol field allowed."""
-    from intraday_trade_spy.api.schemas import StartBacktestRequest
-
-    with pytest.raises(ValueError):
-        StartBacktestRequest(config_name="default", symbol="QQQ")
-
-
-def test_start_backtest_request_rejects_direction():
-    """Constitution II: no direction field allowed."""
-    from intraday_trade_spy.api.schemas import StartBacktestRequest
-
-    with pytest.raises(ValueError):
-        StartBacktestRequest(config_name="default", direction="SHORT")
-
-
-def test_start_backtest_request_rejects_live_auto_enabled():
-    """Constitution V: no live_auto_enabled field allowed."""
-    from intraday_trade_spy.api.schemas import StartBacktestRequest
-
-    with pytest.raises(ValueError):
-        StartBacktestRequest(config_name="default", live_auto_enabled=True)
-
-
-def test_start_backtest_request_accepts_optional_data_csv_path():
-    from intraday_trade_spy.api.schemas import StartBacktestRequest
-
-    req = StartBacktestRequest(config_name="default", data_csv_path="data/raw/spy.csv")
-    assert req.data_csv_path == "data/raw/spy.csv"
-
-
 def test_start_data_download_request_rejects_end_before_start():
     from intraday_trade_spy.api.schemas import StartDataDownloadRequest
 
