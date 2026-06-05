@@ -101,3 +101,26 @@ def test_legacy_knobs_are_ignored_not_applied():
     assert not hasattr(cfg, "min_minutes_after_open")
     assert not hasattr(cfg, "confirmation")
     assert cfg.max_distance_from_vwap_pct == 0.25  # real knobs still work
+
+
+# ---- Feature 016 (insights / Claude narrative) -------------------------------
+
+
+def test_insights_claude_config_defaults():
+    from intraday_trade_spy.config import InsightsConfig
+
+    cfg = InsightsConfig()
+    assert cfg.claude.model == "claude-opus-4-8"
+    assert cfg.claude.max_tokens == 8000
+    assert cfg.claude.max_timeseries_windows == 200
+
+
+def test_insights_block_loads_from_yaml():
+    from pathlib import Path
+
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(Path(__file__).resolve().parents[1] / "config" / "config.yaml")
+    assert cfg.insights.claude.model == "claude-opus-4-8"
+    assert cfg.insights.claude.max_tokens == 8000
+    assert cfg.insights.claude.max_timeseries_windows == 200

@@ -72,7 +72,25 @@ export type HelpContentKey =
   // Feature 014 (study child-run persistence) concepts
   | "child_run"
   | "study_drilldown"
-  | "rerun_study";
+  | "rerun_study"
+  // Feature 015 (Monte Carlo path-risk) concepts
+  | "monte_carlo_simulation"
+  | "shuffle_method"
+  | "max_drawdown_distribution"
+  | "losing_streak"
+  | "underwater_period"
+  | "mc_iterations_seed"
+  | "forward_cone"
+  | "risk_of_ruin"
+  | "mc_in_sample_caveat"
+  // Feature 016 (insights) concepts
+  | "pooled_gate"
+  | "sign_test"
+  | "fisher_combined"
+  | "edge_timeseries"
+  | "window_distribution"
+  | "claude_advisory"
+  | "snapshot_pin";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -344,7 +362,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   shuffle_method: {
     title: "Reshuffle (path risk)",
     description:
-      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades\!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
+      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
   },
   max_drawdown_distribution: {
     title: "Max drawdown distribution",
@@ -380,6 +398,41 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "In-sample caveat",
     description:
       "These trades came from data the strategy's settings were tuned against (or that can't be proven otherwise), so the edge — and therefore every risk estimate built on it — is likely overstated. Only walk-forward validation windows and the lockbox run are provably out-of-sample. Use those for the honest version of these numbers.",
+  },
+  pooled_gate: {
+    title: "Pooled study gate",
+    description:
+      "Pools every out-of-sample window's trades into ONE statistical verdict: does the pooled expectancy confidence interval exclude zero? This is the pre-registered precondition for spending the lockbox — if the CI includes zero, the edge can't be distinguished from luck and the lockbox stays sealed. Seeded, so re-running reproduces the verdict exactly.",
+  },
+  sign_test: {
+    title: "Sign test (windows positive)",
+    description:
+      "Ignores magnitudes and asks a blunt question: if the strategy had no edge, how often would at least this many windows end positive by coin-flip? 9 of 12 positive gives p ≈ 0.073 — suggestive, not conclusive. A robust edge should win most windows, not just a few big ones.",
+  },
+  fisher_combined: {
+    title: "Fisher's combined p-value",
+    description:
+      "Combines the per-window permutation p-values into one number testing 'no edge in ANY window'. A tiny combined p (like 1e-8) with a failing pooled CI means the edge is REAL but REGIME-DEPENDENT — some windows beat chance decisively while others bleed it back. That points to filtering research, not more testing.",
+  },
+  edge_timeseries: {
+    title: "Edge time-series",
+    description:
+      "One point per out-of-sample window across the whole archive, per config. A stable edge plots as points consistently above zero; a regime-bound edge alternates — exactly what failed the wf-rr3 gate. Defaults to Expectancy R because raw $ is meaningless across configs run at different account sizes; shaded bands mark labeled market regimes. Click any point to drill into that window's full run.",
+  },
+  window_distribution: {
+    title: "Per-config window distribution",
+    description:
+      "Compares configs window-by-window instead of by one pooled number: how many windows ended positive, and the quartiles of window outcomes. Two configs can pool similarly but distribute very differently — the one that wins MORE windows with SHALLOWER losers is the more livable edge.",
+  },
+  claude_advisory: {
+    title: "Claude's read (advisory)",
+    description:
+      "An LLM's narrative perspective on YOUR already-computed statistics. It is strictly advisory: it never trades, never tunes knobs, and is outside the strategy → risk → broker path. Every claim must cite the metric backing it — the app renders that metric's real value beside the claim so hallucinated numbers are immediately visible. Treat it as a skeptical colleague, not an authority.",
+  },
+  snapshot_pin: {
+    title: "Snapshot pinning",
+    description:
+      "Each analysis is stored with a hash of the exact data it analyzed. Re-opening the page shows the stored analysis free of charge; regeneration only makes sense (and is only enabled) when the underlying data actually changed. Unlike the seeded gate numbers, LLM output is NOT deterministic — the pin tells you exactly which data a narrative described.",
   },
   lockbox: {
     title: "Lockbox",

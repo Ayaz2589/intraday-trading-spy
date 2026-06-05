@@ -121,8 +121,8 @@ const FEATURE_007_KEYS = [
 describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
   it('every Feature 007 concept has at least one rendered HelpTooltip', async () => {
     const { AuthenticatedTopbar } = await import('./authenticated-topbar')
-    const { StrategyList } = await import('./strategies/StrategyList')
-    const { ConfigManager } = await import('./strategies/config-manager')
+    const { StrategyHero } = await import('./strategies/strategy-hero')
+    const { ConfigWorkbench } = await import('./strategies/config-manager')
     const { SignalsTable } = await import('./runs/SignalsTable')
     const { RunDetail } = await import('./runs/RunDetail')
     const { DataDownloadForm } = await import('./data/DataDownloadForm')
@@ -135,8 +135,8 @@ describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
       <QueryClientProvider client={client}>
         <AuthenticatedTopbar />
         <RunsList />
-        <StrategyList />
-        <ConfigManager />
+        <StrategyHero />
+        <ConfigWorkbench />
         <SignalsTable runId="11111111-1111-1111-1111-111111111111" />
         <RunDetail runId="11111111-1111-1111-1111-111111111111" />
         <DataDownloadForm onStarted={() => {}} />

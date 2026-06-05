@@ -185,16 +185,42 @@ class MonteCarloConfig(BaseModel):
     max_cone_steps: int = 200
 
 
+class PooledGateConfig(BaseModel):
+    """Feature 016: the pooled study gate — pre-registered lockbox precondition.
+    Verdict rule: passed iff the pooled expectancy-$ CI low (at 1 - alpha)
+    is strictly > 0. Seeded so the verdict is byte-identical on recompute."""
+
+    alpha: float = 0.05
+    seed: int = 20260605
+
+
 class ValidationConfig(BaseModel):
     split: SplitConfig = Field(default_factory=SplitConfig)
     walk_forward: WalkForwardConfig = Field(default_factory=WalkForwardConfig)
     sensitivity: SensitivityConfig = Field(default_factory=SensitivityConfig)
     significance: SignificanceConfig = Field(default_factory=SignificanceConfig)
     monte_carlo: MonteCarloConfig = Field(default_factory=MonteCarloConfig)
+    pooled_gate: PooledGateConfig = Field(default_factory=PooledGateConfig)
     # Single canonical fan-out guard (resolves analyze finding D1): the total
     # planned evaluations (grid points × windows) beyond which a study launch
     # requires explicit confirmation.
     max_evaluations_warn: int = 200
+
+
+# ---- Feature 016 (insights / advisory Claude narrative) --------------------
+
+
+class InsightsClaudeConfig(BaseModel):
+    """Advisory LLM narrative knobs. The model is a config choice (not code);
+    the truncation cap keeps oversized archives from inflating payloads."""
+
+    model: str = "claude-opus-4-8"
+    max_tokens: int = 8000
+    max_timeseries_windows: int = 200
+
+
+class InsightsConfig(BaseModel):
+    claude: InsightsClaudeConfig = Field(default_factory=InsightsClaudeConfig)
 
 
 class Config(BaseModel):
@@ -207,6 +233,7 @@ class Config(BaseModel):
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     alpaca: AlpacaConfig = Field(default_factory=AlpacaConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
+    insights: InsightsConfig = Field(default_factory=InsightsConfig)
 
 
 def load_config(path: str | Path) -> Config:

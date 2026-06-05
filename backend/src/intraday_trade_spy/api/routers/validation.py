@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 from intraday_trade_spy.api import errors
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
@@ -13,6 +14,7 @@ from intraday_trade_spy.api.schemas import (
     LockboxRunResponse,
     LockboxStatusView,
     MonteCarloRequest,
+    PooledGateRequest,
     SignificanceRequest,
     StartStudyRequest,
     StartStudyResponse,
@@ -25,6 +27,8 @@ from intraday_trade_spy.api.validation_lifecycle import (
     LargeStudyNotConfirmed,
     LockboxAlreadySpent,
     MonteCarloNotComputable,
+    PooledGateAlreadyRunning,
+    PooledGateNotComputable,
     RunNotFound,
     StudyConfigNotFound,
     StudyNotFound,
@@ -32,7 +36,9 @@ from intraday_trade_spy.api.validation_lifecycle import (
     rerun_study,
     run_lockbox,
     run_monte_carlo_for_run,
+    run_pooled_gate_fast,
     run_significance_for_run,
+    start_pooled_gate_full,
     start_study,
 )
 from intraday_trade_spy.models import MonteCarloResult, SignificanceResult
@@ -112,6 +118,45 @@ def monte_carlo_endpoint(
         errors.raise_not_found("run not found")
     except MonteCarloNotComputable as exc:
         errors.raise_validation_error(exc.reason)
+
+
+@router.post("/studies/{study_id}/pooled-gate", response_model=None)
+def pooled_gate_endpoint(
+    study_id: UUID,
+    body: PooledGateRequest,
+    background_tasks: BackgroundTasks,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+):
+    """Feature 016: the pre-registered lockbox gate over a walk-forward
+    study's pooled OOS windows. fast = sync verdict (200); full = background
+    per-window permutation tests + Fisher (202; completion signaled solely by
+    result.pooled_gate.mode == 'full')."""
+    try:
+        if body.mode == "full":
+            start_pooled_gate_full(
+                study_id=study_id, user_id=user_id,
+                storage=storage_client, background_tasks=background_tasks,
+            )
+            return JSONResponse(
+                status_code=202,
+                content={"study_id": str(study_id), "status": "running"},
+            )
+        return run_pooled_gate_fast(
+            study_id=study_id, user_id=user_id, storage=storage_client
+        )
+    except StudyNotFound:
+        errors.raise_not_found("validation study not found")
+    except PooledGateNotComputable as exc:
+        errors.raise_validation_error(exc.reason)
+    except PooledGateAlreadyRunning:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "pooled_gate_running",
+                "hint": "a full gate is already computing for this study",
+            },
+        )
 
 
 @router.get("/lockbox", response_model=LockboxStatusView)
