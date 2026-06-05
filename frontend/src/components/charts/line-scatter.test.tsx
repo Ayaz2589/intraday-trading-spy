@@ -43,3 +43,18 @@ describe("LineScatter", () => {
     expect(screen.getByText("default")).toBeInTheDocument();
   });
 });
+
+describe("LineScatter — bands (016-polish)", () => {
+  it("renders shaded x-bands with labels behind the series", () => {
+    const bands = [{ from: 1, to: 2, label: "2022 bear" }];
+    const { container } = render(<LineScatter series={SERIES} bands={bands} />);
+    expect(container.querySelectorAll("[data-testid='ls-band']")).toHaveLength(1);
+    expect(screen.getByText("2022 bear")).toBeInTheDocument();
+  });
+
+  it("skips bands that do not overlap the x-domain", () => {
+    const bands = [{ from: 100, to: 200, label: "far future" }];
+    const { container } = render(<LineScatter series={SERIES} bands={bands} />);
+    expect(container.querySelectorAll("[data-testid='ls-band']")).toHaveLength(0);
+  });
+});

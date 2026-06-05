@@ -407,11 +407,17 @@ export type EdgeTimeseriesPoint = {
   expectancy_dollars: number | null
   expectancy_r: number | null
   pnl_std: number | null
+  // 016-polish: $ values are NOT comparable across configs run at different
+  // account sizes — the UI normalizes via R or % of account.
+  account_value: number | null
 }
+
+export type RegimeView = { name: string; start: string; end: string }
 
 export type EdgeTimeseriesResponse = {
   points: EdgeTimeseriesPoint[]
   snapshot_fingerprint: string
+  regimes: RegimeView[]
 }
 
 export type ConfigDistributionRow = {
@@ -424,6 +430,18 @@ export type ConfigDistributionRow = {
   expectancy_q25: number | null
   expectancy_q50: number | null
   expectancy_q75: number | null
+  // 016-polish enrichment
+  r_q25: number | null
+  r_q50: number | null
+  r_q75: number | null
+  win_rate: number | null
+  profit_factor: number | null
+  account_value: number | null
+  gate_passed: boolean | null
+  gate_ci_low: number | null
+  gate_ci_high: number | null
+  gate_computed_at: string | null
+  gate_study_id: string | null
   total_trades: number
 }
 

@@ -29,9 +29,17 @@ const EDGE = {
       run_id: "r1", study_id: "s1", window_index: 0, config_name: "wf-rr3",
       range_start: "2019-01-02", range_end: "2019-06-28", trades: 227,
       net_pnl: 118, expectancy_dollars: 0.52, expectancy_r: 0.018, pnl_std: 39.5,
+      account_value: 1000,
+    },
+    {
+      run_id: "r2", study_id: "s1", window_index: 1, config_name: "wf-rr3",
+      range_start: "2019-07-01", range_end: "2019-12-31", trades: 216,
+      net_pnl: -90, expectancy_dollars: -0.42, expectancy_r: -0.015, pnl_std: 38.1,
+      account_value: 1000,
     },
   ],
   snapshot_fingerprint: "fp1",
+  regimes: [],
 };
 const DIST = {
   rows: [
@@ -78,5 +86,22 @@ describe("InsightsPage — Claude rail (US3)", () => {
     expect(screen.getByTestId("insights-right-rail")).toContainElement(
       screen.getByTestId("claude-read")
     );
+  });
+});
+
+describe("InsightsPage — headline stat strip (016-polish)", () => {
+  it("summarizes the OOS archive: windows, trades, configs, positive share, span", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue(DIST);
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    await waitFor(() => expect(screen.getByTestId("insights-stats")).toBeInTheDocument());
+    const stats = screen.getByTestId("insights-stats");
+    expect(stats).toHaveTextContent("2");        // OOS windows
+    expect(stats).toHaveTextContent("443");      // total OOS trades (227+216)
+    expect(stats).toHaveTextContent(/1\s*config/i);
+    expect(stats).toHaveTextContent(/1\s*\/\s*2 positive/i);
+    expect(stats).toHaveTextContent(/2019-01-02/);
+    expect(stats).toHaveTextContent(/2019-12-31/);
   });
 });

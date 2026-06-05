@@ -12,6 +12,7 @@ EDGE = {
             "config_name": "wf-rr3", "range_start": "2019-01-02",
             "range_end": "2019-06-28", "trades": 227, "net_pnl": 118.0,
             "expectancy_dollars": 0.52, "expectancy_r": 0.018, "pnl_std": 39.5,
+            "account_value": 1000.0,
         }
     ],
     "snapshot_fingerprint": "abcd1234abcd1234",
@@ -38,6 +39,10 @@ def test_edge_timeseries_200(unit_client, stub_storage_client):
     assert body["snapshot_fingerprint"] == "abcd1234abcd1234"
     assert body["points"][0]["config_name"] == "wf-rr3"
     stub_storage_client.insights_edge_timeseries.assert_called_once_with(config_name=None)
+    # 016-polish: labeled market regimes ride along for the chart overlay
+    names = [r["name"] for r in body["regimes"]]
+    assert "2022 bear" in names
+    assert all({"name", "start", "end"} <= set(r) for r in body["regimes"])
 
 
 def test_edge_timeseries_config_filter(unit_client, stub_storage_client):
@@ -53,7 +58,9 @@ def test_edge_timeseries_empty(unit_client, stub_storage_client):
     }
     resp = unit_client.get("/api/insights/edge-timeseries")
     assert resp.status_code == 200
-    assert resp.json() == {"points": [], "snapshot_fingerprint": "empty"}
+    body = resp.json()
+    assert body["points"] == [] and body["snapshot_fingerprint"] == "empty"
+    assert len(body["regimes"]) > 0  # regimes ride along even on an empty archive
 
 
 def test_config_distribution_200(unit_client, stub_storage_client):

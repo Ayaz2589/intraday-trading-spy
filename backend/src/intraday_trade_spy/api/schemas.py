@@ -344,11 +344,23 @@ class EdgeTimeseriesPoint(_ResponseBase):
     expectancy_dollars: Optional[float] = None
     expectancy_r: Optional[float] = None
     pnl_std: Optional[float] = None
+    # 016-polish: account size — $ values are NOT comparable across configs
+    # run at different account sizes; the UI normalizes (R / % of account).
+    account_value: Optional[float] = None
+
+
+class RegimeView(_ResponseBase):
+    # 016-polish: labeled market regimes (config data.regimes) for the
+    # time-series overlay — "which regimes bleed?" at a glance.
+    name: str
+    start: str
+    end: str
 
 
 class EdgeTimeseriesResponse(_ResponseBase):
     points: list[EdgeTimeseriesPoint]
     snapshot_fingerprint: str
+    regimes: list[RegimeView] = []
 
 
 class ConfigDistributionRow(_ResponseBase):
@@ -361,6 +373,18 @@ class ConfigDistributionRow(_ResponseBase):
     expectancy_q25: Optional[float] = None
     expectancy_q50: Optional[float] = None
     expectancy_q75: Optional[float] = None
+    # 016-polish enrichment
+    r_q25: Optional[float] = None
+    r_q50: Optional[float] = None
+    r_q75: Optional[float] = None
+    win_rate: Optional[float] = None
+    profit_factor: Optional[float] = None
+    account_value: Optional[float] = None
+    gate_passed: Optional[bool] = None
+    gate_ci_low: Optional[float] = None
+    gate_ci_high: Optional[float] = None
+    gate_computed_at: Optional[str] = None
+    gate_study_id: Optional[str] = None
     total_trades: int
 
 

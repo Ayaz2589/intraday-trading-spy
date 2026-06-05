@@ -15,6 +15,7 @@ const pt = (over: Partial<EdgeTimeseriesPoint>): EdgeTimeseriesPoint => ({
   expectancy_dollars: 0.52,
   expectancy_r: 0.018,
   pnl_std: 39.5,
+  account_value: 1000,
   ...over,
 });
 
@@ -47,5 +48,34 @@ describe("EdgeTimeseries", () => {
   it("explains itself with a HelpTooltip", () => {
     const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
     expect(container.querySelector('[data-help-key="edge_timeseries"]')).toBeTruthy();
+  });
+});
+
+describe("EdgeTimeseries — metric toggle (016-polish)", () => {
+  // $ values are NOT comparable across configs run at different account
+  // sizes ($2.5M default vs $1k wf-rr3) — Expectancy R is the default.
+  it("defaults to Expectancy R", () => {
+    const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    const rBtn = screen.getByRole("button", { name: /expectancy r/i });
+    expect(rBtn).toHaveAttribute("aria-pressed", "true");
+    expect(container.querySelector("[data-testid='ls-point'] title")?.textContent).toMatch(/R\b/);
+  });
+
+  it("switches to PnL $ and Return % of account", () => {
+    const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /pnl \$/i }));
+    expect(container.querySelector("[data-testid='ls-point'] title")?.textContent).toMatch(/\$118/);
+    fireEvent.click(screen.getByRole("button", { name: /return %/i }));
+    // 118 / 1000 account = 11.8%
+    expect(container.querySelector("[data-testid='ls-point'] title")?.textContent).toMatch(/11\.8%/);
+  });
+
+  it("shades labeled market regimes behind the series", () => {
+    const regimes = [{ name: "2019 demo regime", start: "2019-01-01", end: "2019-12-31" }];
+    const { container } = render(
+      <EdgeTimeseries points={POINTS} regimes={regimes} onOpenRun={vi.fn()} />,
+    );
+    expect(container.querySelectorAll("[data-testid='ls-band']").length).toBe(1);
+    expect(screen.getByText("2019 demo regime")).toBeInTheDocument();
   });
 });

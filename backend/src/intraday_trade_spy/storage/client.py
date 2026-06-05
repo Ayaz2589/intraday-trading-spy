@@ -1491,6 +1491,9 @@ class SupabaseStorageClient:
             "       avg(t.pnl) AS expectancy_dollars, "
             "       avg(t.r_multiple) AS expectancy_r, "
             "       stddev_samp(t.pnl) AS pnl_std, "
+            # 016-polish: account size per point — $ values are NOT comparable
+            # across configs run at different account sizes ($2.5M vs $1k).
+            "       (r.config_snapshot->'risk'->>'account_value')::float AS account_value, "
             "       r.created_at "
             "FROM public.runs r "
             "JOIN public.validation_studies s ON s.id = r.study_id "
@@ -1503,7 +1506,7 @@ class SupabaseStorageClient:
             params.append(config_name)
         sql += (
             "GROUP BY r.id, r.study_id, r.window_index, s.params->>'config_name', "
-            "         r.range_start, r.range_end, r.created_at "
+            "         r.range_start, r.range_end, r.config_snapshot, r.created_at "
             "ORDER BY r.range_start, config_name"
         )
         try:
@@ -1530,6 +1533,7 @@ class SupabaseStorageClient:
                 "expectancy_dollars": float(r[8]) if r[8] is not None else None,
                 "expectancy_r": float(r[9]) if r[9] is not None else None,
                 "pnl_std": float(r[10]) if r[10] is not None else None,
+                "account_value": float(r[11]) if r[11] is not None else None,
             }
             for r in rows
         ]
@@ -1539,41 +1543,87 @@ class SupabaseStorageClient:
         }
 
     def insights_config_distribution(self) -> dict:
-        """Per-config distribution of per-window OOS outcomes (FR-006):
-        window count, share positive, quartiles, total trades."""
+        """Per-config distribution of per-window OOS outcomes (FR-006), with
+        016-polish enrichment: R quartiles (cross-config comparable), win rate,
+        profit factor, account size, and each config's latest pooled-gate
+        verdict (lateral against validation_studies)."""
         sql = (
             "WITH per_window AS ("
             "  SELECT s.params->>'config_name' AS config_name, r.id, "
             "         coalesce(sum(t.pnl), 0) AS window_pnl, "
             "         avg(t.pnl) AS window_expectancy, "
+            "         avg(t.r_multiple) AS window_expectancy_r, "
             "         count(t.pnl) AS trades "
             "  FROM public.runs r "
             "  JOIN public.validation_studies s ON s.id = r.study_id "
             "  LEFT JOIN public.trades t ON t.run_id = r.id "
             "  WHERE r.user_id = %s AND r.segment = 'validation' "
             "  GROUP BY config_name, r.id"
+            "), per_config_trades AS ("
+            "  SELECT s.params->>'config_name' AS config_name, "
+            "         avg((t.pnl > 0)::int)::float AS win_rate, "
+            "         sum(t.pnl) FILTER (WHERE t.pnl > 0) AS gross_win, "
+            "         abs(sum(t.pnl) FILTER (WHERE t.pnl < 0)) AS gross_loss, "
+            "         max((r.config_snapshot->'risk'->>'account_value')::float) AS account_value "
+            "  FROM public.runs r "
+            "  JOIN public.validation_studies s ON s.id = r.study_id "
+            "  LEFT JOIN public.trades t ON t.run_id = r.id "
+            "  WHERE r.user_id = %s AND r.segment = 'validation' "
+            "  GROUP BY config_name"
+            "), per_config AS ("
+            "  SELECT config_name, count(*) AS windows, "
+            "         count(*) FILTER (WHERE window_pnl > 0) AS windows_positive, "
+            "         percentile_cont(0.25) WITHIN GROUP (ORDER BY window_pnl) AS pnl_q25, "
+            "         percentile_cont(0.50) WITHIN GROUP (ORDER BY window_pnl) AS pnl_q50, "
+            "         percentile_cont(0.75) WITHIN GROUP (ORDER BY window_pnl) AS pnl_q75, "
+            "         percentile_cont(0.25) WITHIN GROUP (ORDER BY window_expectancy) AS exp_q25, "
+            "         percentile_cont(0.50) WITHIN GROUP (ORDER BY window_expectancy) AS exp_q50, "
+            "         percentile_cont(0.75) WITHIN GROUP (ORDER BY window_expectancy) AS exp_q75, "
+            "         percentile_cont(0.25) WITHIN GROUP (ORDER BY window_expectancy_r) AS r_q25, "
+            "         percentile_cont(0.50) WITHIN GROUP (ORDER BY window_expectancy_r) AS r_q50, "
+            "         percentile_cont(0.75) WITHIN GROUP (ORDER BY window_expectancy_r) AS r_q75, "
+            "         sum(trades) AS total_trades "
+            "  FROM per_window GROUP BY config_name"
             ") "
-            "SELECT config_name, count(*) AS windows, "
-            "       count(*) FILTER (WHERE window_pnl > 0) AS windows_positive, "
-            "       percentile_cont(0.25) WITHIN GROUP (ORDER BY window_pnl), "
-            "       percentile_cont(0.50) WITHIN GROUP (ORDER BY window_pnl), "
-            "       percentile_cont(0.75) WITHIN GROUP (ORDER BY window_pnl), "
-            "       percentile_cont(0.25) WITHIN GROUP (ORDER BY window_expectancy), "
-            "       percentile_cont(0.50) WITHIN GROUP (ORDER BY window_expectancy), "
-            "       percentile_cont(0.75) WITHIN GROUP (ORDER BY window_expectancy), "
-            "       sum(trades) AS total_trades "
-            "FROM per_window GROUP BY config_name ORDER BY config_name"
+            "SELECT c.config_name, c.windows, c.windows_positive, "
+            "       c.pnl_q25, c.pnl_q50, c.pnl_q75, "
+            "       c.exp_q25, c.exp_q50, c.exp_q75, "
+            "       c.r_q25, c.r_q50, c.r_q75, "
+            "       c.total_trades, t.win_rate, "
+            "       t.gross_win / nullif(t.gross_loss, 0) AS profit_factor, "
+            "       t.account_value, gate.g, gate.sid "
+            "FROM per_config c "
+            "LEFT JOIN per_config_trades t ON t.config_name = c.config_name "
+            "LEFT JOIN LATERAL ("
+            "  SELECT s2.result->'pooled_gate' AS g, s2.id::text AS sid "
+            "  FROM public.validation_studies s2 "
+            "  WHERE s2.user_id = %s AND s2.params->>'config_name' = c.config_name "
+            "    AND s2.result ? 'pooled_gate' "
+            "  ORDER BY s2.result->'pooled_gate'->>'computed_at' DESC NULLS LAST "
+            "  LIMIT 1"
+            ") gate ON true "
+            "ORDER BY c.config_name"
         )
         try:
             from intraday_trade_spy.storage.db_pool import get_pool
 
             with get_pool().connection() as conn, conn.cursor() as cur:
-                cur.execute(sql, [self.user_id])
+                cur.execute(sql, [self.user_id, self.user_id, self.user_id])
                 rows = cur.fetchall()
         except CloudPushError:
             raise
         except Exception as exc:
             raise CloudPushError(f"insights_config_distribution failed: {exc}") from exc
+
+        def _gate_fields(g: dict | None, sid) -> dict:
+            ci = (g or {}).get("expectancy_dollars_ci") or {}
+            return {
+                "gate_passed": (g or {}).get("passed"),
+                "gate_ci_low": ci.get("low"),
+                "gate_ci_high": ci.get("high"),
+                "gate_computed_at": (g or {}).get("computed_at"),
+                "gate_study_id": str(sid) if sid is not None else None,
+            }
 
         out = [
             {
@@ -1586,7 +1636,14 @@ class SupabaseStorageClient:
                 "expectancy_q25": float(r[6]) if r[6] is not None else None,
                 "expectancy_q50": float(r[7]) if r[7] is not None else None,
                 "expectancy_q75": float(r[8]) if r[8] is not None else None,
-                "total_trades": int(r[9] or 0),
+                "r_q25": float(r[9]) if r[9] is not None else None,
+                "r_q50": float(r[10]) if r[10] is not None else None,
+                "r_q75": float(r[11]) if r[11] is not None else None,
+                "total_trades": int(r[12] or 0),
+                "win_rate": float(r[13]) if r[13] is not None else None,
+                "profit_factor": float(r[14]) if r[14] is not None else None,
+                "account_value": float(r[15]) if r[15] is not None else None,
+                **_gate_fields(r[16], r[17]),
             }
             for r in rows
         ]

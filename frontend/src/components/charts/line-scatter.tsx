@@ -15,12 +15,22 @@ export type LineScatterSeries = {
   points: LineScatterPoint[]
 }
 
+// 016-polish: shaded x-ranges (e.g. labeled market regimes) drawn behind the
+// series. Bands outside the x-domain are skipped; partial overlaps clamp.
+export type LineScatterBand = {
+  from: number
+  to: number
+  label: string
+}
+
 export function LineScatter({
   series,
+  bands = [],
   onPointClick,
   height = 180,
 }: {
   series: LineScatterSeries[]
+  bands?: LineScatterBand[]
   onPointClick?(datum: unknown): void
   height?: number
 }) {
@@ -39,6 +49,9 @@ export function LineScatter({
   const x = (v: number) => PAD + ((v - xMin) / (xMax - xMin || 1)) * (W - 2 * PAD)
   const y = (v: number) => H - PAD - ((v - yMin) / (yMax - yMin || 1)) * (H - 2 * PAD)
   const crossesZero = yMin < 0 && yMax > 0
+  const visibleBands = bands
+    .map((b) => ({ ...b, from: Math.max(b.from, xMin), to: Math.min(b.to, xMax) }))
+    .filter((b) => b.from < b.to)
 
   return (
     <div>
@@ -47,6 +60,22 @@ export function LineScatter({
         preserveAspectRatio="none"
         style={{ width: '100%', height, display: 'block' }}
       >
+        {visibleBands.map((b, i) => (
+          <g key={i}>
+            <rect
+              data-testid="ls-band"
+              x={x(b.from)}
+              y={0}
+              width={Math.max(x(b.to) - x(b.from), 1)}
+              height={H}
+              fill="var(--text-muted)"
+              opacity={0.07}
+            />
+            <text x={x(b.from) + 4} y={12} fontSize={9} fill="var(--text-muted)">
+              {b.label}
+            </text>
+          </g>
+        ))}
         {crossesZero && (
           <line
             data-testid="ls-zero"
