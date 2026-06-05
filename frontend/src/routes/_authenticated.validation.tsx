@@ -5,7 +5,7 @@ import { StudiesTable } from '@/components/validation/StudiesTable'
 import { LockboxCard } from '@/components/validation/LockboxCard'
 import { SectionTitle, cardSection } from '@/components/section-title'
 import { useConfigs } from '@/hooks/useConfigs'
-import { useLockboxStatus, useRunLockbox, useStudies } from '@/hooks/useStudies'
+import { useLockboxStatus, useRerunStudy, useRunLockbox, useStudies } from '@/hooks/useStudies'
 
 export const Route = createFileRoute('/_authenticated/validation')({
   component: ValidationPage,
@@ -18,6 +18,7 @@ function ValidationPage() {
   const studiesQuery = useStudies()
   const lockbox = useLockboxStatus()
   const runLockbox = useRunLockbox()
+  const rerun = useRerunStudy()
   const configsQuery = useConfigs()
 
   const studies = studiesQuery.data?.studies ?? []
@@ -49,7 +50,7 @@ function ValidationPage() {
         ) : studiesQuery.isLoading ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm, 13px)' }}>Loading…</p>
         ) : (
-          <StudiesTable studies={studies} />
+          <StudiesTable studies={studies} onRerun={(id) => rerun.mutate(id)} />
         )}
       </section>
 

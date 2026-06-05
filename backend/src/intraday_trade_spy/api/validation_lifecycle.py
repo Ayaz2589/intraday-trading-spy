@@ -42,6 +42,12 @@ class RunNotFound(Exception):
         super().__init__(run_id)
 
 
+class StudyNotFound(Exception):
+    def __init__(self, study_id: str) -> None:
+        self.study_id = study_id
+        super().__init__(study_id)
+
+
 class LockboxAlreadySpent(Exception):
     def __init__(self, spent_fingerprint: str | None, spent_run_id=None) -> None:
         self.spent_fingerprint = spent_fingerprint
@@ -420,6 +426,38 @@ def start_study(
         strategy_id=cfg_row.get("strategy_id"),
     )
     return study_id, planned
+
+
+def rerun_study(
+    *,
+    study_id,
+    user_id,
+    storage,
+    background_tasks,
+    base_cfg: Config | None = None,
+):
+    """Feature 014 (FR-010): clone an existing study's kind + config + params
+    into a brand-new study via the existing start_study() — identical
+    parameters, no re-optimization (constitution II). confirm_large=True: the
+    operator is explicitly re-running something that already ran once. The
+    original study row is never modified. Returns (new_study_id, planned)."""
+    row = storage.get_validation_study(study_id=str(study_id), user_id=user_id)
+    if row is None:
+        raise StudyNotFound(str(study_id))
+
+    stored = row.get("params") or {}
+    return start_study(
+        user_id=user_id,
+        kind=row["kind"],
+        config_name=stored.get("config_name") or "default",
+        # The stored row's "walk_forward" key holds the original `params`
+        # argument for BOTH kinds (see start_study's insert_validation_study).
+        params=stored.get("walk_forward") or {},
+        confirm_large=True,
+        storage=storage,
+        background_tasks=background_tasks,
+        base_cfg=base_cfg,
+    )
 
 
 def _segment_window(segment: str, segs):

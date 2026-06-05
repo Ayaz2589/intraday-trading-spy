@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { StudiesTable, resultSummary } from './StudiesTable'
 import type { ValidationStudy } from '@/api/types'
 
@@ -46,6 +46,23 @@ describe('StudiesTable', () => {
   it('renders the empty state', () => {
     render(<StudiesTable studies={[]} />)
     expect(screen.getByTestId('studies-table').textContent).toMatch(/no studies yet/i)
+  })
+
+  // Feature 014 (FR-010, T030) — re-run from the studies table.
+  it('shows a Re-run button in the expanded detail and calls onRerun', () => {
+    const onRerun = vi.fn()
+    render(<StudiesTable studies={[study({})]} onRerun={onRerun} />)
+    fireEvent.click(screen.getByTestId('study-row-s1'))
+    const btn = screen.getByRole('button', { name: /^↻ re-run study$/i })
+    fireEvent.click(btn)
+    expect(onRerun).toHaveBeenCalledWith('s1')
+    expect(screen.getByLabelText(/help: re-run study/i)).toBeInTheDocument()
+  })
+
+  it('renders no Re-run button without an onRerun handler', () => {
+    render(<StudiesTable studies={[study({})]} />)
+    fireEvent.click(screen.getByTestId('study-row-s1'))
+    expect(screen.queryByRole('button', { name: /re-run study/i })).not.toBeInTheDocument()
   })
 })
 

@@ -120,10 +120,10 @@ study; buttons on StudiesTable rows and the detail header.
 **Independent Test**: re-run a pre-014 study → new study with identical params
 appears and (post-completion) is fully drillable (quickstart §5).
 
-- [ ] T028 [P] [US3] Failing tests: `rerun_study()` loads the study row and calls `start_study(kind, config_name, params, confirm_large=True)`; endpoint `POST /api/validation/studies/{study_id}/rerun` → 202 `StudyRerunResponse`; 404 unknown id; deleted config surfaces `StudyConfigNotFound`, in backend/tests/api/test_validation_rerun.py
-- [ ] T029 [US3] Implement `rerun_study()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py, the endpoint in backend/src/intraday_trade_spy/api/routers/validation.py, and `StudyRerunResponse` in backend/src/intraday_trade_spy/api/schemas.py
-- [ ] T030 [P] [US3] Failing tests: Re-run button on StudiesTable rows and StudyHeaderCard calls `rerunStudy(studyId)` and surfaces the new study (navigate/refetch); `?` HelpTooltip for "re-run study", in frontend/src/components/validation/StudiesTable.test.tsx (extend) and StudyHeaderCard.test.tsx (extend)
-- [ ] T031 [US3] Implement `rerunStudy()` in frontend/src/api/validation.ts and wire the buttons in frontend/src/components/validation/StudiesTable.tsx and StudyHeaderCard.tsx
+- [x] T028 [P] [US3] Failing tests: `rerun_study()` loads the study row and calls `start_study(kind, config_name, params, confirm_large=True)`; endpoint `POST /api/validation/studies/{study_id}/rerun` → 202 `StudyRerunResponse`; 404 unknown id; deleted config surfaces `StudyConfigNotFound`, in backend/tests/api/test_validation_rerun.py
+- [x] T029 [US3] Implement `rerun_study()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py, the endpoint in backend/src/intraday_trade_spy/api/routers/validation.py, and `StudyRerunResponse` in backend/src/intraday_trade_spy/api/schemas.py
+- [x] T030 [P] [US3] Failing tests: Re-run button on StudiesTable rows and StudyHeaderCard calls `rerunStudy(studyId)` and surfaces the new study (navigate/refetch); `?` HelpTooltip for "re-run study", in frontend/src/components/validation/StudiesTable.test.tsx (extend) and StudyHeaderCard.test.tsx (extend)
+- [x] T031 [US3] Implement `rerunStudy()` in frontend/src/api/validation.ts and wire the buttons in frontend/src/components/validation/StudiesTable.tsx and StudyHeaderCard.tsx
 
 **Checkpoint**: all three studies-related stories functional.
 

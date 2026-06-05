@@ -289,6 +289,9 @@ export type StartStudyRequest = {
 }
 export type StartStudyResponse = { study_id: UUID; status: 'queued'; planned_evaluations: number }
 
+// Feature 014 (FR-010): the NEW study created by cloning an existing one.
+export type StudyRerunResponse = { study_id: UUID; planned_evaluations: number }
+
 export type SignificanceRequest = { run_id: UUID }
 
 export type LockboxState = 'unspent' | 'spent' | 'burned'

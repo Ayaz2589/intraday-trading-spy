@@ -8,6 +8,7 @@ import type {
   StartStudyRequest,
   StartStudyResponse,
   StudyListResponse,
+  StudyRerunResponse,
   UUID,
   ValidationStudy,
   ValidationStudyStatus,
@@ -27,6 +28,14 @@ export function getStudy(studyId: UUID): Promise<ValidationStudy> {
 
 export function getStudyStatus(studyId: UUID): Promise<ValidationStudyStatus> {
   return apiRequest<ValidationStudyStatus>(`/api/validation/studies/${studyId}/status`)
+}
+
+// Feature 014 (FR-010): clone a study's kind + config + params into a fresh,
+// drillable study. The original is never modified.
+export function rerunStudy(studyId: UUID): Promise<StudyRerunResponse> {
+  return apiRequest<StudyRerunResponse>(`/api/validation/studies/${studyId}/rerun`, {
+    method: 'POST',
+  })
 }
 
 export function computeSignificance(body: SignificanceRequest): Promise<SignificanceResult> {

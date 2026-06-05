@@ -306,6 +306,12 @@ class StartStudyResponse(_ResponseBase):
     planned_evaluations: int
 
 
+class StudyRerunResponse(_ResponseBase):
+    # Feature 014 (FR-010): the NEW study created by cloning an existing one.
+    study_id: UUID
+    planned_evaluations: int
+
+
 class SignificanceRequest(_Base):
     run_id: UUID
 
