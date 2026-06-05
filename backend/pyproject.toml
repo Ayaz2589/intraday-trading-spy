@@ -24,6 +24,7 @@ dependencies = [
     # the Feature 013 perf fix: per-request TLS connects to cloud Supabase
     # cost ~1s each.
     "psycopg[binary]>=3.2",
+    "anthropic>=0.40",
     "psycopg-pool>=3.2",
 ]
 
