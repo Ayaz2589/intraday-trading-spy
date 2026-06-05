@@ -203,3 +203,11 @@ describe("PooledGatePanel — Claude's read (US3)", () => {
     expect(screen.queryByTestId("claude-read")).not.toBeInTheDocument();
   });
 });
+
+describe("PooledGatePanel — determinism label (US4)", () => {
+  it("labels gate numbers as seeded and reproducible", async () => {
+    const { PooledGatePanel } = await import("./PooledGatePanel");
+    wrap(createElement(PooledGatePanel, { study: study(GATE_FAST) }));
+    expect(screen.getByText(/seeded.*reproducible|reproducible.*seeded/i)).toBeInTheDocument();
+  });
+});

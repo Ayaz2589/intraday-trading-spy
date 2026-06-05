@@ -93,6 +93,9 @@ export function PooledGatePanel({ study }: { study: ValidationStudy }) {
                 {gate.windows_with_trades} of {gate.windows_total} windows contributed trades
               </span>
             )}
+            <span style={{ color: "var(--text-muted)" }}>
+              seeded · reproducible (seed {gate.seed})
+            </span>
           </div>
 
           <div style={{ display: "flex", gap: "var(--sp-4)", alignItems: "center", marginBottom: "var(--sp-3)" }}>

@@ -81,7 +81,8 @@ export function ClaudeReadCard({
 
       <p className="stat-label">
         Advisory only — verify every claim against its cited metric. Claude
-        never trades or tunes.
+        never trades or tunes, and unlike the seeded gate numbers this text is
+        non-deterministic.
       </p>
 
       {cfg && !cfg.configured && (

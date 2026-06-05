@@ -180,3 +180,13 @@ describe("ClaudeReadCard", () => {
     expect(screen.getByText(/advisory only/i)).toBeInTheDocument();
   });
 });
+
+describe("ClaudeReadCard — determinism label (US4)", () => {
+  it("labels the read as non-deterministic, unlike the seeded gate", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() =>
+      expect(screen.getByText(/non-deterministic/i)).toBeInTheDocument()
+    );
+  });
+});
