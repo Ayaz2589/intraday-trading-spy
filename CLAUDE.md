@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: none in flight — `015-monte-carlo` is implemented & merged. Next up: `016` (insights), then `017` (optional UI lanes).
+**Active plan**: [specs/016-insights/plan.md](specs/016-insights/plan.md) — cross-run insights (edge time-series + config distribution, new Insights page), pooled study gate (productized wf-rr3 lockbox gate, persisted on the study), and advisory Claude narrative (anthropic SDK, structured cited-claims, billing-pause switch). Migration 0123; new dep `anthropic`.
 
-**Most recent spec**: [specs/015-monte-carlo/spec.md](specs/015-monte-carlo/spec.md)
+**Most recent spec**: [specs/016-insights/spec.md](specs/016-insights/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 

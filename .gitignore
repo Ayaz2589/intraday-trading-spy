@@ -30,3 +30,6 @@ backend/.supabase/
 
 # superpowers visual-companion sessions
 .superpowers/
+
+# Claude Code worktrees
+.claude/worktrees/
