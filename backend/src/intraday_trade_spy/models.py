@@ -319,10 +319,22 @@ class ClaudeFinding(BaseModel):
     confidence: Literal["low", "medium", "high"]
 
 
+class ConfigChange(BaseModel):
+    """Feature 017: one whitelisted knob suggestion inside an experiment.
+    Only registry-valid changes survive sanitation into storage."""
+
+    model_config = ConfigDict(frozen=True)
+    knob_path: str
+    value: float
+
+
 class ClaudeExperiment(BaseModel):
     model_config = ConfigDict(frozen=True)
     hypothesis: str
     how_to_test: str
+    # Feature 017: knob-expressible experiments carry structured deltas;
+    # additive with default [] so pre-017 analyses are unaffected.
+    suggested_config_changes: list[ConfigChange] = []
 
 
 class ClaudeAnalysis(BaseModel):

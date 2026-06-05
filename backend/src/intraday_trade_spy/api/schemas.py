@@ -200,6 +200,7 @@ class ConfigView(_ResponseBase):
     strategy_id: UUID
     params: dict
     is_active: bool = False  # Feature 012
+    description: Optional[str] = None  # Feature 017 — provenance
 
 
 class StrategyView(_ResponseBase):
@@ -456,6 +457,11 @@ class ConfigCreateRequest(_Base):
     source: Literal["scratch", "preset", "duplicate"] = "scratch"
     preset_name: Optional[str] = None      # required when source == "preset"
     from_config_id: Optional[UUID] = None  # required when source == "duplicate"
+    # Feature 017: optional explicit params (scratch source; e.g. a reviewed
+    # Claude-drafted config) — same trust level as the PATCH params surface.
+    params: Optional[dict] = None
+    # Feature 017: durable provenance ("Drafted from Claude analysis ...").
+    description: Optional[str] = Field(default=None, max_length=500)
 
     @model_validator(mode="before")
     @classmethod

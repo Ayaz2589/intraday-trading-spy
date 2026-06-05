@@ -242,3 +242,98 @@ def test_unparseable_analysis_is_a_parse_failure(monkeypatch):
     with pytest.raises(ca.ClaudeParseFailure):
         _run(storage, client, monkeypatch=monkeypatch)
     storage.insert_insight_analysis.assert_not_called()
+
+
+# ---- Feature 017: structured knob suggestions (sanitize-before-store) --------
+
+
+def _analysis_with_changes():
+    from intraday_trade_spy.models import (
+        ClaudeAnalysis, ClaudeExperiment, ConfigChange,
+    )
+
+    return ClaudeAnalysis(
+        summary="s",
+        findings=[],
+        risks=[],
+        suggested_experiments=[
+            ClaudeExperiment(
+                hypothesis="Wider VWAP distance",
+                how_to_test="Run a walk-forward",
+                suggested_config_changes=[
+                    ConfigChange(
+                        knob_path="strategy.vwap_pullback.target.risk_reward",
+                        value=2.5,
+                    ),                                                # valid
+                    ConfigChange(knob_path="broker.fees_per_share", value=0.0),  # off-list
+                    ConfigChange(
+                        knob_path="strategy.vwap_pullback.max_distance_from_vwap_pct",
+                        value=99.0,
+                    ),                                                # out of bounds
+                ],
+            ),
+            ClaudeExperiment(
+                hypothesis="Regime filter",
+                how_to_test="Needs new code",
+                suggested_config_changes=[
+                    ConfigChange(knob_path="made.up.path", value=1.0),  # all invalid
+                ],
+            ),
+        ],
+    )
+
+
+def test_system_prompt_carries_the_registry_section(monkeypatch):
+    from intraday_trade_spy.validation.knobs import KNOB_REGISTRY
+
+    storage = _storage()
+    client = _mock_client()
+    _run(storage, client, monkeypatch=monkeypatch)
+    system_text = client.messages.parse.call_args.kwargs["system"][0]["text"]
+    for path in KNOB_REGISTRY:
+        assert path in system_text
+
+
+def test_suggestions_are_sanitized_before_storage(monkeypatch):
+    storage = _storage()
+    client = _mock_client(parsed=_analysis_with_changes())
+    _run(storage, client, monkeypatch=monkeypatch)
+    stored = storage.insert_insight_analysis.call_args.kwargs["analysis"]
+    exp0 = stored["suggested_experiments"][0]["suggested_config_changes"]
+    assert exp0 == [
+        {"knob_path": "strategy.vwap_pullback.target.risk_reward", "value": 2.5}
+    ]
+    # every suggestion invalid -> stored as [] (renders text-only)
+    assert stored["suggested_experiments"][1]["suggested_config_changes"] == []
+
+
+def test_no_suggestion_analysis_behaves_as_016(monkeypatch):
+    storage = _storage()
+    client = _mock_client()  # default fixture has no suggestions
+    _run(storage, client, monkeypatch=monkeypatch)
+    stored = storage.insert_insight_analysis.call_args.kwargs["analysis"]
+    for exp in stored["suggested_experiments"]:
+        assert exp["suggested_config_changes"] == []
+
+
+def test_payload_builders_carry_schema_version_2():
+    ts = {"points": [{"run_id": "r1"}], "snapshot_fingerprint": "a"}
+    dist = {"rows": [], "snapshot_fingerprint": "b"}
+    p = ca.build_insights_payload(timeseries=ts, distribution=dist, max_windows=10)
+    assert p["analysis_schema_version"] == 2
+    versionless = {k: v for k, v in p.items() if k != "analysis_schema_version"}
+    assert ca.payload_hash(p) != ca.payload_hash(versionless)  # R3: hash invalidation
+
+    study = {"id": "s1", "params": {}, "result": {"pooled_gate": {"computed_at": "t"}}}
+    assert ca.build_study_payload(study=study)["analysis_schema_version"] == 2
+
+
+def test_generation_path_never_mutates_configs(monkeypatch):
+    # SC-003 / Constitution II (analyze C1): the analysis pipeline has NO
+    # config write path — not on success, not on failure.
+    storage = _storage()
+    client = _mock_client(parsed=_analysis_with_changes())
+    _run(storage, client, monkeypatch=monkeypatch)
+    storage.create_config.assert_not_called()
+    storage.update_config.assert_not_called()
+    storage.set_active_config.assert_not_called()
