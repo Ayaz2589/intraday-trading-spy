@@ -154,6 +154,25 @@ describe("InsightsPage — design-handoff redesign (hero + page chrome)", () => 
     expect(pill).toHaveTextContent(/no config passes/i);
   });
 
+  it("threads gate CIs into the verdict banner as number-lines", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue({
+      ...DIST,
+      rows: [{
+        ...DIST.rows[0],
+        gate_passed: false, gate_ci_low: -0.71, gate_ci_high: 2.6, gate_study_id: "s9",
+      }],
+    });
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    const banner = await screen.findByTestId("insights-verdict-banner");
+    const row = banner.querySelector("[data-testid='gate-ci-row']")!;
+    expect(row).toBeTruthy();
+    expect(row).toHaveTextContent("wf-rr3");
+    expect(row).toHaveTextContent("-0.71");
+    expect(row).toHaveTextContent("2.60");
+  });
+
   it("hero footer pill goes green when a pooled gate passes", async () => {
     edgeMock.mockResolvedValue(EDGE);
     distMock.mockResolvedValue({

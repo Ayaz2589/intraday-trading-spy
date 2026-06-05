@@ -60,6 +60,39 @@ export type VerdictBanner = {
   tone: 'pass' | 'fail'
   title: string
   text: string
+  // Optional per-config pooled-gate CIs — rendered as number-lines inside the
+  // banner so "the CI includes zero" is visible, not just stated.
+  gates?: { name: string; low: number; high: number; passed: boolean }[]
+}
+
+// De-densify (2026-06-05): one CI number-line per gated config, on a shared
+// domain so intervals are comparable. The zero marker is the whole point —
+// an interval straddling it IS the failed lockbox precondition.
+function GateCiStrips({ gates }: { gates: NonNullable<VerdictBanner['gates']> }) {
+  const lo = Math.min(0, ...gates.map((g) => g.low))
+  const hi = Math.max(0, ...gates.map((g) => g.high))
+  const span = hi - lo || 1
+  const pad = span * 0.06
+  const x = (v: number) => ((v - (lo - pad)) / (span + 2 * pad)) * 100
+  return (
+    <div className="ci-list" data-testid="gate-ci-list">
+      {gates.map((g) => (
+        <div className="ci-row" key={g.name} data-testid="gate-ci-row">
+          <span className="ci-name mono">{g.name}</span>
+          <span className="ci-val mono">{g.low.toFixed(2)}</span>
+          <div className="ci-track">
+            <span
+              className={`ci-int${g.passed ? ' ci-pass' : ''}`}
+              style={{ left: `${x(g.low)}%`, width: `${Math.max(x(g.high) - x(g.low), 1)}%` }}
+            />
+            <span className="ci-zero" style={{ left: `${x(0)}%` }} title="zero" />
+          </div>
+          <span className="ci-val mono">{g.high.toFixed(2)}</span>
+          <span className="ci-tag">{g.passed ? 'excludes 0' : 'includes 0'}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function ClaudeReadCard({
@@ -85,11 +118,12 @@ export function ClaudeReadCard({
   const generate = useGenerateClaudeAnalysis(scope, scopeId)
   const setEnabled = useSetClaudeEnabled()
 
-  // Progressive disclosure (declutter, 2026-06-05): findings show the top 3
-  // by confidence; risks/experiments collapse behind count headers.
+  // Progressive disclosure (de-densify, 2026-06-05 round 2): findings show
+  // the top 3 by confidence; findings/risks/experiments live behind section
+  // tabs (one visible at a time); long summaries clamp to two lines.
   const [showAllFindings, setShowAllFindings] = useState(false)
-  const [risksOpen, setRisksOpen] = useState(false)
-  const [experimentsOpen, setExperimentsOpen] = useState(false)
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  const [section, setSection] = useState<'findings' | 'risks' | 'experiments'>('findings')
 
   const cfg = settings.data
   const analysis = stored.data ?? generate.data ?? null
@@ -187,103 +221,155 @@ export function ClaudeReadCard({
             <div className="stat-label">
               {banner.text} <span>(derived from the seeded gates — not Claude)</span>
             </div>
+            {banner.gates && banner.gates.length > 0 && <GateCiStrips gates={banner.gates} />}
           </div>
         </div>
       )}
 
       {analysis && (
         <div style={{ display: 'grid', gap: 'var(--sp-3)' }}>
-          <div>{analysis.analysis.summary}</div>
-
-          {analysis.analysis.findings.length > 0 &&
-            (() => {
-              const sorted = [...analysis.analysis.findings].sort(
-                (a, b) => (CONF_RANK[a.confidence] ?? 3) - (CONF_RANK[b.confidence] ?? 3),
-              )
-              const visible = showAllFindings ? sorted : sorted.slice(0, 3)
-              return (
-                <div>
-                  <div
-                    className="stat-label"
-                    style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}
+          {(() => {
+            const summary = analysis.analysis.summary
+            const longSummary = summary.length > 220
+            return (
+              <div>
+                <div
+                  data-testid="claude-summary"
+                  className={longSummary && !summaryOpen ? 'clamp-2' : undefined}
+                >
+                  {summary}
+                </div>
+                {longSummary && (
+                  <button
+                    type="button"
+                    onClick={() => setSummaryOpen((v) => !v)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      color: 'var(--accent)',
+                      fontWeight: 600,
+                      fontSize: 'var(--fs-xs)',
+                      fontFamily: 'inherit',
+                    }}
                   >
-                    <span>FINDINGS ({sorted.length}) — each tied to a cited metric</span>
-                    {sorted.length > 3 && (
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ fontSize: 'var(--fs-xs, 11px)', padding: '0 8px' }}
-                        onClick={() => setShowAllFindings((v) => !v)}
-                      >
-                        {showAllFindings ? 'show top 3' : `show all ${sorted.length}`}
-                      </button>
-                    )}
-                  </div>
-                  <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
-                    <tbody>
+                    {summaryOpen ? 'less' : 'more'}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+
+          {(() => {
+            const findings = analysis.analysis.findings
+            const risks = analysis.analysis.risks
+            const experiments = analysis.analysis.suggested_experiments
+            const tabs = [
+              { key: 'findings' as const, label: 'Findings', count: findings.length },
+              { key: 'risks' as const, label: 'Risks', count: risks.length },
+              { key: 'experiments' as const, label: 'Experiments', count: experiments.length },
+            ].filter((t) => t.count > 0)
+            const active = tabs.some((t) => t.key === section) ? section : tabs[0]?.key
+            if (tabs.length === 0) return null
+
+            const sorted = [...findings].sort(
+              (a, b) => (CONF_RANK[a.confidence] ?? 3) - (CONF_RANK[b.confidence] ?? 3),
+            )
+            const visible = showAllFindings ? sorted : sorted.slice(0, 3)
+
+            return (
+              <div style={{ display: 'grid', gap: 'var(--sp-3)' }}>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} data-testid="claude-tabs">
+                  {tabs.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      className={`tab${active === t.key ? ' tab-on' : ''}`}
+                      onClick={() => setSection(t.key)}
+                    >
+                      {t.label} <span className="tab-count">{t.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {active === 'findings' && (
+                  <div>
+                    <div
+                      className="stat-label"
+                      style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}
+                    >
+                      <span>cited values are computed from our data — not Claude's</span>
+                      {sorted.length > 3 && (
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ fontSize: 'var(--fs-xs, 11px)', padding: '0 8px' }}
+                          onClick={() => setShowAllFindings((v) => !v)}
+                        >
+                          {showAllFindings ? 'show top 3' : `show all ${sorted.length}`}
+                        </button>
+                      )}
+                    </div>
+                    <div className="finding-grid">
                       {visible.map((f, i) => {
                         const value = resolveMetric(f.evidence_metric)
                         return (
-                          <tr key={i} data-testid="claude-finding">
-                            <td
-                              title={f.claim}
+                          <div key={i} className="finding-card" data-testid="claude-finding">
+                            <div
                               style={{
-                                maxWidth: 0,
-                                width: '55%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: 8,
                               }}
                             >
-                              {f.claim}
-                            </td>
-                            <td className="mono" title={f.evidence_metric}>
-                              {value !== undefined ? (
-                                <>
-                                  <span className="stat-label">{leafOf(f.evidence_metric)}</span>{' '}
-                                  <strong style={{ color: 'var(--info)' }}>← {value}</strong>
-                                </>
-                              ) : (
-                                <span style={{ color: 'var(--loss)' }}>
-                                  ⚠ metric not found ({leafOf(f.evidence_metric)})
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ width: 74 }}>
+                              <span
+                                className="stat-label mono"
+                                title={f.evidence_metric}
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {leafOf(f.evidence_metric)}
+                              </span>
                               <span
                                 className="badge badge-xs mono"
                                 style={{
                                   color: CONF_COLOR[f.confidence] ?? 'var(--text-muted)',
                                   background: CONF_BG[f.confidence] ?? 'var(--surface-3)',
                                   textTransform: 'uppercase',
+                                  flexShrink: 0,
                                 }}
                               >
                                 {f.confidence}
                               </span>
-                            </td>
-                          </tr>
+                            </div>
+                            {value !== undefined ? (
+                              <div className="finding-value">{value}</div>
+                            ) : (
+                              <div
+                                className="finding-value"
+                                style={{ color: 'var(--loss)', fontSize: 'var(--fs-sm)' }}
+                              >
+                                ⚠ metric not found
+                              </div>
+                            )}
+                            <div className="finding-claim clamp-2" title={f.claim}>
+                              {f.claim}
+                            </div>
+                          </div>
                         )
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            })()}
+                    </div>
+                  </div>
+                )}
 
-          <div style={{ display: 'grid', gap: 'var(--sp-2)' }}>
-            {analysis.analysis.risks.length > 0 && (
-              <div>
-                <button
-                  type="button"
-                  className="stat-label"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setRisksOpen((v) => !v)}
-                >
-                  {risksOpen ? '▾' : '▸'} RISKS ({analysis.analysis.risks.length})
-                </button>
-                {risksOpen && (
+                {active === 'risks' && (
                   <div data-testid="claude-risks">
-                    {analysis.analysis.risks.map((r, i) => (
+                    {risks.map((r, i) => (
                       <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0' }}>
                         <span style={{ color: 'var(--loss)' }}>●</span>
                         <span>{r}</span>
@@ -291,27 +377,14 @@ export function ClaudeReadCard({
                     ))}
                   </div>
                 )}
-              </div>
-            )}
 
-            {analysis.analysis.suggested_experiments.length > 0 && (
-              <div>
-                <button
-                  type="button"
-                  className="stat-label"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setExperimentsOpen((v) => !v)}
-                >
-                  {experimentsOpen ? '▾' : '▸'} EXPERIMENTS TO RUN (
-                  {analysis.analysis.suggested_experiments.length})
-                </button>{' '}
-                <HelpTooltip helpKey="claude_experiment_draft" />
-                {experimentsOpen && (
-                  <div
-                    data-testid="claude-experiments"
-                    style={{ display: 'grid', gap: 6, marginTop: 4 }}
-                  >
-                    {analysis.analysis.suggested_experiments.map((e, i) => (
+                {active === 'experiments' && (
+                  <div data-testid="claude-experiments" style={{ display: 'grid', gap: 6 }}>
+                    <div className="stat-label">
+                      hypotheses to test next — drafts are human-gated{' '}
+                      <HelpTooltip helpKey="claude_experiment_draft" />
+                    </div>
+                    {experiments.map((e, i) => (
                       <div
                         key={i}
                         style={{
@@ -379,8 +452,8 @@ export function ClaudeReadCard({
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            )
+          })()}
 
           <div
             data-testid="claude-footer-row"

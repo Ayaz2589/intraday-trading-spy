@@ -102,10 +102,10 @@ describe("ClaudeReadCard", () => {
     );
     // Cited metric value rendered FROM OUR DATA beside the claim.
     expect(screen.getByText(/\[−0\.53, \+2\.56\]/)).toBeInTheDocument();
-    // Risks/experiments are collapsed by default (progressive disclosure).
-    fireEvent.click(screen.getByRole("button", { name: /risks \(1\)/i }));
+    // Risks/experiments live behind section tabs (progressive disclosure).
+    fireEvent.click(screen.getByRole("button", { name: /risks/i }));
     expect(screen.getByText(/Two windows bleed heavily/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /experiments to run \(1\)/i }));
+    fireEvent.click(screen.getByRole("button", { name: /experiments/i }));
     expect(screen.getByText(/Regime filter helps/)).toBeInTheDocument();
     const footer = screen.getByTestId("claude-footer");
     expect(footer).toHaveTextContent("h1");
@@ -216,7 +216,9 @@ describe("ClaudeReadCard — citation path normalization (016-polish)", () => {
     await waitFor(() =>
       expect(screen.getByText(/Bracket-notation citation resolves/)).toBeInTheDocument()
     );
-    const row = screen.getByText(/Bracket-notation citation resolves/).closest("tr")!;
+    const row = screen
+      .getByText(/Bracket-notation citation resolves/)
+      .closest("[data-testid='claude-finding']")!;
     expect(row).toHaveTextContent("61");
     expect(row).not.toHaveTextContent(/not found/i);
   });
@@ -237,15 +239,15 @@ describe("ClaudeReadCard — redesigned sections (mockup 2026-06-05)", () => {
     expect(banner).toHaveTextContent(/seeded gates/i); // determinism-split honesty
   });
 
-  it("lays out risks and experiments as labeled sections with footer actions", async () => {
+  it("lays out risks and experiments as tabbed sections with footer actions", async () => {
     getAnalysisMock.mockResolvedValue(ANALYSIS);
     wrap(await card());
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /risks \(1\)/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /risks/i })).toBeInTheDocument()
     );
-    fireEvent.click(screen.getByRole("button", { name: /risks \(1\)/i }));
+    fireEvent.click(screen.getByRole("button", { name: /risks/i }));
     expect(screen.getByTestId("claude-risks")).toHaveTextContent(/Two windows bleed heavily/);
-    fireEvent.click(screen.getByRole("button", { name: /experiments to run \(1\)/i }));
+    fireEvent.click(screen.getByRole("button", { name: /experiments/i }));
     const exp = screen.getByTestId("claude-experiments");
     expect(exp).toHaveTextContent(/Regime filter helps/);
     expect(exp).toHaveTextContent(/Run a filtered walk-forward/);
@@ -308,11 +310,11 @@ describe("ClaudeReadCard — progressive disclosure (declutter)", () => {
     expect(screen.getAllByTestId("claude-finding")).toHaveLength(5);
   });
 
-  it("collapses risks and experiments behind count headers by default", async () => {
+  it("defaults to the findings tab — risks/experiments hidden until selected", async () => {
     getAnalysisMock.mockResolvedValue(ANALYSIS);
     wrap(await card());
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /risks \(1\)/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /risks/i })).toBeInTheDocument()
     );
     expect(screen.queryByText(/Two windows bleed heavily/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Run a filtered walk-forward/)).not.toBeInTheDocument();
@@ -328,14 +330,15 @@ describe("ClaudeReadCard — progressive disclosure (declutter)", () => {
     expect(leaf.closest("[title]")?.getAttribute("title")).toContain("distribution.rows[1].pnl_q50");
   });
 
-  it("colors confidence chips and clamps claims to one line", async () => {
+  it("colors confidence chips and clamps claims to two lines", async () => {
     getAnalysisMock.mockResolvedValue(ANALYSIS);
     wrap(await card());
     await waitFor(() => expect(screen.getAllByTestId("claude-finding").length).toBeGreaterThan(0));
     const high = screen.getByText("high");
     expect(high.getAttribute("style")).toContain("--profit");
-    const claimCell = screen.getByText(/Pooled expectancy is positive/).closest("td")!;
-    expect(claimCell.getAttribute("style")).toContain("ellipsis");
+    expect(high.className).toContain("badge");
+    const claim = screen.getByText(/Pooled expectancy is positive/);
+    expect(claim.className).toContain("clamp-2");
   });
 
   it("folds the pause notice into a slim footer line when a verdict banner is present", async () => {
@@ -380,9 +383,7 @@ describe("ClaudeReadCard — structured knob suggestions (017 US1)", () => {
   it("renders surviving changes as label → value chips", async () => {
     getAnalysisMock.mockResolvedValue(WITH_CHANGES);
     wrap(await card());
-    fireEvent.click(
-      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /experiments/i }));
     const exp = screen.getByTestId("claude-experiments");
     expect(exp).toHaveTextContent(/risk:reward target → 2.5/);
     expect(exp).toHaveTextContent(/max distance from VWAP \(%\) → 0.4/);
@@ -391,9 +392,7 @@ describe("ClaudeReadCard — structured knob suggestions (017 US1)", () => {
   it("renders text-only (no chips) for experiments without surviving changes", async () => {
     getAnalysisMock.mockResolvedValue(ANALYSIS); // pre-017 shape: key absent
     wrap(await card());
-    fireEvent.click(
-      await screen.findByRole("button", { name: /experiments to run \(1\)/i })
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /experiments/i }));
     const exp = screen.getByTestId("claude-experiments");
     expect(exp).toHaveTextContent(/Regime filter helps/);
     expect(exp?.querySelectorAll("[data-testid='exp-change-chip']")).toHaveLength(0);
@@ -406,9 +405,7 @@ describe("ClaudeReadCard — Draft config → (017 US2)", () => {
     const { decodeDraft } = await import("@/lib/draft-config");
     getAnalysisMock.mockResolvedValue(WITH_CHANGES);
     wrap(await card());
-    fireEvent.click(
-      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /experiments/i }));
     const buttons = screen.getAllByRole("button", { name: /draft config/i });
     expect(buttons).toHaveLength(1); // only the experiment WITH changes
     navigateMock.mockClear();
@@ -431,9 +428,88 @@ describe("ClaudeReadCard — draft boundary tooltip (017 US3)", () => {
   it("explains the draft concept on the experiments surface", async () => {
     getAnalysisMock.mockResolvedValue(WITH_CHANGES);
     const { container } = wrap(await card());
-    fireEvent.click(
-      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /experiments/i }));
     expect(container.querySelector('[data-help-key="claude_experiment_draft"]')).toBeTruthy();
+  });
+});
+
+const LONG_SUMMARY = {
+  ...ANALYSIS,
+  analysis: {
+    ...ANALYSIS.analysis,
+    summary:
+      "Both configurations fail the bootstrap 95% CI on pooled expectancy because every " +
+      "interval includes zero. The wf-rr3 config has the tighter interval but its window " +
+      "median barely clears breakeven, while default rides one outlier H2 window. Neither " +
+      "shows regime-stable edge, and the 2022 bear segment is the common bleed.",
+  },
+};
+
+describe("ClaudeReadCard — de-densify (cards + tabs + CI strip)", () => {
+  it("renders findings as numbers-first evidence cards in a grid", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    const { container } = wrap(await card());
+    await waitFor(() => expect(screen.getAllByTestId("claude-finding").length).toBeGreaterThan(0));
+    expect(container.querySelector(".finding-grid")).toBeTruthy();
+    const first = screen.getAllByTestId("claude-finding")[0];
+    expect(first.className).toContain("finding-card");
+    // leaf metric overline + the cited value as the headline
+    expect(first).toHaveTextContent("expectancy_dollars_ci");
+    expect(first.querySelector(".finding-value")).toHaveTextContent(/\[−0\.53, \+2\.56\]/);
+  });
+
+  it("clamps a long summary to two lines with a more/less toggle", async () => {
+    getAnalysisMock.mockResolvedValue(LONG_SUMMARY);
+    wrap(await card());
+    const summary = await screen.findByTestId("claude-summary");
+    expect(summary.className).toContain("clamp-2");
+    fireEvent.click(screen.getByRole("button", { name: /^more$/i }));
+    expect(screen.getByTestId("claude-summary").className).not.toContain("clamp-2");
+    fireEvent.click(screen.getByRole("button", { name: /^less$/i }));
+    expect(screen.getByTestId("claude-summary").className).toContain("clamp-2");
+  });
+
+  it("renders short summaries unclamped with no toggle", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    const summary = await screen.findByTestId("claude-summary");
+    expect(summary.className).not.toContain("clamp-2");
+    expect(screen.queryByRole("button", { name: /^more$/i })).not.toBeInTheDocument();
+  });
+
+  it("renders a CI number-line per gated config inside the verdict banner", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card({
+      banner: {
+        tone: "fail",
+        title: "Not deployable — lockbox precondition unmet",
+        text: "Every computed pooled-gate CI includes zero.",
+        gates: [
+          { name: "wf-rr3", low: -0.71, high: 2.6, passed: false },
+          { name: "default", low: -0.45, high: 1.9, passed: false },
+        ],
+      },
+    }));
+    const banner = await screen.findByTestId("insights-verdict-banner");
+    const rows = banner.querySelectorAll("[data-testid='gate-ci-row']");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("wf-rr3");
+    expect(rows[0]).toHaveTextContent("-0.71");
+    expect(rows[0]).toHaveTextContent("2.60");
+    expect(rows[0]).toHaveTextContent(/includes 0/i);
+    // the zero marker is what makes "includes zero" visible at a glance
+    expect(rows[0].querySelector(".ci-zero")).toBeTruthy();
+  });
+
+  it("switches sections via tabs — one section visible at a time", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    const findingsTab = await screen.findByRole("button", { name: /findings/i });
+    expect(findingsTab.className).toContain("tab-on");
+    expect(screen.getAllByTestId("claude-finding").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Two windows bleed heavily/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /risks/i }));
+    expect(screen.getByText(/Two windows bleed heavily/)).toBeInTheDocument();
+    expect(screen.queryAllByTestId("claude-finding")).toHaveLength(0);
   });
 });

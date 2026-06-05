@@ -118,8 +118,17 @@ export function InsightsPage() {
   const dist = useConfigDistribution()
 
   // Verdict banner is DERIVED FROM THE SEEDED GATES (not Claude): red when
-  // every computed gate failed, green if any config passes.
+  // every computed gate failed, green if any config passes. Each gate's CI
+  // rides along so the banner can draw it as a number-line vs zero.
   const gated = (dist.data?.rows ?? []).filter((r) => r.gate_passed != null)
+  const gates = gated
+    .filter((r) => r.gate_ci_low != null && r.gate_ci_high != null)
+    .map((r) => ({
+      name: r.config_name ?? '?',
+      low: r.gate_ci_low as number,
+      high: r.gate_ci_high as number,
+      passed: !!r.gate_passed,
+    }))
   const banner: VerdictBanner | undefined =
     gated.length === 0
       ? undefined
@@ -128,11 +137,13 @@ export function InsightsPage() {
             tone: 'pass',
             title: 'A config passes the pooled gate — lockbox candidate',
             text: `${gated.filter((r) => r.gate_passed).length} of ${gated.length} computed gates exclude zero.`,
+            gates: gates.length > 0 ? gates : undefined,
           }
         : {
             tone: 'fail',
             title: 'Not deployable — lockbox precondition unmet',
             text: `${gated.length} config gate${gated.length === 1 ? '' : 's'} computed; every pooled expectancy CI includes zero — the lockbox stays sealed.`,
+            gates: gates.length > 0 ? gates : undefined,
           }
 
   return (
