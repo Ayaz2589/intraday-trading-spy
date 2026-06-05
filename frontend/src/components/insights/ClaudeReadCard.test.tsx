@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 
+const navigateMock = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => navigateMock,
+}));
+
 const getAnalysisMock = vi.fn();
 const postAnalysisMock = vi.fn();
 const getSettingsMock = vi.fn();
@@ -346,5 +351,89 @@ describe("ClaudeReadCard — progressive disclosure (declutter)", () => {
     );
     expect(screen.queryByTestId("claude-paused")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /re-enable/i })).toBeInTheDocument();
+  });
+});
+
+const WITH_CHANGES = {
+  ...ANALYSIS,
+  analysis: {
+    ...ANALYSIS.analysis,
+    suggested_experiments: [
+      {
+        hypothesis: "Test a wider risk:reward",
+        how_to_test: "Run a walk-forward on the modified config",
+        suggested_config_changes: [
+          { knob_path: "strategy.vwap_pullback.target.risk_reward", value: 2.5 },
+          { knob_path: "strategy.vwap_pullback.max_distance_from_vwap_pct", value: 0.4 },
+        ],
+      },
+      {
+        hypothesis: "Regime filter helps",
+        how_to_test: "Needs new strategy code",
+        suggested_config_changes: [],
+      },
+    ],
+  },
+};
+
+describe("ClaudeReadCard — structured knob suggestions (017 US1)", () => {
+  it("renders surviving changes as label → value chips", async () => {
+    getAnalysisMock.mockResolvedValue(WITH_CHANGES);
+    wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
+    );
+    const exp = screen.getByTestId("claude-experiments");
+    expect(exp).toHaveTextContent(/risk:reward target → 2.5/);
+    expect(exp).toHaveTextContent(/max distance from VWAP \(%\) → 0.4/);
+  });
+
+  it("renders text-only (no chips) for experiments without surviving changes", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS); // pre-017 shape: key absent
+    wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(1\)/i })
+    );
+    const exp = screen.getByTestId("claude-experiments");
+    expect(exp).toHaveTextContent(/Regime filter helps/);
+    expect(exp?.querySelectorAll("[data-testid='exp-change-chip']")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /draft config/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("ClaudeReadCard — Draft config → (017 US2)", () => {
+  it("offers the button only on suggestion-bearing experiments and navigates with the encoded draft", async () => {
+    const { decodeDraft } = await import("@/lib/draft-config");
+    getAnalysisMock.mockResolvedValue(WITH_CHANGES);
+    wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
+    );
+    const buttons = screen.getAllByRole("button", { name: /draft config/i });
+    expect(buttons).toHaveLength(1); // only the experiment WITH changes
+    navigateMock.mockClear();
+    fireEvent.click(buttons[0]);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const arg = navigateMock.mock.calls[0][0];
+    expect(arg.to).toBe("/strategies");
+    const draft = decodeDraft(arg.search.draft);
+    expect(draft).not.toBeNull();
+    expect(draft?.changes).toEqual([
+      { knob_path: "strategy.vwap_pullback.target.risk_reward", value: 2.5 },
+      { knob_path: "strategy.vwap_pullback.max_distance_from_vwap_pct", value: 0.4 },
+    ]);
+    expect(draft?.analysis_id).toBe("ia1");
+    expect(draft?.hypothesis).toMatch(/wider risk:reward/i);
+  });
+});
+
+describe("ClaudeReadCard — draft boundary tooltip (017 US3)", () => {
+  it("explains the draft concept on the experiments surface", async () => {
+    getAnalysisMock.mockResolvedValue(WITH_CHANGES);
+    const { container } = wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
+    );
+    expect(container.querySelector('[data-help-key="claude_experiment_draft"]')).toBeTruthy();
   });
 });

@@ -97,3 +97,52 @@ describe('ConfigWorkbench', () => {
     expect(screen.queryByTestId('config-editor-wf-rr3')).toBeNull()
   })
 })
+
+describe('ConfigWorkbench — Claude draft hosting (017 US2)', () => {
+  it('renders the DraftConfigPanel for a valid ?draft= param', async () => {
+    const { encodeDraft } = await import('@/lib/draft-config')
+    listConfigsMock.mockResolvedValue({ configs: [
+      { id: '11111111-1111-1111-1111-111111111111', name: 'wf-rr3', mode: 'backtest',
+        timeframe: '5m', strategy_id: '22222222-2222-2222-2222-222222222222',
+        params: {}, is_active: true },
+    ] })
+    listPresetsMock.mockResolvedValue({ presets: [] })
+    const param = encodeDraft({
+      base_config_name: 'wf-rr3',
+      changes: [{ knob_path: 'strategy.vwap_pullback.target.risk_reward', value: 2.5 }],
+      analysis_id: 'd7e75317-4fd5-4d23-967d-a326c62c9c5b',
+      experiment_index: 0,
+      hypothesis: 'Test rr 2.5',
+    })
+    wrap(<ConfigWorkbench draftParam={param} onDismissDraft={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('draft-config-panel')).toBeInTheDocument()
+    )
+  })
+
+  it('shows a friendly notice (and a normal page) for a malformed draft param', async () => {
+    listConfigsMock.mockResolvedValue({ configs: [] })
+    listPresetsMock.mockResolvedValue({ presets: [] })
+    wrap(<ConfigWorkbench draftParam="not-a-draft!!!" onDismissDraft={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByText(/draft link could not be read/i)).toBeInTheDocument()
+    )
+    expect(screen.queryByTestId('draft-config-panel')).not.toBeInTheDocument()
+  })
+})
+
+describe('ConfigWorkbench — provenance display (017 US3)', () => {
+  it('renders a config description muted beside its name', async () => {
+    listConfigsMock.mockResolvedValue({ configs: [
+      { id: '11111111-1111-1111-1111-111111111111', name: 'wf-rr3-exp-1', mode: 'backtest',
+        timeframe: '5m', strategy_id: '22222222-2222-2222-2222-222222222222',
+        params: {}, is_active: false,
+        description: 'Drafted from Claude analysis d7e75317 · experiment 1: Test rr 2.5' },
+    ] })
+    listPresetsMock.mockResolvedValue({ presets: [] })
+    wrap(<ConfigWorkbench />)
+    await waitFor(() =>
+      expect(screen.getByText(/drafted from claude analysis d7e75317/i)).toBeInTheDocument()
+    )
+  })
+})

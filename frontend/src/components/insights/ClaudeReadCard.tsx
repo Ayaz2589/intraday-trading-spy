@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   useClaudeAnalysis,
   useClaudeSettings,
@@ -6,6 +7,8 @@ import {
   useSetClaudeEnabled,
 } from '@/hooks/useInsights'
 import { HelpTooltip } from '../help-tooltip'
+import { knobLabel } from '@/lib/config-knobs'
+import { encodeDraft } from '@/lib/draft-config'
 
 // Feature 016 (US3): the advisory Claude narrative — shared by the Insights
 // right rail (scope='insights') and the pooled gate panel (scope='study').
@@ -63,15 +66,20 @@ export function ClaudeReadCard({
   scope,
   scopeId,
   banner,
+  draftBaseConfig,
   currentFingerprints,
   metricValues = {},
 }: {
   scope: 'study' | 'insights'
   scopeId?: string
   banner?: VerdictBanner
+  // Feature 017: the config name a drafted experiment should base itself on
+  // (study scope: the study's config). Absent -> the panel uses the active.
+  draftBaseConfig?: string
   currentFingerprints?: Record<string, string | null> | null
   metricValues?: Record<string, string | number>
 }) {
+  const navigate = useNavigate()
   const settings = useClaudeSettings()
   const stored = useClaudeAnalysis(scope, scopeId)
   const generate = useGenerateClaudeAnalysis(scope, scopeId)
@@ -296,7 +304,8 @@ export function ClaudeReadCard({
                 >
                   {experimentsOpen ? '▾' : '▸'} EXPERIMENTS TO RUN (
                   {analysis.analysis.suggested_experiments.length})
-                </button>
+                </button>{' '}
+                <HelpTooltip helpKey="claude_experiment_draft" />
                 {experimentsOpen && (
                   <div
                     data-testid="claude-experiments"
@@ -315,6 +324,56 @@ export function ClaudeReadCard({
                       >
                         <div style={{ fontWeight: 600 }}>{e.hypothesis}</div>
                         <div className="stat-label">{e.how_to_test}</div>
+                        {(e.suggested_config_changes?.length ?? 0) > 0 && (
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 6,
+                              flexWrap: 'wrap',
+                              marginTop: 6,
+                              alignItems: 'center',
+                            }}
+                          >
+                            {e.suggested_config_changes?.map((c, j) => (
+                              <span
+                                key={j}
+                                data-testid="exp-change-chip"
+                                className="mono stat-label"
+                                title={c.knob_path}
+                                style={{
+                                  border: '1px solid var(--info)',
+                                  borderRadius: 'var(--r-md)',
+                                  padding: '0 8px',
+                                }}
+                              >
+                                {knobLabel(c.knob_path)} → {c.value}
+                              </span>
+                            ))}
+                            {/* 017: the draft travels in the URL only — Claude
+                                never writes; the operator reviews + creates. */}
+                            <button
+                              type="button"
+                              className="btn"
+                              style={{ fontSize: 'var(--fs-xs, 11px)', padding: '1px 10px' }}
+                              onClick={() =>
+                                navigate({
+                                  to: '/strategies',
+                                  search: {
+                                    draft: encodeDraft({
+                                      base_config_name: draftBaseConfig ?? '',
+                                      changes: e.suggested_config_changes ?? [],
+                                      analysis_id: analysis?.id ?? '',
+                                      experiment_index: i,
+                                      hypothesis: e.hypothesis,
+                                    }),
+                                  },
+                                })
+                              }
+                            >
+                              Draft config →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

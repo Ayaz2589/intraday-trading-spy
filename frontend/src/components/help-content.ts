@@ -90,7 +90,9 @@ export type HelpContentKey =
   | "edge_timeseries"
   | "window_distribution"
   | "claude_advisory"
-  | "snapshot_pin";
+  | "snapshot_pin"
+  // Feature 017 (claude experiment drafts) concepts
+  | "claude_experiment_draft";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -196,7 +198,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   backtest_queue: {
     title: "Backtest queue",
     description:
-      "When you click Start Backtest the run is created with status `queued`. The backend picks it up and transitions it to `running` → `finished` (or `failed`). Refresh cadence speeds up while a run is active and slows down once it finishes.",
+      "Runs are created by validation studies (each evaluation is saved already-finished or failed) and by CLI pushes. A run's status moves queued → running → finished (or failed — `failure_reason` explains why). Refresh cadence speeds up while anything is active and slows down once it finishes.",
   },
   run_status: {
     title: "Run status",
@@ -317,7 +319,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   child_run: {
     title: "Child run",
     description:
-      "A real, saved backtest produced by one evaluation inside a validation study — one walk-forward window, one sensitivity grid point, or the lockbox one-shot. It has the same trades, journal, and chart as any standalone run, so you can see exactly WHY that slice performed the way it did. Child runs are hidden from the main runs list; you reach them through their study.",
+      "A real, saved backtest produced by one evaluation inside a validation study — one walk-forward window, one sensitivity grid point, or the lockbox one-shot. It has the same trades, journal, and chart as any standalone run, so you can see exactly WHY that slice performed the way it did. Child runs appear in the Backtests list with an origin badge (kind · IS/OOS · window) and are also reachable through their study.",
   },
   study_drilldown: {
     title: "Study drill-down",
@@ -433,6 +435,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Snapshot pinning",
     description:
       "Each analysis is stored with a hash of the exact data it analyzed. Re-opening the page shows the stored analysis free of charge; regeneration only makes sense (and is only enabled) when the underlying data actually changed. Unlike the seeded gate numbers, LLM output is NOT deterministic — the pin tells you exactly which data a narrative described.",
+  },
+  claude_experiment_draft: {
+    title: "Drafted from Claude's experiment",
+    description:
+      "Claude suggested this experiment as concrete knob changes; the app validated every suggestion against the registered tunable knobs and their bounds BEFORE you ever saw it. Claude only suggests — nothing is created, activated, or run until YOU review the values and click Create, through the exact same form and validation as a hand-made config. The created config records where it came from.",
   },
   lockbox: {
     title: "Lockbox",

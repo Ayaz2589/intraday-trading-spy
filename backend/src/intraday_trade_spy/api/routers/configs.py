@@ -73,11 +73,17 @@ def create_config(
             preset = presets.get(body.preset_name)
             if preset is None:
                 errors.raise_not_found(f"preset '{body.preset_name}' not found")
-            row = storage_client.create_config(name=body.name, params=preset["params"])
+            row = storage_client.create_config(
+                name=body.name, params=preset["params"], description=body.description
+            )
         elif body.source == "duplicate":
             row = storage_client.duplicate_config(src_id=body.from_config_id, new_name=body.name)
-        else:  # scratch
-            row = storage_client.create_config(name=body.name, params=_scratch_params())
+        else:  # scratch (017: explicit params allowed — e.g. a reviewed draft)
+            row = storage_client.create_config(
+                name=body.name,
+                params=body.params if body.params is not None else _scratch_params(),
+                description=body.description,
+            )
     except ConfigNameConflict as exc:
         errors.raise_validation_error(str(exc))
     except SchemaError as exc:

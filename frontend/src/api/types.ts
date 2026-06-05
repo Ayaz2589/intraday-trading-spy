@@ -52,6 +52,9 @@ export type Run = {
   study_id?: UUID | null
   segment?: 'train' | 'validation' | 'lockbox' | null
   window_index?: number | null
+  // /runs origin badge: study kind flattened server-side from the
+  // validation_studies FK embed. Null/absent for standalone (CLI) runs.
+  study_kind?: 'walk_forward' | 'sensitivity' | null
 }
 
 export type RunListResponse = { runs: Run[]; next_cursor: string | null }
@@ -139,6 +142,8 @@ export type Config = {
   // Feature 012 — exactly one config per user is the active one (pre-selected
   // in every picker). Optional so pre-012 cached shapes still type-check.
   is_active?: boolean
+  // Feature 017 — durable provenance (e.g. drafted from a Claude experiment).
+  description?: string | null
 }
 
 // Feature 012 — built-in preset a config can be created from. Read-only
@@ -155,14 +160,6 @@ export type RunManifestResponse = {
   strategy: Strategy
   config: Config
 }
-
-export type StartBacktestRequest = {
-  config_name: string
-  data_csv_path?: string
-  start_date?: string // YYYY-MM-DD
-  end_date?: string // YYYY-MM-DD
-}
-export type StartBacktestResponse = { run_id: UUID; status: 'queued' }
 
 export type StartDataDownloadRequest = { start_date: string; end_date: string }
 export type StartDataDownloadResponse = { job_id: UUID; status: 'queued' }
@@ -357,7 +354,14 @@ export type ClaudeFinding = {
   confidence: 'low' | 'medium' | 'high'
 }
 
-export type ClaudeExperiment = { hypothesis: string; how_to_test: string }
+export type ConfigChange = { knob_path: string; value: number }
+
+export type ClaudeExperiment = {
+  hypothesis: string
+  how_to_test: string
+  // Feature 017: whitelist-sanitized knob suggestions (absent on pre-017 rows)
+  suggested_config_changes?: ConfigChange[]
+}
 
 export type ClaudeAnalysis = {
   summary: string

@@ -20,7 +20,6 @@ ErrorCode = Literal[
     "not_found",
     "config_not_found",
     "validation_error",
-    "concurrent_run_cap_exceeded",
     "download_cap_exceeded",
     "db_unreachable",
     "invalid_cursor",
@@ -70,18 +69,6 @@ def raise_invalid_cursor() -> None:
     raise HTTPException(
         status_code=400,
         detail={"error": "invalid_cursor", "message": "malformed pagination cursor"},
-    )
-
-
-def raise_concurrent_cap(active: int, cap: int) -> None:
-    raise HTTPException(
-        status_code=429,
-        detail={
-            "error": "concurrent_run_cap_exceeded",
-            "message": f"user has {active} active runs; cap is {cap}",
-            "active_runs": active,
-            "cap": cap,
-        },
     )
 
 

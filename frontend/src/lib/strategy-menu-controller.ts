@@ -1,7 +1,8 @@
-// Module-level subscribable signal to open the Strategy & Run launcher
-// (StrategyConfigDropdown) from outside the topbar — e.g. the runs empty
-// state's "Run your first backtest" CTA. Mirrors the toast-controller idiom:
-// an imperative fire + useSyncExternalStore-friendly subscribe/getSnapshot.
+// Imperative bridge that lets any surface open the Strategy & Run launcher
+// (StrategyConfigDropdown) from outside the topbar. No live callers today;
+// kept for future surfaces that need to trigger the launcher imperatively.
+// Mirrors the toast-controller idiom: an imperative fire +
+// useSyncExternalStore-friendly subscribe/getSnapshot.
 //
 // The snapshot is a monotonic request counter: each openStrategyMenu() bumps
 // it so subscribers (via useSyncExternalStore) re-render and can react to the

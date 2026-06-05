@@ -345,3 +345,58 @@ def test_delete_all_runs_returns_count(unit_client, stub_storage_client):
     assert r.status_code == 200
     assert r.json() == {"deleted_count": 7}
     stub_storage_client.delete_all_runs.assert_called_once()
+
+
+def test_list_runs_includes_study_kind(unit_client, stub_storage_client):
+    """Origin badge data: study children carry study_kind from the FK embed."""
+    class _Page:
+        next_cursor = None
+    page = _Page()
+    row = _make_run_row(uuid4(), uuid4())
+    row["study_id"] = str(uuid4())
+    row["segment"] = "validation"
+    row["window_index"] = 3
+    row["study_kind"] = "walk_forward"
+    page.runs = [row]
+    stub_storage_client.list_runs.return_value = page
+
+    r = unit_client.get("/api/runs")
+    assert r.status_code == 200
+    run = r.json()["runs"][0]
+    assert run["study_kind"] == "walk_forward"
+    assert run["segment"] == "validation"
+    assert run["window_index"] == 3
+    # Cover sensitivity kind as well
+    row2 = _make_run_row(uuid4(), uuid4())
+    row2["study_id"] = str(uuid4())
+    row2["segment"] = "train"
+    row2["window_index"] = None
+    row2["study_kind"] = "sensitivity"
+    page.runs = [row, row2]
+    stub_storage_client.list_runs.return_value = page
+
+    r = unit_client.get("/api/runs")
+    assert r.status_code == 200
+    runs = r.json()["runs"]
+    assert runs[1]["study_kind"] == "sensitivity"
+    assert runs[1]["segment"] == "train"
+    assert runs[1]["window_index"] is None
+
+
+def test_list_runs_study_kind_null_for_standalone(unit_client, stub_storage_client):
+    class _Page:
+        next_cursor = None
+    page = _Page()
+    page.runs = [_make_run_row(uuid4(), uuid4())]
+    stub_storage_client.list_runs.return_value = page
+
+    r = unit_client.get("/api/runs")
+    assert r.status_code == 200
+    assert r.json()["runs"][0]["study_kind"] is None
+
+
+def test_backtest_creation_endpoint_removed(unit_client):
+    """Individual backtests can no longer be created — runs come only from
+    validation studies and CLI pushes."""
+    r = unit_client.post("/api/backtests", json={"config_name": "default"})
+    assert r.status_code == 404

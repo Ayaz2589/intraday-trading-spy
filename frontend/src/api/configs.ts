@@ -18,6 +18,8 @@ export type CreateConfigBody = {
   preset_name?: string
   from_config_id?: UUID
   params?: Record<string, unknown>
+  // Feature 017 — durable provenance for drafted configs.
+  description?: string
 }
 
 export function createConfig(body: CreateConfigBody): Promise<Config> {

@@ -396,9 +396,13 @@ class SupabaseStorageClient:
         except Exception:  # noqa: BLE001 — journaling must never block the mutation
             pass
 
-    def create_config(self, *, name: str, params: dict, strategy_id=None, mode: str = "backtest") -> dict:
+    def create_config(
+        self, *, name: str, params: dict, strategy_id=None, mode: str = "backtest",
+        description: str | None = None,
+    ) -> dict:
         """Create a new named config. Rejects empty/duplicate names; pins the
-        SPY strategy (FR-014); live stays disabled. Returns the row."""
+        SPY strategy (FR-014); live stays disabled. Returns the row.
+        017: optional description = durable provenance."""
         import uuid
 
         name = (name or "").strip()
@@ -416,6 +420,7 @@ class SupabaseStorageClient:
             "mode": mode,
             "params": params or {},
             "is_active": False,
+            "description": (description or "").strip() or None,
         }
         try:
             response = self._client.table("configs").insert(body).execute()
@@ -576,17 +581,23 @@ class SupabaseStorageClient:
         return response.data[0]
 
     def list_runs(self, *, user_id, limit: int, cursor: str | None):
-        """List a user's runs newest-first. Returns ListPage(runs, next_cursor)."""
+        """List a user's runs newest-first — EVERY run, study children included.
+
+        014 hid children behind a study_id IS NULL filter; since individual
+        backtest creation was removed, /runs is now the chronological index
+        of all backtests, with origin badges distinguishing study children.
+        Each row carries `study_kind` flattened from the validation_studies
+        FK embed (None for standalone rows or children whose study was
+        deleted). Returns ListPage(runs, next_cursor).
+        """
         from intraday_trade_spy.api.pagination import decode_cursor, encode_cursor
 
         q = (
             self._client.table("runs")
-            .select("*")
+            # FK embed (runs.study_id → validation_studies.id): one query
+            # gets each child's study kind for the origin badge.
+            .select("*, validation_studies(kind)")
             .eq("user_id", str(user_id))
-            # Feature 014 (FR-008): hide study children — a study can spawn
-            # hundreds of child runs; they're reached via their study, never
-            # listed here. Dedup-referenced standalone runs keep study_id NULL.
-            .is_("study_id", "null")
             .order("started_at", desc=True)
             .order("id", desc=True)
             .limit(limit + 1)
@@ -607,6 +618,10 @@ class SupabaseStorageClient:
             rows = rows[:limit]
             last = rows[-1]
             next_cursor = encode_cursor(last["started_at"], last["id"])
+
+        for row in rows:
+            embed = row.pop("validation_studies", None)
+            row["study_kind"] = (embed or {}).get("kind")
 
         class _Page:
             pass
