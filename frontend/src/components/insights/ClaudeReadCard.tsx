@@ -70,6 +70,14 @@ export function ClaudeReadCard({
   const analysis = stored.data ?? generate.data ?? null
   const upToDate = sameFingerprints(analysis?.analysis?.fingerprints, currentFingerprints ?? undefined)
 
+  // Claude cites paths like "rows[0].pnl_q50"; the flatten map keys are
+  // dot-indexed ("rows.0.pnl_q50") — normalize before declaring unverifiable.
+  const resolveMetric = (path: string): string | number | undefined => {
+    if (path in metricValues) return metricValues[path]
+    const normalized = path.replace(/\[(\d+)\]/g, '.$1')
+    return normalized in metricValues ? metricValues[normalized] : undefined
+  }
+
   return (
     <section className="card" data-testid="claude-read">
       <header className="card-head">
@@ -137,23 +145,26 @@ export function ClaudeReadCard({
                 </tr>
               </thead>
               <tbody>
-                {analysis.analysis.findings.map((f, i) => (
-                  <tr key={i}>
-                    <td>{f.claim}</td>
-                    <td className="mono">
-                      {f.evidence_metric in metricValues ? (
-                        <>
-                          {f.evidence_metric}: <strong>{metricValues[f.evidence_metric]}</strong>
-                        </>
-                      ) : (
-                        <span style={{ color: 'var(--loss)' }}>
-                          ⚠ metric not found in payload ({f.evidence_metric})
-                        </span>
-                      )}
-                    </td>
-                    <td>{f.confidence}</td>
-                  </tr>
-                ))}
+                {analysis.analysis.findings.map((f, i) => {
+                  const value = resolveMetric(f.evidence_metric)
+                  return (
+                    <tr key={i}>
+                      <td>{f.claim}</td>
+                      <td className="mono">
+                        {value !== undefined ? (
+                          <>
+                            {f.evidence_metric}: <strong>{value}</strong>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--loss)' }}>
+                            ⚠ metric not found in payload ({f.evidence_metric})
+                          </span>
+                        )}
+                      </td>
+                      <td>{f.confidence}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}

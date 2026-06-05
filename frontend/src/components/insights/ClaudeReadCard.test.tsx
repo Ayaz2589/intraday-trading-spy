@@ -39,6 +39,13 @@ const ANALYSIS = {
         evidence_metric: "nonexistent.metric",
         confidence: "low",
       },
+      {
+        // Claude cites with bracket notation; our flatten map uses dots —
+        // lookup must normalize (live smoke 2026-06-05 caught this).
+        claim: "Bracket-notation citation resolves",
+        evidence_metric: "distribution.rows[1].pnl_q50",
+        confidence: "medium",
+      },
     ],
     risks: ["Two windows bleed heavily"],
     suggested_experiments: [
@@ -51,7 +58,10 @@ const ANALYSIS = {
   truncated: false,
 };
 
-const METRICS = { "pooled_gate.expectancy_dollars_ci": "[−0.53, +2.56]" };
+const METRICS = {
+  "pooled_gate.expectancy_dollars_ci": "[−0.53, +2.56]",
+  "distribution.rows.1.pnl_q50": 61,
+};
 
 function wrap(ui: ReactNode) {
   const client = new QueryClient({
@@ -188,5 +198,18 @@ describe("ClaudeReadCard — determinism label (US4)", () => {
     await waitFor(() =>
       expect(screen.getByText(/non-deterministic/i)).toBeInTheDocument()
     );
+  });
+});
+
+describe("ClaudeReadCard — citation path normalization (016-polish)", () => {
+  it("resolves bracket-notation evidence_metric against the dot-keyed map", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() =>
+      expect(screen.getByText(/Bracket-notation citation resolves/)).toBeInTheDocument()
+    );
+    const row = screen.getByText(/Bracket-notation citation resolves/).closest("tr")!;
+    expect(row).toHaveTextContent("61");
+    expect(row).not.toHaveTextContent(/not found/i);
   });
 });
