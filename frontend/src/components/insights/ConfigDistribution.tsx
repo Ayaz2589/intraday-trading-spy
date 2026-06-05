@@ -7,6 +7,10 @@ import type { ConfigDistributionRow } from '@/api/types'
 // 016-polish: account size (explains why $ columns differ wildly across
 // configs), win rate, profit factor, window-R quartiles (the cross-config
 // comparable), and each config's latest pooled-gate verdict chip.
+//
+// Handoff redesign: design-system table (overline headers, mono numerics,
+// everything left-aligned), gate verdicts as badge pills, and a
+// positive-windows meter per config (the job-table window-progress pattern).
 
 const usd = (v: number | null) => (v == null ? '—' : `$${Math.round(v).toLocaleString()}`)
 const f2 = (v: number | null) => (v == null ? '—' : v.toFixed(2))
@@ -32,13 +36,8 @@ function GateChip({
   return (
     <button
       type="button"
-      className="btn"
-      style={{
-        color: passed ? 'var(--profit)' : 'var(--loss)',
-        borderColor: passed ? 'var(--profit)' : 'var(--loss)',
-        fontSize: 'var(--fs-xs, 11px)',
-        padding: '1px 8px',
-      }}
+      className={`badge badge-xs ${passed ? 'badge-profit' : 'badge-loss'}`}
+      style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
       title={`pooled expectancy CI [${f2(row.gate_ci_low)}, ${f2(row.gate_ci_high)}] — open study`}
       onClick={() => row.gate_study_id && onOpenStudy?.(row.gate_study_id)}
     >
@@ -57,10 +56,16 @@ export function ConfigDistribution({
   return (
     <section className="card" data-testid="config-distribution">
       <header className="card-head">
-        <h3 className="card-title">
-          <span className="card-accent" style={{ background: 'var(--info)' }} />
-          Per-config window distribution <HelpTooltip helpKey="window_distribution" />
-        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <h3 className="card-title">
+            <span className="card-accent" style={{ background: 'var(--info)' }} />
+            Per-config window distribution <HelpTooltip helpKey="window_distribution" />
+          </h3>
+          <span className="card-sub">
+            Per-window OOS outcomes by config — window-R quartiles are the
+            cross-config comparable
+          </span>
+        </div>
       </header>
       {rows.length === 0 ? (
         <p className="stat-label">
@@ -88,10 +93,24 @@ export function ConfigDistribution({
             <tbody>
               {rows.map((r) => (
                 <tr key={r.config_name ?? '?'} data-testid={`dist-row-${r.config_name ?? 'unknown'}`}>
-                  <td>{r.config_name ?? '(unknown)'}</td>
-                  <td className="mono">{usd(r.account_value)}</td>
+                  <td style={{ fontWeight: 600 }}>{r.config_name ?? '(unknown)'}</td>
+                  <td className="mono" style={{ color: 'var(--text-muted)' }}>
+                    {usd(r.account_value)}
+                  </td>
                   <td className="mono">
-                    {r.windows_positive} / {r.windows}
+                    <div className="win-cell">
+                      <span>
+                        {r.windows_positive} / {r.windows}
+                      </span>
+                      <div className="win-bar" data-testid="win-meter">
+                        <span
+                          className="win-fill"
+                          style={{
+                            width: `${r.windows > 0 ? Math.round((r.windows_positive / r.windows) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   </td>
                   <td className="mono">
                     {r.win_rate == null ? '—' : `${Math.round(r.win_rate * 100)}%`}

@@ -1368,12 +1368,135 @@ table.trades thead th {
    collided on Insights; styled to match table.trades) ---------------- */
 .data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .data-table thead th {
+  /* Overline header style per the design handoff (matches table.trades). */
   text-align: left;
   padding: 6px 16px 6px 0;
-  color: var(--text-muted);
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-faint);
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
-.data-table td { padding: 5px 16px 5px 0; white-space: nowrap; }
+.data-table td { padding: 8px 16px 8px 0; white-space: nowrap; }
 .data-table tbody tr + tr td { border-top: 1px solid var(--border); }
+
+/* ---------------- Metric hero (design handoff: the data-coverage prototype's
+   cov-hero pattern, generalized) — a full-width card of bordered metric cells
+   (overline label / big mono value / sub) + a verdict footer strip. Used by
+   the Insights page; the Data page redesign can reuse it. ---------------- */
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.hero-top { display: flex; align-items: stretch; flex-wrap: wrap; }
+.hero-metric {
+  flex: 1;
+  min-width: 150px;
+  padding: var(--sp-5) var(--sp-6);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hero-metric:last-child { border-right: none; }
+.hero-metric-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-faint);
+}
+.hero-metric-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.hero-metric-value .unit { font-size: var(--fs-base); color: var(--text-faint); font-weight: 600; margin-left: 4px; }
+.hero-metric-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+.hero-span { flex: 1.4; min-width: 230px; }
+.hero-span-dates {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hero-span-arrow { color: var(--accent); }
+.span-bar {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  margin-top: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.span-bar span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent), var(--info));
+  border-radius: inherit;
+}
+.hero-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-6);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--profit);
+  background: var(--profit-soft);
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+}
+.health-pill-loss { color: var(--loss); background: var(--loss-soft); }
+.health-pill-faint { color: var(--text-muted); background: var(--surface-3); }
+.hero-foot-meta { font-size: var(--fs-sm); color: var(--text-muted); }
+.hero-foot-meta b { color: var(--text); font-weight: 600; }
+.hero-foot-note { margin-left: auto; font-size: var(--fs-sm); color: var(--text-faint); }
+@media (max-width: 860px) {
+  .hero-metric { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+/* card-head subtitle under the title (prototype Card `sub` pattern; indent
+   aligns with the title text past the 4px accent bar + 9px gap) */
+.card-sub { font-size: var(--fs-sm); color: var(--text-muted); margin-left: 13px; }
+
+/* win meter — N-of-M progress cell (data-coverage job-table pattern) */
+.win-cell { display: flex; flex-direction: column; gap: 5px; }
+.win-bar { height: 5px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.win-fill { display: block; height: 100%; border-radius: inherit; background: var(--profit); }
+
+/* verdict banner (Claude's read) — tinted-panel pattern (job-detail style) */
+.verdict-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-3);
+}
+.verdict-fail { background: var(--loss-soft); border-color: color-mix(in srgb, var(--loss) 25%, transparent); }
+.verdict-pass { background: var(--profit-soft); border-color: color-mix(in srgb, var(--profit) 25%, transparent); }
+.verdict-icon { font-size: 15px; line-height: 1.4; }
+.verdict-fail .verdict-icon, .verdict-fail .verdict-title { color: var(--loss); }
+.verdict-pass .verdict-icon, .verdict-pass .verdict-title { color: var(--profit); }
+.verdict-title { font-weight: 700; }

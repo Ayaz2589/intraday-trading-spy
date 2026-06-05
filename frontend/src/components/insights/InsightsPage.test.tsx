@@ -104,6 +104,71 @@ describe("InsightsPage — derived gate verdict banner (redesign)", () => {
   });
 });
 
+describe("InsightsPage — design-handoff redesign (hero + page chrome)", () => {
+  it("renders the page header as run-header chrome with an h1 title", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue(DIST);
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    await waitFor(() => expect(screen.getByTestId("insights-header")).toBeInTheDocument());
+    const h1 = screen.getByTestId("insights-header").querySelector("h1.rh-title");
+    expect(h1).toBeTruthy();
+    expect(h1!.textContent).toMatch(/out-of-sample validation/i);
+  });
+
+  it("renders the stat strip as a hero card with overline metric cells + snapshot footer", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue(DIST);
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    const stats = await screen.findByTestId("insights-stats");
+    expect(stats.className).toContain("hero");
+    expect(stats).toHaveTextContent(/oos windows/i);
+    expect(stats).toHaveTextContent(/oos trades/i);
+    expect(stats).toHaveTextContent(/windows positive/i);
+    expect(stats).toHaveTextContent(/span/i);
+    // snapshot fingerprint lives in the hero footer
+    expect(stats).toHaveTextContent(/fp1/);
+  });
+
+  it("hero footer shows a faint gate pill when no pooled gate is computed", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue(DIST); // gate_passed: null
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    const pill = await screen.findByTestId("insights-gate-pill");
+    expect(pill.className).toContain("health-pill-faint");
+    expect(pill).toHaveTextContent(/no pooled gate/i);
+  });
+
+  it("hero footer pill goes red when every computed gate failed", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue({
+      ...DIST,
+      rows: [{ ...DIST.rows[0], gate_passed: false, gate_ci_low: -0.7, gate_ci_high: 2.6 }],
+    });
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    const pill = await screen.findByTestId("insights-gate-pill");
+    expect(pill.className).toContain("health-pill-loss");
+    expect(pill).toHaveTextContent(/no config passes/i);
+  });
+
+  it("hero footer pill goes green when a pooled gate passes", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue({
+      ...DIST,
+      rows: [{ ...DIST.rows[0], gate_passed: true, gate_ci_low: 0.1, gate_ci_high: 2.6 }],
+    });
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    const pill = await screen.findByTestId("insights-gate-pill");
+    expect(pill.className).not.toContain("health-pill-loss");
+    expect(pill.className).not.toContain("health-pill-faint");
+    expect(pill).toHaveTextContent(/lockbox candidate/i);
+  });
+});
+
 describe("InsightsPage — headline stat strip (016-polish)", () => {
   it("summarizes the OOS archive: windows, trades, configs, positive share, span", async () => {
     edgeMock.mockResolvedValue(EDGE);

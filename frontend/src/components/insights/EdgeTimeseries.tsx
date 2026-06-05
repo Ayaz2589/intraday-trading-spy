@@ -11,8 +11,12 @@ import type { EdgeTimeseriesPoint, RegimeView } from '@/api/types'
 // account sizes ($2.5M default vs $1k wf-rr3), so the default metric is
 // Expectancy R (risk-normalized); Return-%-of-account and raw PnL $ are a
 // toggle away. Labeled market regimes shade behind the series.
+//
+// Handoff redesign: series identity colors come from the design system
+// (accent / info / warn + neutral fallbacks) — green/red stay reserved for
+// P&L semantics; the metric toggle is a segmented control.
 
-const PALETTE = ['#6b8cae', '#b08c5a', '#7a9a6d', '#a06b8c', '#8c8c5a']
+const PALETTE = ['var(--accent)', 'var(--info)', 'var(--warn)', '#8b7cc8', '#6b8cae']
 
 type Metric = 'r' | 'pct' | 'usd'
 
@@ -86,20 +90,22 @@ export function EdgeTimeseries({
   return (
     <section className="card" data-testid="edge-timeseries">
       <header className="card-head">
-        <h3 className="card-title">
-          <span className="card-accent" style={{ background: 'var(--info)' }} />
-          Edge time-series <HelpTooltip helpKey="edge_timeseries" />
-        </h3>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <h3 className="card-title">
+            <span className="card-accent" style={{ background: 'var(--accent)' }} />
+            Edge time-series <HelpTooltip helpKey="edge_timeseries" />
+          </h3>
+          <span className="card-sub">
+            One point per OOS window per config — click a point to open its window run
+          </span>
+        </div>
+        <div className="seg" role="group" aria-label="Chart metric">
           {METRICS.map((m) => (
             <button
               key={m.key}
               type="button"
-              className="btn"
+              className={metric === m.key ? 'seg-on' : undefined}
               aria-pressed={metric === m.key}
-              style={
-                metric === m.key ? { borderColor: 'var(--info)', color: 'var(--info)' } : undefined
-              }
               onClick={() => setMetric(m.key)}
             >
               {m.label}
@@ -129,7 +135,7 @@ export function EdgeTimeseries({
             onPointClick={(d) => onOpenRun(d as string)}
           />
           {metric === 'usd' && byConfig.size > 1 && (
-            <p className="stat-label" style={{ marginTop: 4 }}>
+            <p className="chart-hint" style={{ marginTop: 4 }}>
               ⚠ raw $ is not comparable across configs run at different account
               sizes — use Expectancy R or Return % to compare.
             </p>

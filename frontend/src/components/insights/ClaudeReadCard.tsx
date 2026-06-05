@@ -96,10 +96,17 @@ export function ClaudeReadCard({
   }
 
   const CONF_RANK = { high: 0, medium: 1, low: 2 } as const
+  // Handoff redesign: soft-tinted confidence chips (badge pattern). High
+  // keeps the profit color — pass/quality semantics, like gate verdicts.
   const CONF_COLOR = {
     high: 'var(--profit)',
-    medium: 'var(--border-strong)',
+    medium: 'var(--warn)',
     low: 'var(--text-muted)',
+  } as const
+  const CONF_BG = {
+    high: 'var(--profit-soft)',
+    medium: 'var(--warn-soft)',
+    low: 'var(--surface-3)',
   } as const
   const leafOf = (path: string) => path.replace(/\[(\d+)\]/g, '.$1').split('.').pop() ?? path
 
@@ -107,17 +114,18 @@ export function ClaudeReadCard({
   return (
     <section className="card" data-testid="claude-read">
       <header className="card-head">
-        <h3 className="card-title">
-          <span className="card-accent" style={{ background: 'var(--info)' }} />
-          🤖 Claude's read <HelpTooltip helpKey="claude_advisory" />
-        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <h3 className="card-title">
+            <span className="card-accent" style={{ background: 'var(--warn)' }} />
+            🤖 Claude's read <HelpTooltip helpKey="claude_advisory" />
+          </h3>
+          <span className="card-sub">
+            Advisory only — verify every claim against its cited metric. Claude
+            never trades or tunes, and unlike the seeded gate numbers this text
+            is non-deterministic.
+          </span>
+        </div>
       </header>
-
-      <p className="stat-label">
-        Advisory only — verify every claim against its cited metric. Claude
-        never trades or tunes, and unlike the seeded gate numbers this text is
-        non-deterministic.
-      </p>
 
       {cfg && !cfg.configured && (
         <p className="stat-label" data-testid="claude-unconfigured">
@@ -131,7 +139,8 @@ export function ClaudeReadCard({
           data-testid="claude-paused"
           className="stat-label"
           style={{
-            border: '1px solid var(--border-strong)',
+            background: 'var(--warn-soft)',
+            border: '1px solid color-mix(in srgb, var(--warn) 25%, transparent)',
             borderRadius: 'var(--r-md)',
             padding: 'var(--sp-2) var(--sp-3)',
             marginBottom: 'var(--sp-3)',
@@ -160,23 +169,16 @@ export function ClaudeReadCard({
       {banner && (
         <div
           data-testid="insights-verdict-banner"
-          style={{
-            border: `1px solid ${banner.tone === 'pass' ? 'var(--profit)' : 'var(--loss)'}`,
-            borderRadius: 'var(--r-md)',
-            padding: 'var(--sp-3) var(--sp-4)',
-            marginBottom: 'var(--sp-3)',
-          }}
+          className={`verdict-banner verdict-${banner.tone}`}
         >
-          <div
-            style={{
-              fontWeight: 700,
-              color: banner.tone === 'pass' ? 'var(--profit)' : 'var(--loss)',
-            }}
-          >
-            {banner.tone === 'pass' ? '✓' : '✕'} {banner.title}
+          <div className="verdict-icon" aria-hidden>
+            {banner.tone === 'pass' ? '✓' : '✕'}
           </div>
-          <div className="stat-label">
-            {banner.text} <span>(derived from the seeded gates — not Claude)</span>
+          <div>
+            <div className="verdict-title">{banner.title}</div>
+            <div className="stat-label">
+              {banner.text} <span>(derived from the seeded gates — not Claude)</span>
+            </div>
           </div>
         </div>
       )}
@@ -241,14 +243,11 @@ export function ClaudeReadCard({
                             </td>
                             <td style={{ width: 74 }}>
                               <span
-                                className="mono"
+                                className="badge badge-xs mono"
                                 style={{
                                   color: CONF_COLOR[f.confidence] ?? 'var(--text-muted)',
-                                  border: `1px solid ${CONF_COLOR[f.confidence] ?? 'var(--border-strong)'}`,
-                                  borderRadius: 'var(--r-md)',
-                                  padding: '0 6px',
+                                  background: CONF_BG[f.confidence] ?? 'var(--surface-3)',
                                   textTransform: 'uppercase',
-                                  fontSize: 'var(--fs-xs, 10px)',
                                 }}
                               >
                                 {f.confidence}
@@ -307,8 +306,10 @@ export function ClaudeReadCard({
                       <div
                         key={i}
                         style={{
+                          background: 'var(--surface-2)',
                           border: '1px solid var(--border)',
-                          borderRadius: 'var(--r-md)',
+                          borderLeft: '2px solid var(--accent)',
+                          borderRadius: 'var(--r-sm)',
                           padding: 'var(--sp-2) var(--sp-3)',
                         }}
                       >
@@ -358,19 +359,19 @@ export function ClaudeReadCard({
               </div>
             )}
             {cfg?.configured && cfg.claude_enabled && (
-              <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn btn-sm"
                   disabled={generate.isPending || upToDate}
                   title={upToDate ? 'analysis is pinned to the current data — nothing changed' : undefined}
                   onClick={() => generate.mutate(true)}
                 >
-                  {generate.isPending ? 'Analyzing…' : 'Regenerate'}
+                  ↻ {generate.isPending ? 'Analyzing…' : 'Regenerate'}
                 </button>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn btn-ghost btn-sm"
                   disabled={setEnabled.isPending}
                   onClick={() => setEnabled.mutate(false)}
                 >

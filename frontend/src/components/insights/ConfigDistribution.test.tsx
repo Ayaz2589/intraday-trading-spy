@@ -70,6 +70,31 @@ describe("ConfigDistribution — enrichment (016-polish)", () => {
   });
 });
 
+describe("ConfigDistribution — design-system restyle (handoff redesign)", () => {
+  it("renders gate verdicts as badge pills", () => {
+    render(<ConfigDistribution rows={ROWS} onOpenStudy={vi.fn()} />);
+    const chip = screen.getByRole("button", { name: /not passed/i });
+    expect(chip.className).toContain("badge-loss");
+  });
+
+  it("renders a positive-windows meter per config", () => {
+    render(<ConfigDistribution rows={ROWS} />);
+    const wf = screen.getByTestId("dist-row-wf-rr3");
+    const fill = within(wf).getByTestId("win-meter").querySelector(".win-fill") as HTMLElement;
+    expect(fill.style.width).toBe("58%"); // 7 of 12 positive
+  });
+
+  it("explains the card with a subtitle line", () => {
+    render(<ConfigDistribution rows={ROWS} />);
+    expect(screen.getByText(/cross-config/i)).toBeInTheDocument();
+  });
+
+  it("left-aligns every column — no right-aligned numerics", () => {
+    const { container } = render(<ConfigDistribution rows={ROWS} />);
+    expect(container.querySelectorAll(".th-num")).toHaveLength(0);
+  });
+});
+
 describe("ConfigDistribution — signed value coloring (redesign)", () => {
   it("colors negative quartiles as loss and positive as profit", () => {
     render(<ConfigDistribution rows={ROWS} />);

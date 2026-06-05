@@ -82,6 +82,27 @@ describe("EdgeTimeseries — metric toggle (016-polish)", () => {
   });
 });
 
+describe("EdgeTimeseries — design-system restyle (handoff redesign)", () => {
+  it("renders the metric toggle as a segmented control in the card head", () => {
+    const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    const seg = container.querySelector(".card-head .seg");
+    expect(seg).toBeTruthy();
+    const active = seg!.querySelector("button.seg-on");
+    expect(active?.textContent).toMatch(/expectancy r/i);
+  });
+
+  it("explains the card with a subtitle line", () => {
+    render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    expect(screen.getByText(/click a point to open/i)).toBeInTheDocument();
+  });
+
+  it("colors series with the design palette — accent first; green/red stay reserved for P&L", () => {
+    const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    const first = container.querySelector("[data-testid='ls-point']");
+    expect(first?.getAttribute("fill")).toBe("var(--accent)");
+  });
+});
+
 describe("EdgeTimeseries — taller detailed chart (016-polish round 3)", () => {
   it("renders a tall chart with window-extent bars and rich hover detail", () => {
     const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);

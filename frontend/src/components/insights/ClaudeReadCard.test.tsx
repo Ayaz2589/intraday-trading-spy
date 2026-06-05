@@ -251,6 +251,31 @@ describe("ClaudeReadCard — redesigned sections (mockup 2026-06-05)", () => {
   });
 });
 
+describe("ClaudeReadCard — design-system restyle (handoff redesign)", () => {
+  it("renders the verdict banner as a tinted panel carrying its tone class", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card({
+      banner: {
+        tone: "fail",
+        title: "Not deployable — lockbox precondition unmet",
+        text: "Every computed pooled-gate CI includes zero.",
+      },
+    }));
+    const banner = await screen.findByTestId("insights-verdict-banner");
+    expect(banner.className).toContain("verdict-banner");
+    expect(banner.className).toContain("verdict-fail");
+  });
+
+  it("renders confidence as badge chips — high keeps the profit color", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() => expect(screen.getAllByTestId("claude-finding").length).toBeGreaterThan(0));
+    const high = screen.getByText("high");
+    expect(high.className).toContain("badge");
+    expect(high.getAttribute("style")).toContain("--profit");
+  });
+});
+
 const MANY_FINDINGS = {
   ...ANALYSIS,
   analysis: {
