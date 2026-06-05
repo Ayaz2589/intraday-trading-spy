@@ -13,7 +13,7 @@ const int = (v: number) => `${Math.round(v)}`;
 // box-plot-style strip: P5–P95 band, darker P25–P75 core, P50 tick, and the
 // observed value as a dot — you can see at a glance where your actual curve
 // sits inside the simulated distribution.
-function DistributionStrip({ dist }: { dist: MonteCarloDistribution }) {
+export function DistributionStrip({ dist }: { dist: MonteCarloDistribution }) {
   const lo = Math.min(dist.p5, dist.observed);
   const hi = Math.max(dist.p95, dist.observed);
   const span = hi - lo || 1;

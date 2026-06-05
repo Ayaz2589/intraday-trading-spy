@@ -327,6 +327,11 @@ class MonteCarloRequest(_Base):
     run_id: UUID
 
 
+class PooledGateRequest(_Base):
+    # Feature 016: fast = sync verdict; full = background per-window tests.
+    mode: Literal["fast", "full"] = "fast"
+
+
 class LockboxRunRequest(_Base):
     config_name: str = Field(min_length=1, max_length=200)
     override: bool = False

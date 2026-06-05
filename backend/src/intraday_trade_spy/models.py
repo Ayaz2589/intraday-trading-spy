@@ -305,6 +305,57 @@ class SignificanceResult(BaseModel):
     seed: int
 
 
+# ---- Feature 016 (pooled study gate) result value objects -------------------
+
+
+class CIStat(BaseModel):
+    """A bootstrap point estimate with its confidence interval."""
+
+    model_config = ConfigDict(frozen=True)
+    point: float | None
+    low: float | None
+    high: float | None
+
+
+class PerWindowP(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    window_index: int
+    p_value: float | None
+    significant: bool
+
+
+class FisherStat(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    x2: float
+    df: int
+    p: float
+
+
+class PooledGateResult(BaseModel):
+    """The pre-registered lockbox gate over a walk-forward study's pooled
+    OOS windows. passed iff expectancy_dollars_ci.low > 0 (strict). Fast mode
+    omits per_window_p/fisher; full mode fills them. computed_at is stamped by
+    the lifecycle at persistence time (the engine output stays deterministic)."""
+
+    model_config = ConfigDict(frozen=True)
+    computed_at: str | None = None
+    mode: Literal["fast", "full"]
+    passed: bool
+    alpha: float
+    pooled_trades: int
+    windows_total: int
+    windows_with_trades: int
+    windows_positive: int
+    total_net_pnl_dollars: float
+    expectancy_dollars_ci: CIStat
+    expectancy_r_ci: CIStat
+    sign_test_p: float
+    monte_carlo: "MonteCarloResult"
+    per_window_p: list[PerWindowP] | None = None
+    fisher: FisherStat | None = None
+    seed: int
+
+
 # ---- Feature 015 (Monte Carlo path-risk) result value objects --------------
 
 

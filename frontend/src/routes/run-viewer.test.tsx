@@ -294,6 +294,10 @@ describe("RunViewer route", () => {
       "forward_cone",
       "risk_of_ruin",
       "mc_in_sample_caveat",
+      // Feature 016 keys render on validation/insights pages.
+      "pooled_gate",
+      "sign_test",
+      "fisher_combined",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

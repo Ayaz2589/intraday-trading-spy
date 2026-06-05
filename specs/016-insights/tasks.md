@@ -18,15 +18,15 @@ aggregates); US4 sweeps last.
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `anthropic>=0.40` to backend/pyproject.toml dependencies and install into backend/.venv (config change — TDD-exempt; container rebuild happens in Polish)
-- [ ] T002 Write backend/migrations/0123_insight_analyses.sql (insight_analyses + insight_settings per data-model.md §B, RLS pair per the 0110 pattern) and apply to cloud via the direct-psycopg route (SUPABASE_DB_URL)
+- [x] T001 Add `anthropic>=0.40` to backend/pyproject.toml dependencies and install into backend/.venv (config change — TDD-exempt; container rebuild happens in Polish)
+- [x] T002 Write backend/migrations/0123_insight_analyses.sql (insight_analyses + insight_settings per data-model.md §B, RLS pair per the 0110 pattern) and apply to cloud via the direct-psycopg route (SUPABASE_DB_URL)
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T003 Failing tests: `PooledGateConfig` defaults (alpha=0.05, seed=20260605) nested as `ValidationConfig.pooled_gate`, and `InsightsClaudeConfig` (model='claude-opus-4-8', max_tokens=8000, max_timeseries_windows=200) nested as `Config.insights.claude`, incl. YAML round-trip of both blocks, in backend/tests/validation/test_config_validation.py and backend/tests/test_config.py
-- [ ] T004 Implement `PooledGateConfig`, `InsightsClaudeConfig`, `InsightsConfig` in backend/src/intraday_trade_spy/config.py and add the `validation.pooled_gate` + `insights.claude` blocks to backend/config/config.yaml (data-model.md §D)
+- [x] T003 Failing tests: `PooledGateConfig` defaults (alpha=0.05, seed=20260605) nested as `ValidationConfig.pooled_gate`, and `InsightsClaudeConfig` (model='claude-opus-4-8', max_tokens=8000, max_timeseries_windows=200) nested as `Config.insights.claude`, incl. YAML round-trip of both blocks, in backend/tests/validation/test_config_validation.py and backend/tests/test_config.py
+- [x] T004 Implement `PooledGateConfig`, `InsightsClaudeConfig`, `InsightsConfig` in backend/src/intraday_trade_spy/config.py and add the `validation.pooled_gate` + `insights.claude` blocks to backend/config/config.yaml (data-model.md §D)
 
 **Checkpoint**: config loads — story work can begin (US1 and US2 in either order).
 

@@ -207,6 +207,8 @@ export type WalkForwardWindowResult = {
 }
 
 export type WalkForwardResult = {
+  // Feature 016: the persisted pooled gate (additive key).
+  pooled_gate?: PooledGateResult | null
   mode: 'rolling' | 'anchored'
   train_months: number
   step_months: number
@@ -346,6 +348,33 @@ export type MonteCarloResult = {
 }
 
 export type MonteCarloRequest = { run_id: UUID }
+
+// ---- Feature 016 (pooled study gate) ---------------------------------------
+
+export type CIStat = { point: number | null; low: number | null; high: number | null }
+
+export type PerWindowP = { window_index: number; p_value: number | null; significant: boolean }
+
+export type FisherStat = { x2: number; df: number; p: number }
+
+export type PooledGateResult = {
+  computed_at: string | null
+  mode: 'fast' | 'full'
+  passed: boolean
+  alpha: number
+  pooled_trades: number
+  windows_total: number
+  windows_with_trades: number
+  windows_positive: number
+  total_net_pnl_dollars: number
+  expectancy_dollars_ci: CIStat
+  expectancy_r_ci: CIStat
+  sign_test_p: number
+  monte_carlo: MonteCarloResult
+  per_window_p: PerWindowP[] | null
+  fisher: FisherStat | null
+  seed: number
+}
 
 export type LockboxState = 'unspent' | 'spent' | 'burned'
 export type LockboxStatus = {

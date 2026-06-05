@@ -381,6 +381,21 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "These trades came from data the strategy's settings were tuned against (or that can't be proven otherwise), so the edge — and therefore every risk estimate built on it — is likely overstated. Only walk-forward validation windows and the lockbox run are provably out-of-sample. Use those for the honest version of these numbers.",
   },
+  pooled_gate: {
+    title: "Pooled study gate",
+    description:
+      "Pools every out-of-sample window's trades into ONE statistical verdict: does the pooled expectancy confidence interval exclude zero? This is the pre-registered precondition for spending the lockbox — if the CI includes zero, the edge can't be distinguished from luck and the lockbox stays sealed. Seeded, so re-running reproduces the verdict exactly.",
+  },
+  sign_test: {
+    title: "Sign test (windows positive)",
+    description:
+      "Ignores magnitudes and asks a blunt question: if the strategy had no edge, how often would at least this many windows end positive by coin-flip? 9 of 12 positive gives p ≈ 0.073 — suggestive, not conclusive. A robust edge should win most windows, not just a few big ones.",
+  },
+  fisher_combined: {
+    title: "Fisher's combined p-value",
+    description:
+      "Combines the per-window permutation p-values into one number testing 'no edge in ANY window'. A tiny combined p (like 1e-8) with a failing pooled CI means the edge is REAL but REGIME-DEPENDENT — some windows beat chance decisively while others bleed it back. That points to filtering research, not more testing.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

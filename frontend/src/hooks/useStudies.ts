@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   computeMonteCarlo,
+  runPooledGate,
   computeSignificance,
   getLockboxStatus,
   getStudy,
@@ -106,6 +107,19 @@ export function useRunLockbox() {
 export function useSignificance() {
   return useMutation({
     mutationFn: (runId: UUID) => computeSignificance({ run_id: runId }),
+  })
+}
+
+// Feature 016: the pooled study gate (fast sync / full background).
+export function usePooledGate(studyId: UUID) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (mode: 'fast' | 'full') => runPooledGate(studyId, mode),
+    // Deterministic refusals (400) never heal — don't retry.
+    retry: false,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: studyQueryKey(studyId) })
+    },
   })
 }
 
