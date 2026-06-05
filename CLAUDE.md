@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/017-claude-experiment-drafts/plan.md](specs/017-claude-experiment-drafts/plan.md) — clickable Claude experiments → draft configs: whitelist-sanitized knob suggestions in analyses (NEW knob registry), "Draft config →" carrying a transient URL draft to a badged prefilled panel on Strategies, human-gated create with durable provenance (migration 0124: configs.description). Constitution-II guardrails are the spine.
+**Active plan**: [specs/018-recommendation-engine/plan.md](specs/018-recommendation-engine/plan.md) — recommendation engine closing the 016/017 loop: deterministic per-config OOS health verdicts (ok/degrading/failing/insufficient-evidence, thresholds in config.yaml), evidence packs mined from persisted 011/014/016 artifacts (no new backtests), ranked whitelisted knob-delta candidates + gather-evidence/stop-tuning classes, Claude scope='recommend' on the existing analyst, 017 Draft-config actuation, and a deletion-surviving trial ledger (migration 0125). New backend package `recommend/`; zero new deps; deterministic core works with Claude off.
 
-**Most recent spec**: [specs/017-claude-experiment-drafts/spec.md](specs/017-claude-experiment-drafts/spec.md)
+**Most recent spec**: [specs/018-recommendation-engine/spec.md](specs/018-recommendation-engine/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -23,6 +23,7 @@
 - [specs/014-study-run-persistence/plan.md](specs/014-study-run-persistence/plan.md) — implemented & merged to main (study child-run persistence + drill-down: every study eval persisted as a spec_hash-deduped, fail-soft child run; lockbox child + ledger link; runs list hides children; Re-run study; redesigned study detail page w/ expandable IS/OOS rows; zero migrations; also fixed the latent API summary-write crash that emptied the runs table since 010; e2e-verified live).
 - [specs/015-monte-carlo/plan.md](specs/015-monte-carlo/plan.md) — implemented & merged to main (Monte Carlo path-risk on any run: seeded shuffle drawdown/streak/underwater distributions vs observed, bootstrap forward cone + terminal percentiles, risk-of-ruin per threshold; run-detail panel w/ caveat-unless-provably-OOS banner + thin-sample badge; POST /api/validation/monte-carlo on-demand/deterministic/no persistence; zero migrations, zero new deps; e2e-verified live).
 - [specs/016-insights/plan.md](specs/016-insights/plan.md) — implemented & merged to main via PRs #3/#4 (pooled study gate productized — wf-rr3 verdict persisted NOT PASSED, canonical CI [−0.71,+2.60]; Insights page w/ R-default edge time-series + regime overlay + per-config distribution + gate chips; advisory Claude narrative — cited findings, snapshot-pinned idempotency, billing auto-pause; migration 0123, dep `anthropic`; live-verified incl. real Opus analysis).
+- [specs/017-claude-experiment-drafts/plan.md](specs/017-claude-experiment-drafts/plan.md) — implemented & merged to main via PR #6 (clickable Claude experiments → draft configs: knob registry w/ whitelist sanitation before storage, URL-carried transient drafts, human-gated create w/ durable provenance via configs.description; migration 0124).
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
