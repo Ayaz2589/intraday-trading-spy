@@ -120,7 +120,9 @@ Frontend:
 
 - A child run whose parent study row was deleted: FK embed returns null →
   `study_kind` null but `segment`/`window_index` still set → badge renders
-  kind-less (`IS · w3`), no link. No crash.
+  kind-less (`IS · w3`). No crash. (In practice unreachable: migration 0111
+  declares the FK `ON DELETE CASCADE`, so deleting a study deletes its
+  children — the badge still degrades gracefully if that ever changes.)
 - Runs with `status='failed'` render as today (status column), badge logic
   unaffected.
 
