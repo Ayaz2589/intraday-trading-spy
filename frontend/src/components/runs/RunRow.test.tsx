@@ -6,6 +6,7 @@ import type { Run } from '@/api/types'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: { children: React.ReactNode }) => <a {...props}>{children}</a>,
+  useNavigate: () => vi.fn(),
 }))
 
 function wrap(node: ReactNode) {
@@ -54,5 +55,25 @@ describe('<RunRow />', () => {
     const { RunRow } = await import('./RunRow')
     render(wrap(<RunRow run={baseRun} failureReason="should not show" />))
     expect(screen.queryByTestId('run-row-failure-reason')).toBeNull()
+  })
+
+  it('shows the origin badge for a study child run', async () => {
+    const { RunRow } = await import('./RunRow')
+    const child = {
+      ...baseRun,
+      id: 'r3',
+      study_id: 's1',
+      study_kind: 'walk_forward' as const,
+      segment: 'validation' as const,
+      window_index: 9,
+    }
+    render(wrap(<RunRow run={child} />))
+    expect(screen.getByTestId('run-origin-badge')).toHaveTextContent('walk-forward · OOS · w9')
+  })
+
+  it('shows CLI run origin for a standalone run', async () => {
+    const { RunRow } = await import('./RunRow')
+    render(wrap(<RunRow run={baseRun} />))
+    expect(screen.getByTestId('run-origin-badge')).toHaveTextContent('CLI run')
   })
 })

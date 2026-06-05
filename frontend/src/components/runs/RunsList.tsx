@@ -53,7 +53,7 @@ export function RunsList() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 120px 120px 120px 40px',
+          gridTemplateColumns: '1fr 170px 120px 120px 120px 40px',
           gap: 12,
           padding: '8px 12px',
           fontSize: 'var(--fs-xs)',
@@ -65,6 +65,10 @@ export function RunsList() {
         }}
       >
         <span>Started</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          Origin
+          <HelpTooltip helpKey="child_run" />
+        </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           Status
           <HelpTooltip helpKey="backtest_queue" />
