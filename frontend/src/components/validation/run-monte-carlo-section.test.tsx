@@ -33,6 +33,14 @@ const FIXTURE = {
     longest_losing_streak: dist(5, 4, 5, 6, 7, 9),
     longest_underwater_trades: dist(41, 28, 40, 54, 71, 97),
   },
+  cone: {
+    horizon_trades: 312,
+    steps: [
+      { trade_index: 1, p5: 24850, p25: 24940, p50: 25010, p75: 25080, p95: 25170 },
+      { trade_index: 312, p5: 23100, p25: 25820, p50: 27940, p75: 30060, p95: 33310 },
+    ],
+  },
+  terminal_equity: dist(27940, 23100, 25820, 27940, 30060, 33310),
   iterations: 2000,
   seed: 20260604,
   trade_count: 312,

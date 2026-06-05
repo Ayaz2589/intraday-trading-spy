@@ -366,6 +366,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Iterations = how many simulated paths were generated (from config, default 2,000). The seed fixes the random number generator, so the same run + same settings reproduce every number byte-for-byte — nothing is stored; the result is recomputed on demand and always lands on the same answer.",
   },
+  forward_cone: {
+    title: "Forward projection cone",
+    description:
+      "Draw trades at random (with replacement) from this run's real trade distribution and walk forward — thousands of times. The shaded bands show where equity landed in 50% (dark) and 90% (light) of simulated futures; the line is the median path. Wide cone = high outcome uncertainty. It assumes the future behaves like this sample, so treat it as a range of plausibility, not a forecast.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

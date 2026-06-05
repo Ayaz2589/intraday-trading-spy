@@ -313,8 +313,25 @@ export type MonteCarloShuffleStats = {
   longest_underwater_trades: MonteCarloDistribution
 }
 
+export type MonteCarloConeStep = {
+  trade_index: number
+  p5: number
+  p25: number
+  p50: number
+  p75: number
+  p95: number
+}
+
+export type MonteCarloCone = {
+  horizon_trades: number
+  steps: MonteCarloConeStep[]
+}
+
 export type MonteCarloResult = {
   shuffle: MonteCarloShuffleStats
+  cone: MonteCarloCone
+  // observed = the run's actual ending equity (start + sum of real PnLs).
+  terminal_equity: MonteCarloDistribution
   iterations: number
   seed: number
   trade_count: number

@@ -126,3 +126,24 @@ def test_monte_carlo_has_no_side_effects(unit_client, stub_storage_client):
         assert name.startswith(("get_", "list_")), (
             f"unexpected non-read storage call during monte carlo: {name}"
         )
+
+
+# ---- T016 (US2): response includes the cone + terminal equity ---------------
+
+
+def test_monte_carlo_response_includes_cone_and_terminal(unit_client, stub_storage_client):
+    _arm(stub_storage_client)
+    resp = unit_client.post(
+        "/api/validation/monte-carlo", json={"run_id": str(uuid4())}
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    cone = body["cone"]
+    assert cone["horizon_trades"] == 4
+    assert 1 <= len(cone["steps"]) <= 200
+    first, last = cone["steps"][0], cone["steps"][-1]
+    assert first["trade_index"] == 1 and last["trade_index"] == 4
+    for step in cone["steps"]:
+        assert step["p5"] <= step["p25"] <= step["p50"] <= step["p75"] <= step["p95"]
+    t = body["terminal_equity"]
+    assert t["observed"] == pytest.approx(1000.0 + 100.0)  # start + sum(pnls)

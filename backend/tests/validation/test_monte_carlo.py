@@ -178,3 +178,59 @@ def test_run_monte_carlo_rejects_fewer_than_two_trades():
     with pytest.raises(ValueError):
         run_monte_carlo([], starting_equity=FIX_START, cfg=_mc_cfg(),
                         low_confidence_threshold=30)
+
+
+# ---- T015: bootstrap forward cone + terminal equity (US2) -------------------
+
+
+def test_cone_defaults_horizon_to_observed_count_and_orders_bands():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo(FIX_PNLS, starting_equity=FIX_START, cfg=_mc_cfg(),
+                          low_confidence_threshold=30)
+    cone = res.cone
+    assert cone.horizon_trades == 4  # None -> observed trade count
+    assert cone.steps[0].trade_index == 1
+    assert cone.steps[-1].trade_index == 4
+    for st in cone.steps:
+        assert st.p5 <= st.p25 <= st.p50 <= st.p75 <= st.p95
+
+
+def test_cone_honors_horizon_override():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo(FIX_PNLS, starting_equity=FIX_START,
+                          cfg=_mc_cfg(horizon_trades=12),
+                          low_confidence_threshold=30)
+    assert res.cone.horizon_trades == 12
+    assert len(res.cone.steps) == 12  # under the cap -> every step reported
+
+
+def test_cone_downsamples_without_changing_sampled_values():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    pnls = [50.0, -75.0, 120.0, -30.0, 10.0, -60.0, 90.0, -20.0]
+    full = run_monte_carlo(pnls, starting_equity=FIX_START,
+                           cfg=_mc_cfg(horizon_trades=50, max_cone_steps=1000),
+                           low_confidence_threshold=30)
+    ds = run_monte_carlo(pnls, starting_equity=FIX_START,
+                         cfg=_mc_cfg(horizon_trades=50, max_cone_steps=10),
+                         low_confidence_threshold=30)
+    assert len(full.cone.steps) == 50
+    assert len(ds.cone.steps) <= 10
+    assert ds.cone.steps[0].trade_index == 1
+    assert ds.cone.steps[-1].trade_index == 50
+    # R7: sampled steps carry FULL-resolution percentile values.
+    by_index = {s.trade_index: s for s in full.cone.steps}
+    for s in ds.cone.steps:
+        assert s == by_index[s.trade_index]
+
+
+def test_terminal_equity_observed_is_actual_ending_equity():
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    res = run_monte_carlo(FIX_PNLS, starting_equity=FIX_START, cfg=_mc_cfg(),
+                          low_confidence_threshold=30)
+    t = res.terminal_equity
+    assert t.observed == pytest.approx(FIX_START + sum(FIX_PNLS))
+    assert t.p5 <= t.p25 <= t.p50 <= t.p75 <= t.p95

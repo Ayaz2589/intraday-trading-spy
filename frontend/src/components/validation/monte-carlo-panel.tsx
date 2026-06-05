@@ -1,5 +1,5 @@
 import { HelpTooltip } from "../help-tooltip";
-import type { MonteCarloDistribution, MonteCarloResult } from "@/api/types";
+import type { MonteCarloCone, MonteCarloDistribution, MonteCarloResult } from "@/api/types";
 
 // Feature 015 (US1): drawdown / path-risk distributions from reshuffling the
 // run's REAL trades. Drawdown pct arrives as a fraction of the running peak
@@ -38,6 +38,42 @@ function DistributionStrip({ dist }: { dist: MonteCarloDistribution }) {
       />
       <rect x={x(dist.p50) - 0.6} y={2} width={1.2} height={8} fill="var(--text)" />
       <circle cx={x(dist.observed)} cy={6} r={2.4} fill="var(--info)" />
+    </svg>
+  );
+}
+
+// Fan chart over the bootstrap horizon: P5–P95 outer band, P25–P75 core,
+// median polyline. Hand-rolled SVG like equity-curve.tsx (no chart dep).
+function ConeChart({ cone }: { cone: MonteCarloCone }) {
+  const steps = cone.steps;
+  const first = steps[0].trade_index;
+  const last = steps[steps.length - 1].trade_index;
+  const lo = Math.min(...steps.map((s) => s.p5));
+  const hi = Math.max(...steps.map((s) => s.p95));
+  const W = 600, H = 160, PAD = 4;
+  const x = (i: number) => PAD + ((i - first) / (last - first || 1)) * (W - 2 * PAD);
+  const y = (v: number) => H - PAD - ((v - lo) / (hi - lo || 1)) * (H - 2 * PAD);
+  const band = (loKey: "p5" | "p25", hiKey: "p95" | "p75") =>
+    [
+      ...steps.map((s) => `${x(s.trade_index)},${y(s[hiKey])}`),
+      ...steps.slice().reverse().map((s) => `${x(s.trade_index)},${y(s[loKey])}`),
+    ].join(" ");
+  return (
+    <svg
+      data-testid="mc-cone-chart"
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      style={{ width: "100%", height: 160, display: "block" }}
+      aria-hidden
+    >
+      <polygon points={band("p5", "p95")} fill="var(--border-strong)" opacity={0.55} />
+      <polygon points={band("p25", "p75")} fill="var(--text-muted)" opacity={0.45} />
+      <polyline
+        points={steps.map((s) => `${x(s.trade_index)},${y(s.p50)}`).join(" ")}
+        stroke="var(--info)"
+        strokeWidth={2}
+        fill="none"
+      />
     </svg>
   );
 }
@@ -99,6 +135,23 @@ export function MonteCarloPanel({ result }: { result: MonteCarloResult }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div data-testid="mc-cone-section">
+        <div className="stat-label" style={{ marginBottom: "var(--sp-2)" }}>
+          Forward cone — next {result.cone.horizon_trades.toLocaleString()} trades{" "}
+          <HelpTooltip helpKey="forward_cone" />
+        </div>
+        <ConeChart cone={result.cone} />
+        <div
+          className="stat-label mono"
+          data-testid="mc-terminal-equity"
+          style={{ marginTop: "var(--sp-2)" }}
+        >
+          Terminal equity: P5 {usd(result.terminal_equity.p5)} · median{" "}
+          {usd(result.terminal_equity.p50)} · P95 {usd(result.terminal_equity.p95)}{" "}
+          (this run ended at {usd(result.terminal_equity.observed)})
+        </div>
       </div>
 
       <div className="stat-label mono" data-testid="mc-meta">

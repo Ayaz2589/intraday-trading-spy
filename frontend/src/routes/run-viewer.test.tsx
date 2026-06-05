@@ -291,6 +291,7 @@ describe("RunViewer route", () => {
       "losing_streak",
       "underwater_period",
       "mc_iterations_seed",
+      "forward_cone",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

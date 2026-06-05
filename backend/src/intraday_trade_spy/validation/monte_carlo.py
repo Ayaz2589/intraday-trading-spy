@@ -24,6 +24,8 @@ import numpy as np
 
 from intraday_trade_spy.config import MonteCarloConfig
 from intraday_trade_spy.models import (
+    MonteCarloCone,
+    MonteCarloConeStep,
     MonteCarloDistribution,
     MonteCarloResult,
     MonteCarloShuffleStats,
@@ -143,6 +145,42 @@ def run_shuffle(
     )
 
 
+def _downsample_indices(horizon: int, max_steps: int) -> np.ndarray:
+    """Evenly spaced 1-based trade indices, always including 1 and horizon."""
+    if horizon <= max_steps:
+        return np.arange(1, horizon + 1)
+    return np.unique(np.round(np.linspace(1, horizon, max_steps)).astype(int))
+
+
+def run_bootstrap(
+    pnls: np.ndarray, *, starting_equity: float, cfg: MonteCarloConfig
+) -> tuple[MonteCarloCone, MonteCarloDistribution, np.ndarray]:
+    """Draw `horizon` PnLs with replacement per iteration and walk forward
+    from starting equity. Returns (cone, terminal distribution, full equity
+    matrix without the origin column — reused by the ruin computation).
+    Seeded at cfg.seed + 1 to stay decorrelated from the shuffle method
+    (the significance seed+k precedent)."""
+    rng = np.random.default_rng(cfg.seed + 1)
+    horizon = int(cfg.horizon_trades or pnls.size)
+    draws = rng.choice(pnls, size=(cfg.iterations, horizon), replace=True)
+    equity = _paths_from_pnl_matrix(draws, starting_equity)[:, 1:]
+
+    idx = _downsample_indices(horizon, cfg.max_cone_steps)
+    bands = np.percentile(equity[:, idx - 1], _PERCENTILES, axis=0)
+    steps = [
+        MonteCarloConeStep(
+            trade_index=int(i),
+            p5=float(bands[0, k]), p25=float(bands[1, k]), p50=float(bands[2, k]),
+            p75=float(bands[3, k]), p95=float(bands[4, k]),
+        )
+        for k, i in enumerate(idx)
+    ]
+    terminal = _distribution(
+        observed=starting_equity + float(pnls.sum()), samples=equity[:, -1]
+    )
+    return MonteCarloCone(horizon_trades=horizon, steps=steps), terminal, equity
+
+
 def run_monte_carlo(
     pnls: Sequence[float],
     *,
@@ -158,8 +196,13 @@ def run_monte_carlo(
             f"this run has {arr.size} trade{'s' if arr.size != 1 else ''} — "
             "at least 2 are needed to simulate reorderings"
         )
+    cone, terminal, _equity = run_bootstrap(
+        arr, starting_equity=starting_equity, cfg=cfg
+    )
     return MonteCarloResult(
         shuffle=run_shuffle(arr, starting_equity=starting_equity, cfg=cfg),
+        cone=cone,
+        terminal_equity=terminal,
         iterations=cfg.iterations,
         seed=cfg.seed,
         trade_count=int(arr.size),

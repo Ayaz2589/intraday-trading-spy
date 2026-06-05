@@ -15,6 +15,15 @@ const FIXTURE: MonteCarloResult = {
     longest_losing_streak: dist(5, 4, 5, 6, 7, 9),
     longest_underwater_trades: dist(41, 28, 40, 54, 71, 97),
   },
+  cone: {
+    horizon_trades: 312,
+    steps: [
+      { trade_index: 1, p5: 24850, p25: 24940, p50: 25010, p75: 25080, p95: 25170 },
+      { trade_index: 156, p5: 24210, p25: 25390, p50: 26240, p75: 27110, p95: 28490 },
+      { trade_index: 312, p5: 23100, p25: 25820, p50: 27940, p75: 30060, p95: 33310 },
+    ],
+  },
+  terminal_equity: dist(27940, 23100, 25820, 27940, 30060, 33310),
   iterations: 2000,
   seed: 20260604,
   trade_count: 312,
@@ -64,5 +73,29 @@ describe("MonteCarloPanel (US1 — drawdown / path risk)", () => {
     ]) {
       expect(container.querySelector(`[data-help-key="${key}"]`)).toBeTruthy();
     }
+  });
+});
+
+describe("MonteCarloPanel (US2 — forward cone)", () => {
+  it("renders the fan chart with band polygons, a median line, and the horizon", () => {
+    render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    const chart = screen.getByTestId("mc-cone-chart");
+    // Two stacked band polygons (P5-P95 outer, P25-P75 core) + median polyline.
+    expect(chart.querySelectorAll("polygon").length).toBeGreaterThanOrEqual(2);
+    expect(chart.querySelectorAll("polyline").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("mc-cone-section")).toHaveTextContent(/next 312 trades/i);
+  });
+
+  it("shows terminal-equity percentiles with the observed ending equity", () => {
+    render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    const term = screen.getByTestId("mc-terminal-equity");
+    expect(term).toHaveTextContent("$23,100");
+    expect(term).toHaveTextContent("$27,940");
+    expect(term).toHaveTextContent("$33,310");
+  });
+
+  it("pairs the cone with its HelpTooltip", () => {
+    const { container } = render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    expect(container.querySelector('[data-help-key="forward_cone"]')).toBeTruthy();
   });
 });

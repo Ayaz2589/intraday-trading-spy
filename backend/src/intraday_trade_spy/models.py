@@ -332,12 +332,39 @@ class MonteCarloShuffleStats(BaseModel):
     longest_underwater_trades: MonteCarloDistribution
 
 
+class MonteCarloConeStep(BaseModel):
+    """Equity percentile bands at one trade index of the bootstrap horizon.
+    Invariant: p5 <= p25 <= p50 <= p75 <= p95 (FR-013)."""
+
+    model_config = ConfigDict(frozen=True)
+    trade_index: int
+    p5: float
+    p25: float
+    p50: float
+    p75: float
+    p95: float
+
+
+class MonteCarloCone(BaseModel):
+    """Forward projection: paths drawn with replacement from the observed
+    trades. Steps are downsampled to <= max_cone_steps at evenly spaced
+    indices (first and final always included); sampled values are computed on
+    the full-resolution paths (research.md R7)."""
+
+    model_config = ConfigDict(frozen=True)
+    horizon_trades: int
+    steps: list[MonteCarloConeStep]
+
+
 class MonteCarloResult(BaseModel):
     """On-demand, deterministic, never persisted (FR-005/FR-006/FR-011): the
     echoed seed/iterations/trade_count regenerate every number exactly."""
 
     model_config = ConfigDict(frozen=True)
     shuffle: MonteCarloShuffleStats
+    cone: MonteCarloCone
+    # observed = the run's actual ending equity (start + sum of real PnLs).
+    terminal_equity: MonteCarloDistribution
     iterations: int
     seed: int
     trade_count: int
