@@ -28,6 +28,9 @@ const badgeStyle: CSSProperties = {
   background: 'var(--surface-2, #f6f7f9)',
   fontSize: 'var(--fs-xs, 11px)',
   color: 'var(--text-muted)',
+  maxWidth: '100%',
+  overflow: 'hidden',
+  whiteSpace: 'nowrap',
 }
 
 export function RunOriginBadge({ run }: { run: Run }) {
