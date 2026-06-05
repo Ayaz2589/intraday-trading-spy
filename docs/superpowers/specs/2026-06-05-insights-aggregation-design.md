@@ -36,7 +36,8 @@ New pure module `validation/pooled.py`; orchestration in `api/validation_lifecyc
 - **Fast path (sync, ~2 s)** — `POST /api/validation/studies/{id}/pooled-gate?mode=fast`:
   - pooled bootstrap CIs on expectancy $ and R (existing `bootstrap_ci`, seeded)
   - pooled Monte Carlo (existing `run_monte_carlo`: shuffle drawdown stats, cone,
-    ruin) over pooled OOS trades; starting equity from the study's config snapshot
+    ruin) over pooled OOS trades; starting equity from the children's (identical)
+    config snapshot — same rule as 015 R3
   - sign test on window PnL signs (closed form)
   - **gate verdict: `passed = (pooled expectancy-$ CI low > 0)`** — the
     pre-registered rule that decided the wf-rr3 run
@@ -58,8 +59,9 @@ New router `api/routers/insights.py`; SQL via the direct-psycopg aggregate path
 established in 013. Both endpoints scope to `runs.segment = 'validation'` only
 (provably-OOS, same honesty rule as 015's caveat) and are user-scoped in SQL.
 
-- **`GET /api/insights/edge-timeseries?config_name=&metric=`** — one point per OOS
-  child run across the archive: window range, config, expectancy $/R, sharpe,
+- **`GET /api/insights/edge-timeseries?config_name=`** — one point per OOS
+  child run across the archive (all metrics in one response; the frontend picks
+  which to plot): window range, config, expectancy $/R, sharpe,
   trades, net PnL, study_id/run_id/window_index. Metrics computed **from the
   trades table** (`avg(pnl)`, `sum(pnl)`), not from `summary` jsonb — sidesteps
   the open ~2× summary-expectancy discrepancy; same basis as the gate.
@@ -93,7 +95,8 @@ New dependency **`anthropic`** (official SDK) + `ANTHROPIC_API_KEY` env var
 - **Payloads**: study scope (gate result + per-window table + params) and insights
   scope (time-series + distribution + recent verdicts). Deterministic JSON
   (sorted keys) → `payload_hash` (sha256). Oversized payloads truncate the
-  time-series to the most recent N windows, noted in payload and UI.
+  time-series to the most recent `insights.claude.max_timeseries_windows`
+  windows (config, default 200), noted in payload and UI.
 - **Persistence — migration 0120** (applied to cloud via direct psycopg):
   - `insight_analyses(id, user_id, scope ∈ {study, insights}, scope_id,
     payload_hash, model, analysis jsonb, created_at)` + RLS
