@@ -90,21 +90,21 @@ export function NewConfigSection({
             <option value="scratch">From scratch</option>
           </select>
         </div>
-        {source === 'preset' && presets.length > 0 && (
-          <div role="listbox" aria-label="preset" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignSelf: 'flex-end' }}>
-            {presets.map(p => (
-              <button
-                key={p.name}
-                type="button"
-                role="option"
-                aria-selected={p.name === presetName}
-                onClick={() => setPresetName(p.name)}
-                className={`chip${p.name === presetName ? ' chip-accent' : ''}`}
-                style={{ cursor: 'pointer', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 'var(--r-sm)', fontSize: 'var(--fs-xs)', background: p.name === presetName ? 'var(--accent-dim, #eff6ff)' : 'var(--surface-2)' }}
-              >
-                {p.name}
-              </button>
-            ))}
+        {source === 'preset' && (
+          <div>
+            <FieldLabel>Preset</FieldLabel>
+            <select
+              aria-label="preset"
+              value={presetName}
+              onChange={e => setPresetName(e.target.value)}
+              style={inputStyle}
+            >
+              {presets.map(p => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
         {source === 'duplicate' && (
@@ -140,12 +140,10 @@ export function NewConfigSection({
       )}
       {source === 'preset' && selectedPreset && (
         <p
-          style={{
-            margin: '10px 0 0',
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--text-muted)',
-          }}
+          data-testid="preset-desc"
+          style={{ margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}
         >
+          <span className="chip chip-accent">{selectedPreset.name}</span>
           {selectedPreset.description}
         </p>
       )}
