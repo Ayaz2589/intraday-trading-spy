@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   useClaudeAnalysis,
   useClaudeSettings,
@@ -76,6 +77,12 @@ export function ClaudeReadCard({
   const generate = useGenerateClaudeAnalysis(scope, scopeId)
   const setEnabled = useSetClaudeEnabled()
 
+  // Progressive disclosure (declutter, 2026-06-05): findings show the top 3
+  // by confidence; risks/experiments collapse behind count headers.
+  const [showAllFindings, setShowAllFindings] = useState(false)
+  const [risksOpen, setRisksOpen] = useState(false)
+  const [experimentsOpen, setExperimentsOpen] = useState(false)
+
   const cfg = settings.data
   const analysis = stored.data ?? generate.data ?? null
   const upToDate = sameFingerprints(analysis?.analysis?.fingerprints, currentFingerprints ?? undefined)
@@ -87,6 +94,15 @@ export function ClaudeReadCard({
     const normalized = path.replace(/\[(\d+)\]/g, '.$1')
     return normalized in metricValues ? metricValues[normalized] : undefined
   }
+
+  const CONF_RANK = { high: 0, medium: 1, low: 2 } as const
+  const CONF_COLOR = {
+    high: 'var(--profit)',
+    medium: 'var(--border-strong)',
+    low: 'var(--text-muted)',
+  } as const
+  const leafOf = (path: string) => path.replace(/\[(\d+)\]/g, '.$1').split('.').pop() ?? path
+
 
   return (
     <section className="card" data-testid="claude-read">
@@ -110,7 +126,7 @@ export function ClaudeReadCard({
         </p>
       )}
 
-      {cfg && cfg.configured && !cfg.claude_enabled && (
+      {cfg && cfg.configured && !cfg.claude_enabled && !banner && (
         <div
           data-testid="claude-paused"
           className="stat-label"
@@ -169,77 +185,139 @@ export function ClaudeReadCard({
         <div style={{ display: 'grid', gap: 'var(--sp-3)' }}>
           <div>{analysis.analysis.summary}</div>
 
-          {analysis.analysis.findings.length > 0 && (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>claim — each tied to a cited metric</th>
-                  <th>cited metric</th>
-                  <th>conf.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysis.analysis.findings.map((f, i) => {
-                  const value = resolveMetric(f.evidence_metric)
-                  return (
-                    <tr key={i}>
-                      <td>{f.claim}</td>
-                      <td className="mono">
-                        {value !== undefined ? (
-                          <>
-                            {f.evidence_metric}: <strong>{value}</strong>
-                          </>
-                        ) : (
-                          <span style={{ color: 'var(--loss)' }}>
-                            ⚠ metric not found in payload ({f.evidence_metric})
-                          </span>
-                        )}
-                      </td>
-                      <td>{f.confidence}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: 'var(--sp-4)',
-            }}
-          >
-            {analysis.analysis.risks.length > 0 && (
-              <div data-testid="claude-risks">
-                <div className="stat-label" style={{ marginBottom: 4 }}>RISKS</div>
-                {analysis.analysis.risks.map((r, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0' }}>
-                    <span style={{ color: 'var(--loss)' }}>●</span>
-                    <span>{r}</span>
+          {analysis.analysis.findings.length > 0 &&
+            (() => {
+              const sorted = [...analysis.analysis.findings].sort(
+                (a, b) => (CONF_RANK[a.confidence] ?? 3) - (CONF_RANK[b.confidence] ?? 3),
+              )
+              const visible = showAllFindings ? sorted : sorted.slice(0, 3)
+              return (
+                <div>
+                  <div
+                    className="stat-label"
+                    style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}
+                  >
+                    <span>FINDINGS ({sorted.length}) — each tied to a cited metric</span>
+                    {sorted.length > 3 && (
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ fontSize: 'var(--fs-xs, 11px)', padding: '0 8px' }}
+                        onClick={() => setShowAllFindings((v) => !v)}
+                      >
+                        {showAllFindings ? 'show top 3' : `show all ${sorted.length}`}
+                      </button>
+                    )}
                   </div>
-                ))}
+                  <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <tbody>
+                      {visible.map((f, i) => {
+                        const value = resolveMetric(f.evidence_metric)
+                        return (
+                          <tr key={i} data-testid="claude-finding">
+                            <td
+                              title={f.claim}
+                              style={{
+                                maxWidth: 0,
+                                width: '55%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {f.claim}
+                            </td>
+                            <td className="mono" title={f.evidence_metric}>
+                              {value !== undefined ? (
+                                <>
+                                  <span className="stat-label">{leafOf(f.evidence_metric)}</span>{' '}
+                                  <strong style={{ color: 'var(--info)' }}>← {value}</strong>
+                                </>
+                              ) : (
+                                <span style={{ color: 'var(--loss)' }}>
+                                  ⚠ metric not found ({leafOf(f.evidence_metric)})
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ width: 74 }}>
+                              <span
+                                className="mono"
+                                style={{
+                                  color: CONF_COLOR[f.confidence] ?? 'var(--text-muted)',
+                                  border: `1px solid ${CONF_COLOR[f.confidence] ?? 'var(--border-strong)'}`,
+                                  borderRadius: 'var(--r-md)',
+                                  padding: '0 6px',
+                                  textTransform: 'uppercase',
+                                  fontSize: 'var(--fs-xs, 10px)',
+                                }}
+                              >
+                                {f.confidence}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
+
+          <div style={{ display: 'grid', gap: 'var(--sp-2)' }}>
+            {analysis.analysis.risks.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  className="stat-label"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  onClick={() => setRisksOpen((v) => !v)}
+                >
+                  {risksOpen ? '▾' : '▸'} RISKS ({analysis.analysis.risks.length})
+                </button>
+                {risksOpen && (
+                  <div data-testid="claude-risks">
+                    {analysis.analysis.risks.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0' }}>
+                        <span style={{ color: 'var(--loss)' }}>●</span>
+                        <span>{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {analysis.analysis.suggested_experiments.length > 0 && (
-              <div data-testid="claude-experiments">
-                <div className="stat-label" style={{ marginBottom: 4 }}>EXPERIMENTS TO RUN</div>
-                <div style={{ display: 'grid', gap: 6 }}>
-                  {analysis.analysis.suggested_experiments.map((e, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--r-md)',
-                        padding: 'var(--sp-2) var(--sp-3)',
-                      }}
-                    >
-                      <div style={{ fontWeight: 600 }}>{e.hypothesis}</div>
-                      <div className="stat-label">{e.how_to_test}</div>
-                    </div>
-                  ))}
-                </div>
+              <div>
+                <button
+                  type="button"
+                  className="stat-label"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  onClick={() => setExperimentsOpen((v) => !v)}
+                >
+                  {experimentsOpen ? '▾' : '▸'} EXPERIMENTS TO RUN (
+                  {analysis.analysis.suggested_experiments.length})
+                </button>
+                {experimentsOpen && (
+                  <div
+                    data-testid="claude-experiments"
+                    style={{ display: 'grid', gap: 6, marginTop: 4 }}
+                  >
+                    {analysis.analysis.suggested_experiments.map((e, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--r-md)',
+                          padding: 'var(--sp-2) var(--sp-3)',
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>{e.hypothesis}</div>
+                        <div className="stat-label">{e.how_to_test}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -260,6 +338,25 @@ export function ClaudeReadCard({
               {analysis.truncated ? ' · time-series truncated' : ''}{' '}
               <HelpTooltip helpKey="snapshot_pin" />
             </div>
+            {cfg && cfg.configured && !cfg.claude_enabled && banner && (
+              <div
+                data-testid="claude-paused-inline"
+                className="stat-label"
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}
+              >
+                {cfg.disabled_reason === 'billing'
+                  ? '⚠ paused — API credit ran out; top up, then re-enable'
+                  : 'paused (manually)'}
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={setEnabled.isPending}
+                  onClick={() => setEnabled.mutate(true)}
+                >
+                  Re-enable
+                </button>
+              </div>
+            )}
             {cfg?.configured && cfg.claude_enabled && (
               <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
                 <button
