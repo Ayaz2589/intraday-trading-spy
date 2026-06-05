@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DraftConfigPanel } from './DraftConfigPanel'
+import { decodeDraft } from '@/lib/draft-config'
 import {
   useActivateConfig,
   useConfigs,
@@ -22,7 +24,14 @@ import type { Config, ConfigSource } from '@/api/types'
 // active one (pre-selected in every picker), and lets the operator create
 // (scratch / preset / duplicate), rename, delete, activate, and edit knobs.
 // Past runs keep their own config_snapshot, so deleting is safe for history.
-export function ConfigManager() {
+export function ConfigManager({
+  draftParam,
+  onDismissDraft,
+}: {
+  // Feature 017: raw ?draft= value (decoded defensively here) + dismiss.
+  draftParam?: string
+  onDismissDraft?: () => void
+} = {}) {
   const configsQuery = useConfigs()
   const presetsQuery = usePresets()
   const create = useCreateConfig()
@@ -80,8 +89,24 @@ export function ConfigManager() {
     setNewName('')
   }
 
+  // Feature 017: decode the transient draft (defensive — malformed -> notice).
+  const draft = draftParam ? decodeDraft(draftParam) : null
+
   return (
     <section data-testid="config-manager">
+      {draftParam && !draft && (
+        <p className="stat-label" style={{ color: 'var(--loss)' }}>
+          That draft link could not be read — showing the normal configs page.
+        </p>
+      )}
+      {draft && (
+        <DraftConfigPanel
+          draft={draft}
+          configs={configs}
+          activeConfig={activeConfig}
+          onDismiss={() => onDismissDraft?.()}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <h2 className="text-lg font-semibold">Configs</h2>
         <HelpTooltip helpKey="saved_config" />

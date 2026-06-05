@@ -302,6 +302,7 @@ describe("RunViewer route", () => {
       "window_distribution",
       "claude_advisory",
       "snapshot_pin",
+      "claude_experiment_draft",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

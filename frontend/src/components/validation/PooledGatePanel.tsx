@@ -168,6 +168,7 @@ export function PooledGatePanel({ study }: { study: ValidationStudy }) {
           <ClaudeReadCard
             scope="study"
             scopeId={study.id}
+            draftBaseConfig={study.config_name ?? undefined}
             currentFingerprints={{ gate_computed_at: gate.computed_at }}
             metricValues={flattenMetrics({ pooled_gate: gate })}
           />

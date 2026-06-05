@@ -396,9 +396,13 @@ class SupabaseStorageClient:
         except Exception:  # noqa: BLE001 — journaling must never block the mutation
             pass
 
-    def create_config(self, *, name: str, params: dict, strategy_id=None, mode: str = "backtest") -> dict:
+    def create_config(
+        self, *, name: str, params: dict, strategy_id=None, mode: str = "backtest",
+        description: str | None = None,
+    ) -> dict:
         """Create a new named config. Rejects empty/duplicate names; pins the
-        SPY strategy (FR-014); live stays disabled. Returns the row."""
+        SPY strategy (FR-014); live stays disabled. Returns the row.
+        017: optional description = durable provenance."""
         import uuid
 
         name = (name or "").strip()
@@ -416,6 +420,7 @@ class SupabaseStorageClient:
             "mode": mode,
             "params": params or {},
             "is_active": False,
+            "description": (description or "").strip() or None,
         }
         try:
             response = self._client.table("configs").insert(body).execute()

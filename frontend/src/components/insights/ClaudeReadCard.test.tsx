@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 
+const navigateMock = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => navigateMock,
+}));
+
 const getAnalysisMock = vi.fn();
 const postAnalysisMock = vi.fn();
 const getSettingsMock = vi.fn();
@@ -368,5 +373,31 @@ describe("ClaudeReadCard — structured knob suggestions (017 US1)", () => {
     expect(exp).toHaveTextContent(/Regime filter helps/);
     expect(exp?.querySelectorAll("[data-testid='exp-change-chip']")).toHaveLength(0);
     expect(screen.queryByRole("button", { name: /draft config/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("ClaudeReadCard — Draft config → (017 US2)", () => {
+  it("offers the button only on suggestion-bearing experiments and navigates with the encoded draft", async () => {
+    const { decodeDraft } = await import("@/lib/draft-config");
+    getAnalysisMock.mockResolvedValue(WITH_CHANGES);
+    wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
+    );
+    const buttons = screen.getAllByRole("button", { name: /draft config/i });
+    expect(buttons).toHaveLength(1); // only the experiment WITH changes
+    navigateMock.mockClear();
+    fireEvent.click(buttons[0]);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const arg = navigateMock.mock.calls[0][0];
+    expect(arg.to).toBe("/strategies");
+    const draft = decodeDraft(arg.search.draft);
+    expect(draft).not.toBeNull();
+    expect(draft?.changes).toEqual([
+      { knob_path: "strategy.vwap_pullback.target.risk_reward", value: 2.5 },
+      { knob_path: "strategy.vwap_pullback.max_distance_from_vwap_pct", value: 0.4 },
+    ]);
+    expect(draft?.analysis_id).toBe("ia1");
+    expect(draft?.hypothesis).toMatch(/wider risk:reward/i);
   });
 });

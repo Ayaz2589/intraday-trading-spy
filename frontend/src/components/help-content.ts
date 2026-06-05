@@ -416,6 +416,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Each analysis is stored with a hash of the exact data it analyzed. Re-opening the page shows the stored analysis free of charge; regeneration only makes sense (and is only enabled) when the underlying data actually changed. Unlike the seeded gate numbers, LLM output is NOT deterministic — the pin tells you exactly which data a narrative described.",
   },
+  claude_experiment_draft: {
+    title: "Drafted from Claude's experiment",
+    description:
+      "Claude suggested this experiment as concrete knob changes; the app validated every suggestion against the registered tunable knobs and their bounds BEFORE you ever saw it. Claude only suggests — nothing is created, activated, or run until YOU review the values and click Create, through the exact same form and validation as a hand-made config. The created config records where it came from.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

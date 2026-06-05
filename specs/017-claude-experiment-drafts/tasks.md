@@ -17,14 +17,14 @@ shape; US3 sweeps both.
 
 ## Phase 1: Setup
 
-- [ ] T001 Write backend/db/migrations/0124_configs_description.sql (`ALTER TABLE public.configs ADD COLUMN IF NOT EXISTS description TEXT;` per data-model §C) and apply to cloud via the direct-psycopg route (SUPABASE_DB_URL); verify column exists
+- [x] T001 Write backend/db/migrations/0124_configs_description.sql (`ALTER TABLE public.configs ADD COLUMN IF NOT EXISTS description TEXT;` per data-model §C) and apply to cloud via the direct-psycopg route (SUPABASE_DB_URL); verify column exists
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T002 [P] Failing tests in backend/tests/validation/test_knobs.py: KNOB_REGISTRY contains exactly the 8 seeded paths with research-R9 bounds; `sanitize_changes` keeps valid changes, drops off-registry paths, drops out-of-bounds values (e.g. risk_reward 9000), coerces int-kind knobs via round() THEN bounds-checks (minutes 15.7 → 16; analyze A1), keeps only the valid subset of a mixed list, returns [] for None/[]/malformed entries (non-dict, missing keys, string values) WITHOUT raising; `registry_prompt_section()` mentions every path and its bounds
-- [ ] T003 Implement backend/src/intraday_trade_spy/validation/knobs.py (`KnobSpec`, `KNOB_REGISTRY`, `sanitize_changes`, `registry_prompt_section` per data-model §A) and add `ConfigChange` + `ClaudeExperiment.suggested_config_changes: list[ConfigChange] = []` to backend/src/intraday_trade_spy/models.py (data-model §B)
+- [x] T002 [P] Failing tests in backend/tests/validation/test_knobs.py: KNOB_REGISTRY contains exactly the 8 seeded paths with research-R9 bounds; `sanitize_changes` keeps valid changes, drops off-registry paths, drops out-of-bounds values (e.g. risk_reward 9000), coerces int-kind knobs via round() THEN bounds-checks (minutes 15.7 → 16; analyze A1), keeps only the valid subset of a mixed list, returns [] for None/[]/malformed entries (non-dict, missing keys, string values) WITHOUT raising; `registry_prompt_section()` mentions every path and its bounds
+- [x] T003 Implement backend/src/intraday_trade_spy/validation/knobs.py (`KnobSpec`, `KNOB_REGISTRY`, `sanitize_changes`, `registry_prompt_section` per data-model §A) and add `ConfigChange` + `ClaudeExperiment.suggested_config_changes: list[ConfigChange] = []` to backend/src/intraday_trade_spy/models.py (data-model §B)
 
 **Checkpoint**: the registry exists — story work can begin.
 
@@ -42,13 +42,13 @@ text-only.
 
 ### Tests for User Story 1 (write first, must fail)
 
-- [ ] T004 [US1] Failing analyst tests (extend backend/tests/api/new/test_claude_analyst.py, SDK mocked): system prompt contains the registry section (every knob path + bounds present — generated, not hardcoded); a parsed analysis whose experiment mixes valid + off-list + out-of-bounds suggestions is STORED with only the valid ones (assert `insert_insight_analysis` kwargs); an experiment whose suggestions all die is stored with `[]`; both payload builders include `analysis_schema_version: 2` and the resulting payload_hash differs from a version-less payload (research R3 — pre-017 idempotency invalidation); an analysis with no suggestions behaves exactly as in 016; **the generation path never calls config-mutating storage methods** (`create_config`/`update_config`/`set_active_config` not called on the stub — SC-003/Constitution II; analyze C1)
+- [x] T004 [US1] Failing analyst tests (extend backend/tests/api/new/test_claude_analyst.py, SDK mocked): system prompt contains the registry section (every knob path + bounds present — generated, not hardcoded); a parsed analysis whose experiment mixes valid + off-list + out-of-bounds suggestions is STORED with only the valid ones (assert `insert_insight_analysis` kwargs); an experiment whose suggestions all die is stored with `[]`; both payload builders include `analysis_schema_version: 2` and the resulting payload_hash differs from a version-less payload (research R3 — pre-017 idempotency invalidation); an analysis with no suggestions behaves exactly as in 016; **the generation path never calls config-mutating storage methods** (`create_config`/`update_config`/`set_active_config` not called on the stub — SC-003/Constitution II; analyze C1)
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Implement in backend/src/intraday_trade_spy/api/claude_analyst.py: append `registry_prompt_section()` to SYSTEM_PROMPT composition; `_sanitize_experiments(analysis_dict)` applied after `parsed.model_dump()` and BEFORE `insert_insight_analysis` (research R4); add `"analysis_schema_version": 2` to `build_insights_payload` and `build_study_payload`
-- [ ] T006 [P] [US1] Failing component tests (extend frontend/src/components/insights/ClaudeReadCard.test.tsx): an experiment fixture with `suggested_config_changes` renders each change as a "label → value" chip (friendly label, e.g. "risk:reward target → 2.5"); an experiment with `[]` or a missing key renders text-only with NO chips and NO draft button (FR-008/SC-005)
-- [ ] T007 [US1] Implement: `ConfigChange` type + `suggested_config_changes?: ConfigChange[]` on the experiment type + `ConfigRow.description` in frontend/src/api/types.ts; path→label map exported from frontend/src/lib/config-knobs.ts (fallback: path leaf); chips on the experiment cards in frontend/src/components/insights/ClaudeReadCard.tsx
+- [x] T005 [US1] Implement in backend/src/intraday_trade_spy/api/claude_analyst.py: append `registry_prompt_section()` to SYSTEM_PROMPT composition; `_sanitize_experiments(analysis_dict)` applied after `parsed.model_dump()` and BEFORE `insert_insight_analysis` (research R4); add `"analysis_schema_version": 2` to `build_insights_payload` and `build_study_payload`
+- [x] T006 [P] [US1] Failing component tests (extend frontend/src/components/insights/ClaudeReadCard.test.tsx): an experiment fixture with `suggested_config_changes` renders each change as a "label → value" chip (friendly label, e.g. "risk:reward target → 2.5"); an experiment with `[]` or a missing key renders text-only with NO chips and NO draft button (FR-008/SC-005)
+- [x] T007 [US1] Implement: `ConfigChange` type + `suggested_config_changes?: ConfigChange[]` on the experiment type + `ConfigRow.description` in frontend/src/api/types.ts; path→label map exported from frontend/src/lib/config-knobs.ts (fallback: path leaf); chips on the experiment cards in frontend/src/components/insights/ClaudeReadCard.tsx
 
 **Checkpoint**: US1 shippable — suggestions are visible and provably safe.
 
