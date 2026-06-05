@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: none in flight — `014-study-run-persistence` is implemented & merged. Next up: `015` (insights), then `016` (optional UI lanes).
+**Active plan**: [specs/015-monte-carlo/plan.md](specs/015-monte-carlo/plan.md) — Monte Carlo path-risk analysis (shuffle drawdown/streak/underwater distributions, bootstrap forward cone, risk of ruin) on any run's detail page. Roadmap shift: insights → `016`, optional UI lanes → `017`.
 
-**Most recent spec**: [specs/014-study-run-persistence/spec.md](specs/014-study-run-persistence/spec.md)
+**Most recent spec**: [specs/015-monte-carlo/spec.md](specs/015-monte-carlo/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 

@@ -122,7 +122,8 @@ As the operator (and learner), the panel tells me when NOT to trust the
 numbers: an in-sample caveat banner appears when the run's trades are
 in-sample (a train-segment study child or a plain backtest), every concept has
 an educational tooltip (what is this / why it matters / how the app computes
-it, including iteration count and seed), and each simulation is journaled.
+it, including iteration count and seed), and every result is exactly
+reproducible from the metadata it carries.
 
 **Why this priority**: Cross-cutting interpretability; the constitution requires
 the education and journaling, and the caveat prevents the most dangerous
@@ -145,8 +146,10 @@ the simulation event is journaled.
 3. **Given** any rendered Monte Carlo concept (shuffle distribution, cone,
    ruin, iterations/seed), **When** the operator opens its tooltip, **Then**
    it explains what it is, why it matters, and how the app computes it.
-4. **Given** a completed simulation, **When** the journal is inspected, **Then**
-   the computation event is recorded like significance computations are.
+4. **Given** a completed simulation, **When** the response is inspected,
+   **Then** it carries the seed, iteration count, and trade count that allow
+   exact regeneration of every displayed number — and no journal entry or
+   stored record was created (parity with significance).
 
 ---
 
@@ -209,8 +212,12 @@ the simulation event is journaled.
 - **FR-010**: Every Monte Carlo concept shown in the UI MUST have an
   educational tooltip covering what it is, why it matters, and how the app
   computes it (including iterations and seed).
-- **FR-011**: Each simulation computation MUST be journaled, consistent with
-  how significance computations are journaled.
+- **FR-011**: Simulation computations MUST have no persistence or journal
+  side effects (parity with significance computations, which write nothing);
+  the reproducibility metadata echoed in every response (seed, iterations,
+  trade count) is the audit trail. *(Amended during planning — see
+  research.md R2: the original premise that significance computations are
+  journaled was incorrect.)*
 - **FR-012**: Only the run's owner may compute a simulation for it; requests
   for others' runs MUST behave as not-found.
 - **FR-013**: The shuffle method MUST preserve the exact observed trade set
