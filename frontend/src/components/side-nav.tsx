@@ -1,5 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useSidebarMode } from '@/lib/sidebar-mode'
+import {
+  BacktestsIcon,
+  DataIcon,
+  StrategyIcon,
+  ValidationIcon,
+} from '@/components/nav-icons'
 
 // SideNav — pure navigation (redesigned post-014). The runs list moved out of
 // the sidebar (year-spanning study children made it unscalable); the rail now
@@ -8,10 +14,10 @@ import { useSidebarMode } from '@/lib/sidebar-mode'
 // soft-delete retention).
 
 const NAV_ITEMS = [
-  { to: '/validation', label: 'Validation', icon: '🧪' },
-  { to: '/data', label: 'Data', icon: '🗄' },
-  { to: '/strategies', label: 'Strategy', icon: '⚙️' },
-  { to: '/runs', label: 'Backtests', icon: '📈' },
+  { to: '/validation', label: 'Validation', icon: <ValidationIcon /> },
+  { to: '/data', label: 'Data', icon: <DataIcon /> },
+  { to: '/strategies', label: 'Strategy', icon: <StrategyIcon /> },
+  { to: '/runs', label: 'Backtests', icon: <BacktestsIcon /> },
 ] as const
 
 export function SideNav() {
@@ -99,7 +105,7 @@ export function SideNav() {
               fontWeight: 600,
             }}
           >
-            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>
+            <span aria-hidden style={{ display: 'inline-flex', lineHeight: 1 }}>
               {icon}
             </span>
             {!collapsed && <span>{label}</span>}

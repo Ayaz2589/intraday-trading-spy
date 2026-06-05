@@ -34,6 +34,14 @@ describe('<SideNav />', () => {
     }
   })
 
+  it('each nav link renders its SVG icon (user-provided icon set)', () => {
+    render(<SideNav />)
+    for (const [label] of LINKS) {
+      const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
+      expect(link.querySelector('svg')).not.toBeNull()
+    }
+  })
+
   it('contains no runs list and no delete-all button', () => {
     render(<SideNav />)
     expect(screen.queryByTestId('side-nav-runs-list')).not.toBeInTheDocument()

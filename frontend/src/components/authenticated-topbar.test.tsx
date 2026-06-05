@@ -39,4 +39,14 @@ describe('<AuthenticatedTopbar />', () => {
     expect(crumb.textContent).toMatch(/vwap_pullback_long/)
     expect(crumb.textContent).toMatch(/default/)
   })
+
+  // Topbar redesign: Validation/Data moved to the side nav; the strategy
+  // dropdown is the topbar's centered centerpiece.
+  it('has no Validation/Data links and centers the strategy dropdown', async () => {
+    const { AuthenticatedTopbar } = await import('./authenticated-topbar')
+    render(wrap(<AuthenticatedTopbar />))
+    expect(screen.queryByTestId('nav-validation')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('nav-data')).not.toBeInTheDocument()
+    expect(screen.getByTestId('topbar-center')).toBeInTheDocument()
+  })
 })
