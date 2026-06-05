@@ -134,7 +134,7 @@ by T007's contract tests.)
 - [x] T027 [P] Full backend suite green: `PYTHONPATH=. .venv/bin/pytest -q --ignore=tests/api/integration --ignore=tests/test_yfinance_integration.py` from backend/ (548 baseline + new)
 - [x] T028 [P] Full frontend suite + types: `npm test` and `npx tsc --noEmit` from frontend/ (3 pre-existing price-chart failures remain the known baseline)
 - [x] T029 Rebuild backend container (`docker compose up -d --build backend`) and run quickstart.md API verification: endpoint in OpenAPI, curl determinism check (two identical responses) — **done**: endpoint registered, unauthenticated POST → 401; byte-determinism verified in contract tests (live curl needs the browser session's JWT → folded into T030); SC-001 timing measured: **0.52s** for 3,926 trades × 2,000 iterations (analyze M3)
-- [ ] T030 Live e2e per quickstart.md (user-driven in browser): simulate on a walk-forward OOS child (no banner), a train/plain run (banner), verify drawdown/cone/ruin sections + tooltips + low-confidence behavior
+- [x] T030 Live e2e per quickstart.md (user-driven in browser): simulate on a walk-forward OOS child (no banner), a train/plain run (banner), verify drawdown/cone/ruin sections + tooltips + low-confidence behavior — **verified live by the operator (2026-06-05)**
 - [x] T031 [P] Update docs/research-tooling-uplift.md roadmap table: 015 = monte-carlo (this feature), insights → 016, optional UI lanes → 017
 
 ---
