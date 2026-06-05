@@ -15,6 +15,38 @@ export interface KnobValues {
   max_distance_from_vwap_pct: number
 }
 
+// Mirror of backend/config/config.yaml (verified 2026-06-05) — drives the
+// editor's "default x" hints, changed-field highlights, and the config rows'
+// "N off default" chips.
+export const KNOB_DEFAULTS: KnobValues = {
+  account_value: 25000,
+  max_risk_per_trade_pct: 0.1,
+  max_position_value_pct: 400,
+  max_consecutive_losses: 2,
+  opening_range_minutes: 15,
+  risk_reward: 2.0,
+  stop_buffer_pct: 0.05,
+  max_distance_from_vwap_pct: 0.25,
+}
+
+/** Knobs that differ from the built-in defaults (drives "N off default"). */
+export function offDefaultKeys(knobs: KnobValues): (keyof KnobValues)[] {
+  return (Object.keys(KNOB_DEFAULTS) as (keyof KnobValues)[]).filter(
+    k => knobs[k] !== KNOB_DEFAULTS[k],
+  )
+}
+
+/** Compact summary chips for a collapsed config row. Number→string keeps JS
+ *  default formatting (no trailing zeros: 2.0 → "2"). */
+export function knobChips(knobs: KnobValues): { label: string; value: string }[] {
+  return [
+    { label: 'risk', value: `${knobs.max_risk_per_trade_pct}%` },
+    { label: 'cap', value: `${knobs.max_position_value_pct}%` },
+    { label: 'R:R', value: `${knobs.risk_reward}` },
+    { label: 'lockout', value: `${knobs.max_consecutive_losses}` },
+  ]
+}
+
 /** Read a nested key path, defaulting to undefined. */
 export function get(obj: unknown, path: string[]): unknown {
   let cur: unknown = obj
@@ -32,16 +64,16 @@ export function knobsFromConfig(config: Config | undefined): KnobValues {
     return Number.isFinite(n) ? n : fallback
   }
   return {
-    account_value: num(get(p, ['risk', 'account_value']), 25000),
-    max_risk_per_trade_pct: num(get(p, ['risk', 'max_risk_per_trade_pct']), 0.1),
-    max_position_value_pct: num(get(p, ['risk', 'max_position_value_pct']), 400),
-    max_consecutive_losses: num(get(p, ['risk', 'max_consecutive_losses']), 2),
-    opening_range_minutes: num(get(p, ['strategy', 'opening_range', 'minutes']), 15),
-    risk_reward: num(get(p, ['strategy', 'vwap_pullback', 'target', 'risk_reward']), 2.0),
-    stop_buffer_pct: num(get(p, ['strategy', 'vwap_pullback', 'stop', 'buffer_pct']), 0.05),
+    account_value: num(get(p, ['risk', 'account_value']), KNOB_DEFAULTS.account_value),
+    max_risk_per_trade_pct: num(get(p, ['risk', 'max_risk_per_trade_pct']), KNOB_DEFAULTS.max_risk_per_trade_pct),
+    max_position_value_pct: num(get(p, ['risk', 'max_position_value_pct']), KNOB_DEFAULTS.max_position_value_pct),
+    max_consecutive_losses: num(get(p, ['risk', 'max_consecutive_losses']), KNOB_DEFAULTS.max_consecutive_losses),
+    opening_range_minutes: num(get(p, ['strategy', 'opening_range', 'minutes']), KNOB_DEFAULTS.opening_range_minutes),
+    risk_reward: num(get(p, ['strategy', 'vwap_pullback', 'target', 'risk_reward']), KNOB_DEFAULTS.risk_reward),
+    stop_buffer_pct: num(get(p, ['strategy', 'vwap_pullback', 'stop', 'buffer_pct']), KNOB_DEFAULTS.stop_buffer_pct),
     max_distance_from_vwap_pct: num(
       get(p, ['strategy', 'vwap_pullback', 'max_distance_from_vwap_pct']),
-      0.25,
+      KNOB_DEFAULTS.max_distance_from_vwap_pct,
     ),
   }
 }

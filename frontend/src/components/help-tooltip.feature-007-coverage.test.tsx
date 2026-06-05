@@ -57,8 +57,17 @@ vi.mock('@/hooks/useStrategies', () => ({
     isError: false,
   }),
 }))
-vi.mock('@/hooks/useStartBacktest', () => ({
-  useStartBacktest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+vi.mock('@/hooks/useConfigs', () => ({
+  useConfigs: () => ({ data: { configs: [] }, isLoading: false, isError: false }),
+  usePresets: () => ({ data: { presets: [] }, isLoading: false, isError: false }),
+  useCreateConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDuplicateConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useActivateConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRenameConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  configsQueryKey: () => ['configs'],
+  presetsQueryKey: () => ['presets'],
 }))
 vi.mock('@/hooks/useStartDataDownload', () => ({
   useStartDataDownload: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -112,8 +121,8 @@ const FEATURE_007_KEYS = [
 describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
   it('every Feature 007 concept has at least one rendered HelpTooltip', async () => {
     const { AuthenticatedTopbar } = await import('./authenticated-topbar')
-    const { StrategyList } = await import('./strategies/StrategyList')
-    const { StartBacktestDialog } = await import('./runs/StartBacktestDialog')
+    const { StrategyHero } = await import('./strategies/strategy-hero')
+    const { ConfigWorkbench } = await import('./strategies/config-manager')
     const { SignalsTable } = await import('./runs/SignalsTable')
     const { RunDetail } = await import('./runs/RunDetail')
     const { DataDownloadForm } = await import('./data/DataDownloadForm')
@@ -125,9 +134,9 @@ describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
     const tree = (
       <QueryClientProvider client={client}>
         <AuthenticatedTopbar />
-        <RunsList onStartBacktest={() => {}} />
-        <StrategyList />
-        <StartBacktestDialog open onClose={() => {}} />
+        <RunsList />
+        <StrategyHero />
+        <ConfigWorkbench />
         <SignalsTable runId="11111111-1111-1111-1111-111111111111" />
         <RunDetail runId="11111111-1111-1111-1111-111111111111" />
         <DataDownloadForm onStarted={() => {}} />

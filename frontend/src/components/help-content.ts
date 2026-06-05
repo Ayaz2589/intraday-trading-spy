@@ -72,7 +72,27 @@ export type HelpContentKey =
   // Feature 014 (study child-run persistence) concepts
   | "child_run"
   | "study_drilldown"
-  | "rerun_study";
+  | "rerun_study"
+  // Feature 015 (Monte Carlo path-risk) concepts
+  | "monte_carlo_simulation"
+  | "shuffle_method"
+  | "max_drawdown_distribution"
+  | "losing_streak"
+  | "underwater_period"
+  | "mc_iterations_seed"
+  | "forward_cone"
+  | "risk_of_ruin"
+  | "mc_in_sample_caveat"
+  // Feature 016 (insights) concepts
+  | "pooled_gate"
+  | "sign_test"
+  | "fisher_combined"
+  | "edge_timeseries"
+  | "window_distribution"
+  | "claude_advisory"
+  | "snapshot_pin"
+  // Feature 017 (claude experiment drafts) concepts
+  | "claude_experiment_draft";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -178,7 +198,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   backtest_queue: {
     title: "Backtest queue",
     description:
-      "When you click Start Backtest the run is created with status `queued`. The backend picks it up and transitions it to `running` → `finished` (or `failed`). Refresh cadence speeds up while a run is active and slows down once it finishes.",
+      "Runs are created by validation studies (each evaluation is saved already-finished or failed) and by CLI pushes. A run's status moves queued → running → finished (or failed — `failure_reason` explains why). Refresh cadence speeds up while anything is active and slows down once it finishes.",
   },
   run_status: {
     title: "Run status",
@@ -299,7 +319,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   child_run: {
     title: "Child run",
     description:
-      "A real, saved backtest produced by one evaluation inside a validation study — one walk-forward window, one sensitivity grid point, or the lockbox one-shot. It has the same trades, journal, and chart as any standalone run, so you can see exactly WHY that slice performed the way it did. Child runs are hidden from the main runs list; you reach them through their study.",
+      "A real, saved backtest produced by one evaluation inside a validation study — one walk-forward window, one sensitivity grid point, or the lockbox one-shot. It has the same trades, journal, and chart as any standalone run, so you can see exactly WHY that slice performed the way it did. Child runs appear in the Backtests list with an origin badge (kind · IS/OOS · window) and are also reachable through their study.",
   },
   study_drilldown: {
     title: "Study drill-down",
@@ -344,7 +364,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   shuffle_method: {
     title: "Reshuffle (path risk)",
     description:
-      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades\!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
+      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
   },
   max_drawdown_distribution: {
     title: "Max drawdown distribution",
