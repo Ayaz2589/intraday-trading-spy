@@ -396,6 +396,16 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Combines the per-window permutation p-values into one number testing 'no edge in ANY window'. A tiny combined p (like 1e-8) with a failing pooled CI means the edge is REAL but REGIME-DEPENDENT — some windows beat chance decisively while others bleed it back. That points to filtering research, not more testing.",
   },
+  edge_timeseries: {
+    title: "Edge time-series",
+    description:
+      "One point per out-of-sample window across the whole archive, per config. A stable edge plots as points consistently above zero; a regime-bound edge alternates — exactly what failed the wf-rr3 gate. Click any point to drill into that window's full run (trades, journal, chart).",
+  },
+  window_distribution: {
+    title: "Per-config window distribution",
+    description:
+      "Compares configs window-by-window instead of by one pooled number: how many windows ended positive, and the quartiles of window outcomes. Two configs can pool similarly but distribute very differently — the one that wins MORE windows with SHALLOWER losers is the more livable edge.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

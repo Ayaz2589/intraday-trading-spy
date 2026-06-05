@@ -357,6 +357,45 @@ export type PerWindowP = { window_index: number; p_value: number | null; signifi
 
 export type FisherStat = { x2: number; df: number; p: number }
 
+// ---- Feature 016 (insights aggregates) -------------------------------------
+
+export type EdgeTimeseriesPoint = {
+  run_id: string
+  study_id: string
+  window_index: number | null
+  config_name: string | null
+  range_start: string
+  range_end: string
+  trades: number
+  net_pnl: number
+  expectancy_dollars: number | null
+  expectancy_r: number | null
+  pnl_std: number | null
+}
+
+export type EdgeTimeseriesResponse = {
+  points: EdgeTimeseriesPoint[]
+  snapshot_fingerprint: string
+}
+
+export type ConfigDistributionRow = {
+  config_name: string | null
+  windows: number
+  windows_positive: number
+  pnl_q25: number | null
+  pnl_q50: number | null
+  pnl_q75: number | null
+  expectancy_q25: number | null
+  expectancy_q50: number | null
+  expectancy_q75: number | null
+  total_trades: number
+}
+
+export type ConfigDistributionResponse = {
+  rows: ConfigDistributionRow[]
+  snapshot_fingerprint: string
+}
+
 export type PooledGateResult = {
   computed_at: string | null
   mode: 'fast' | 'full'

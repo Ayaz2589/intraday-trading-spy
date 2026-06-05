@@ -332,6 +332,43 @@ class PooledGateRequest(_Base):
     mode: Literal["fast", "full"] = "fast"
 
 
+class EdgeTimeseriesPoint(_ResponseBase):
+    run_id: str
+    study_id: str
+    window_index: Optional[int] = None
+    config_name: Optional[str] = None
+    range_start: str
+    range_end: str
+    trades: int
+    net_pnl: float
+    expectancy_dollars: Optional[float] = None
+    expectancy_r: Optional[float] = None
+    pnl_std: Optional[float] = None
+
+
+class EdgeTimeseriesResponse(_ResponseBase):
+    points: list[EdgeTimeseriesPoint]
+    snapshot_fingerprint: str
+
+
+class ConfigDistributionRow(_ResponseBase):
+    config_name: Optional[str] = None
+    windows: int
+    windows_positive: int
+    pnl_q25: Optional[float] = None
+    pnl_q50: Optional[float] = None
+    pnl_q75: Optional[float] = None
+    expectancy_q25: Optional[float] = None
+    expectancy_q50: Optional[float] = None
+    expectancy_q75: Optional[float] = None
+    total_trades: int
+
+
+class ConfigDistributionResponse(_ResponseBase):
+    rows: list[ConfigDistributionRow]
+    snapshot_fingerprint: str
+
+
 class LockboxRunRequest(_Base):
     config_name: str = Field(min_length=1, max_length=200)
     override: bool = False

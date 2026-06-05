@@ -3,6 +3,7 @@ import { useSidebarMode } from '@/lib/sidebar-mode'
 import {
   BacktestsIcon,
   DataIcon,
+  InsightsIcon,
   StrategyIcon,
   ValidationIcon,
 } from '@/components/nav-icons'
@@ -15,6 +16,7 @@ import {
 
 const NAV_ITEMS = [
   { to: '/validation', label: 'Validation', icon: <ValidationIcon /> },
+  { to: '/insights', label: 'Insights', icon: <InsightsIcon /> },
   { to: '/data', label: 'Data', icon: <DataIcon /> },
   { to: '/strategies', label: 'Strategy', icon: <StrategyIcon /> },
   { to: '/runs', label: 'Backtests', icon: <BacktestsIcon /> },
