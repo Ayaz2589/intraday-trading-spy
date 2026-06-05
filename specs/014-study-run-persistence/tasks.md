@@ -144,7 +144,7 @@ shows only standalone runs (quickstart §4).
 ## Phase 7: Polish & Cross-Cutting
 
 - [x] T034 [P] Docs: mark 014 done in docs/research-tooling-uplift.md §4, update docs/automated-trading-roadmap.md §10 feature map, README features list, and CLAUDE.md prior-plans entry (at merge time)
-- [ ] T035 Full verification: both offline suites green (baseline-relative), then execute quickstart.md §2–§7 against the live dev stack (small real walk-forward; re-run a pre-014 study; dedup spot-check; do NOT spend the lockbox) and record results in the PR/merge notes
+- [x] T035 Full verification: both offline suites green (baseline-relative), then execute quickstart.md §2–§7 against the live dev stack (small real walk-forward; re-run a pre-014 study; dedup spot-check; do NOT spend the lockbox) and record results in the PR/merge notes
 
 ---
 
