@@ -43,6 +43,7 @@ export function RunOriginBadge({ run }: { run: Run }) {
       <button
         type="button"
         data-testid="run-origin-badge"
+        aria-label={`Open study ${studyId.slice(0, 8)}`}
         title="Open the study that produced this run"
         onClick={e => {
           // The whole row is a Link to the run — same pattern as the
@@ -61,7 +62,7 @@ export function RunOriginBadge({ run }: { run: Run }) {
   if (run.segment === 'lockbox') {
     return (
       <span data-testid="run-origin-badge" style={badgeStyle}>
-        lockbox
+        {SEGMENT_LABEL['lockbox']}
       </span>
     )
   }

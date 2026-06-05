@@ -108,7 +108,7 @@ describe('<RunOriginBadge />', () => {
     render(<RunOriginBadge run={run} />)
     const badge = screen.getByTestId('run-origin-badge')
     expect(badge).toHaveTextContent('lockbox')
-    expect(badge.tagName).not.toBe('BUTTON')
+    expect(badge.tagName).toBe('SPAN')
   })
 
   it('renders "CLI run" for a standalone run', async () => {
