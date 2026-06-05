@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/014-study-run-persistence/plan.md](specs/014-study-run-persistence/plan.md) — study child-run persistence + drill-down (in flight). Next up: `015` (insights).
+**Active plan**: none in flight — `014-study-run-persistence` is implemented & merged. Next up: `015` (insights), then `016` (optional UI lanes).
 
 **Most recent spec**: [specs/014-study-run-persistence/spec.md](specs/014-study-run-persistence/spec.md)
 
@@ -20,6 +20,7 @@
 - [specs/011-validation-engine/plan.md](specs/011-validation-engine/plan.md) — implemented & merged to main (Phase 2; walk-forward/sensitivity/significance/lockbox, backend+UI, e2e-verified; exit gate is operational). See [docs/research-tooling-uplift.md](docs/research-tooling-uplift.md) for the 012/013/014 follow-on.
 - [specs/012-config-management/plan.md](specs/012-config-management/plan.md) — implemented & merged to main (Phase 2 follow-on; first-class named configs create/duplicate/rename/delete/activate + SPY-workable default cap=400 fixing the 0-trade wall; backend+UI; edit-isolation/journaling/e2e verified live on cloud).
 - [specs/013-data-observability/plan.md](specs/013-data-observability/plan.md) — implemented & merged to main (Data-page uplift: backfill job history w/ persistent failure reasons, cache summary + no-missing verdict, year×month completeness heatmap w/ exact missing-day hover, light lineage; no DB migration — R8 psycopg aggregate; verified live: 168k bars, 0 missing sessions).
+- [specs/014-study-run-persistence/plan.md](specs/014-study-run-persistence/plan.md) — implemented & merged to main (study child-run persistence + drill-down: every study eval persisted as a spec_hash-deduped, fail-soft child run; lockbox child + ledger link; runs list hides children; Re-run study; redesigned study detail page w/ expandable IS/OOS rows; zero migrations; also fixed the latent API summary-write crash that emptied the runs table since 010; e2e-verified live).
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
