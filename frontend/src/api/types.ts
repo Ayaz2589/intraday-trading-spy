@@ -294,6 +294,36 @@ export type StudyRerunResponse = { study_id: UUID; planned_evaluations: number }
 
 export type SignificanceRequest = { run_id: UUID }
 
+// ---- Feature 015 (Monte Carlo path-risk) ----------------------------------
+
+export type MonteCarloDistribution = {
+  observed: number
+  p5: number
+  p25: number
+  p50: number
+  p75: number
+  p95: number
+}
+
+export type MonteCarloShuffleStats = {
+  // Drawdown pct is a FRACTION of the running peak (metrics.py convention).
+  max_drawdown_pct: MonteCarloDistribution
+  max_drawdown_dollars: MonteCarloDistribution
+  longest_losing_streak: MonteCarloDistribution
+  longest_underwater_trades: MonteCarloDistribution
+}
+
+export type MonteCarloResult = {
+  shuffle: MonteCarloShuffleStats
+  iterations: number
+  seed: number
+  trade_count: number
+  starting_equity: number
+  low_confidence: boolean
+}
+
+export type MonteCarloRequest = { run_id: UUID }
+
 export type LockboxState = 'unspent' | 'spent' | 'burned'
 export type LockboxStatus = {
   lockbox_start: string

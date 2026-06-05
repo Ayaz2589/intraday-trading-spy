@@ -23,6 +23,7 @@ import { PlaybackControls } from '@/components/playback-controls'
 import { RunSummaryCards } from './RunSummaryCards'
 import { RunStudyBadge } from '@/components/run-study-badge'
 import { RunSignificanceSection } from '@/components/validation/run-significance-section'
+import { RunMonteCarloSection } from '@/components/validation/run-monte-carlo-section'
 import { HelpTooltip } from '@/components/help-tooltip'
 import type { Bar, Run, Signal, Trade, UUID } from '@/api/types'
 import type {
@@ -210,6 +211,8 @@ export function RunDetail({ runId }: Props) {
         <>
           <RunSummaryCards summary={liveSummary} />
           <RunSignificanceSection runId={runId} />
+          {/* Feature 015: Monte Carlo path-risk (drawdown distributions). */}
+          <RunMonteCarloSection runId={runId} />
           {manifestQuery.data && (
             <ConfigStrip
               params={manifestQuery.data.config.params}

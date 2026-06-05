@@ -336,6 +336,36 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Asks: could random entries — under the SAME session rules, stop/target geometry, and costs — have produced this result? We build a null distribution from random-entry runs; the p-value is the fraction that did at least as well. p < 0.05 means random timing rarely matches you, so your entry timing likely has real edge.",
   },
+  monte_carlo_simulation: {
+    title: "Monte Carlo path risk",
+    description:
+      "Your equity curve is just ONE ordering of your trades — stats like max drawdown depend heavily on that order. This panel resamples your run's real trades thousands of times (seeded, so results are exactly reproducible) to show the RANGE of paths your edge could have produced. It answers 'how bad could it get?', not 'is the edge real?' — that's the significance panel's job.",
+  },
+  shuffle_method: {
+    title: "Reshuffle (path risk)",
+    description:
+      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades\!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
+  },
+  max_drawdown_distribution: {
+    title: "Max drawdown distribution",
+    description:
+      "Max drawdown is the deepest peak-to-trough drop in equity. Across reshuffles you get a distribution: P50 is the typical ordering, P95 the unlucky tail. The dot on the strip marks YOUR actual run — compare it to P95 before deciding whether you could stomach this strategy live.",
+  },
+  losing_streak: {
+    title: "Longest losing streak",
+    description:
+      "The most consecutive losing trades in a row. Streaks drive abandonment more than total loss does — a strategy you quit during a normal streak is worse than no strategy. The distribution shows what streak lengths are NORMAL for these trades, so a live streak inside the P95 range is expected, not broken.",
+  },
+  underwater_period: {
+    title: "Underwater period",
+    description:
+      "How many consecutive trades equity spent below its previous high-water mark. Long underwater stretches feel like the strategy is dead even when nothing is wrong. The reshuffle distribution shows how long recovery typically takes with these exact trades, counted in trades (not days).",
+  },
+  mc_iterations_seed: {
+    title: "Iterations & seed",
+    description:
+      "Iterations = how many simulated paths were generated (from config, default 2,000). The seed fixes the random number generator, so the same run + same settings reproduce every number byte-for-byte — nothing is stored; the result is recomputed on demand and always lands on the same answer.",
+  },
   lockbox: {
     title: "Lockbox",
     description:
