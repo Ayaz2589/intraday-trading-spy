@@ -6,7 +6,8 @@ engine, and the startup-time sweep that reaps stale `running` rows from
 a prior process crash. (The individual-backtest task body was removed:
 runs are created only by validation studies and CLI pushes.)
 
-See contracts/background-tasks.md for the full contract.
+See contracts/background-tasks.md (Feature 006) for the download/backfill task contract;
+its backtest sections are historical.
 """
 
 from __future__ import annotations

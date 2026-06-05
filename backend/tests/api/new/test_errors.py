@@ -33,17 +33,6 @@ def test_raise_config_not_found_includes_name():
     assert "default" in exc_info.value.detail["message"]
 
 
-def test_raise_concurrent_cap_includes_metadata():
-    from intraday_trade_spy.api.errors import raise_concurrent_cap
-
-    with pytest.raises(HTTPException) as exc_info:
-        raise_concurrent_cap(active=5, cap=5)
-    assert exc_info.value.status_code == 429
-    assert exc_info.value.detail["error"] == "concurrent_run_cap_exceeded"
-    assert exc_info.value.detail["active_runs"] == 5
-    assert exc_info.value.detail["cap"] == 5
-
-
 def test_raise_invalid_cursor():
     from intraday_trade_spy.api.errors import raise_invalid_cursor
 
