@@ -58,3 +58,28 @@ describe("LineScatter — bands (016-polish)", () => {
     expect(container.querySelectorAll("[data-testid='ls-band']")).toHaveLength(0);
   });
 });
+
+describe("LineScatter — axes & rendering cleanup (016-polish round 2)", () => {
+  it("renders y-axis tick labels through formatY with gridlines", () => {
+    const { container } = render(
+      <LineScatter series={SERIES} formatY={(v) => `${Math.round(v)}R`} />,
+    );
+    const ticks = container.querySelectorAll("[data-testid='ls-ytick']");
+    expect(ticks.length).toBeGreaterThanOrEqual(3);
+    expect([...ticks].some((t) => /R$/.test(t.textContent ?? ""))).toBe(true);
+    expect(container.querySelectorAll("[data-testid='ls-grid']").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("renders x-axis tick labels through formatX, deduping repeats", () => {
+    const { container } = render(
+      <LineScatter series={SERIES} formatX={() => "2020"} />,
+    );
+    // all ticks format to "2020" -> consecutive duplicates collapse to one
+    expect(container.querySelectorAll("[data-testid='ls-xtick']")).toHaveLength(1);
+  });
+
+  it("draws points as true circles (uniform scaling — no preserveAspectRatio stretch)", () => {
+    const { container } = render(<LineScatter series={SERIES} />);
+    expect(container.querySelector("svg")?.getAttribute("preserveAspectRatio")).not.toBe("none");
+  });
+});

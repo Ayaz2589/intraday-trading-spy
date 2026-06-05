@@ -107,6 +107,14 @@ export function EdgeTimeseries({
           <LineScatter
             series={series}
             bands={bands}
+            formatY={(v) =>
+              metric === 'r'
+                ? v.toFixed(2)
+                : metric === 'pct'
+                  ? `${v.toFixed(1)}%`
+                  : `$${Math.round(v).toLocaleString()}`
+            }
+            formatX={(v) => String(new Date(v).getUTCFullYear())}
             onPointClick={(d) => onOpenRun(d as string)}
           />
           {metric === 'usd' && byConfig.size > 1 && (
