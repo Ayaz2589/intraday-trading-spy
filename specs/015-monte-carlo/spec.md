@@ -183,15 +183,15 @@ the simulation event is journaled.
 - **FR-002**: The system MUST compute forward-projection equity bands
   (P5/P25/P50/P75/P95 per step) by resampling the run's trades with
   replacement over a configurable horizon (default: the run's observed trade
-  count), plus terminal-equity percentiles, with the cone limited to at most
-  200 reported steps.
+  count), plus terminal-equity percentiles, with the cone limited to a
+  configured maximum number of reported steps (default 200).
 - **FR-003**: The system MUST report, for each configured ruin threshold, the
   fraction of forward paths whose equity fell below starting equity by at
   least that threshold at any point during the horizon.
 - **FR-004**: Simulation parameters (iteration count, seed, ruin thresholds,
-  horizon) MUST live in configuration — no magic numbers — with defaults:
-  2,000 iterations, fixed seed, thresholds 5/10/20%, horizon = observed trade
-  count.
+  horizon, cone-step cap) MUST live in configuration — no magic numbers —
+  with defaults: 2,000 iterations, fixed seed, thresholds 5/10/20%, horizon =
+  observed trade count, cone-step cap 200.
 - **FR-005**: Results MUST be deterministic: the same run with the same
   configuration produces identical output on every invocation, and the output
   MUST echo the seed, iteration count, and trade count used.

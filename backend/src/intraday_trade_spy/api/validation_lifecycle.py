@@ -359,6 +359,60 @@ def run_significance_for_run(
     )
 
 
+class MonteCarloNotComputable(Exception):
+    """Feature 015: the run cannot be simulated; carries the plain-English
+    reason surfaced to the operator (400 validation_error at the router)."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def run_monte_carlo_for_run(*, run_id, user_id, storage, base_cfg: Config | None = None):
+    """Feature 015: compute the Monte Carlo path-risk analysis for a completed
+    run. Read-only and deterministic — mirrors run_significance_for_run's
+    flow (ownership via get_run, trades via list_trades) but takes starting
+    equity from the run's FROZEN config_snapshot (FR-006), not the live
+    config, and writes nothing anywhere (amended FR-011)."""
+    from intraday_trade_spy.validation.monte_carlo import run_monte_carlo
+
+    cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    run_row = storage.get_run(run_id=run_id, user_id=user_id)
+    if run_row is None:
+        raise RunNotFound(str(run_id))
+
+    page = storage.list_trades(run_id=run_id, user_id=user_id, limit=100000, cursor=None)
+    trades = getattr(page, "trades", page) or []
+    pnls = [float(t["pnl"]) for t in trades if t.get("pnl") is not None]
+    if not pnls:
+        raise MonteCarloNotComputable(
+            "this run has no stored per-trade data — re-run the backtest to "
+            "enable Monte Carlo simulation"
+        )
+
+    snapshot = run_row.get("config_snapshot") or {}
+    raw_equity = (snapshot.get("risk") or {}).get("account_value")
+    try:
+        starting_equity = float(raw_equity)
+    except (TypeError, ValueError):
+        starting_equity = 0.0
+    if starting_equity <= 0:
+        raise MonteCarloNotComputable(
+            "this run's config snapshot has no readable starting account "
+            "equity (risk.account_value)"
+        )
+
+    try:
+        return run_monte_carlo(
+            pnls,
+            starting_equity=starting_equity,
+            cfg=cfg.validation.monte_carlo,
+            low_confidence_threshold=cfg.metrics.low_confidence_trade_count,
+        )
+    except ValueError as exc:
+        raise MonteCarloNotComputable(str(exc)) from exc
+
+
 def _build_walk_forward(cfg: Config, params: dict | None) -> WalkForwardConfig:
     base = cfg.validation.walk_forward.model_dump()
     override = (params or {}).get("walk_forward") or {}

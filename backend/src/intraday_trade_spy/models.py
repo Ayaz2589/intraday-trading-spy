@@ -303,3 +303,43 @@ class SignificanceResult(BaseModel):
     bootstrap_iterations: int
     permutation_iterations: int
     seed: int
+
+
+# ---- Feature 015 (Monte Carlo path-risk) result value objects --------------
+
+
+class MonteCarloDistribution(BaseModel):
+    """One statistic's simulated distribution vs. the observed (actual-order)
+    value. Percentiles via np.percentile (linear interpolation)."""
+
+    model_config = ConfigDict(frozen=True)
+    observed: float
+    p5: float
+    p25: float
+    p50: float
+    p75: float
+    p95: float
+
+
+class MonteCarloShuffleStats(BaseModel):
+    """Path-dependent stats across reorderings of the exact observed trades.
+    Drawdown pct is a FRACTION of the running peak (metrics.py convention)."""
+
+    model_config = ConfigDict(frozen=True)
+    max_drawdown_pct: MonteCarloDistribution
+    max_drawdown_dollars: MonteCarloDistribution
+    longest_losing_streak: MonteCarloDistribution
+    longest_underwater_trades: MonteCarloDistribution
+
+
+class MonteCarloResult(BaseModel):
+    """On-demand, deterministic, never persisted (FR-005/FR-006/FR-011): the
+    echoed seed/iterations/trade_count regenerate every number exactly."""
+
+    model_config = ConfigDict(frozen=True)
+    shuffle: MonteCarloShuffleStats
+    iterations: int
+    seed: int
+    trade_count: int
+    starting_equity: float
+    low_confidence: bool

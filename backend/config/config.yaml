@@ -169,6 +169,14 @@ validation:
     confidence: 0.95
     alpha: 0.05
     seed: 20260603
+  # Feature 015: Monte Carlo path-risk (seeded; one iterations knob drives
+  # both the shuffle and bootstrap methods).
+  monte_carlo:
+    iterations: 2000
+    seed: 20260604
+    ruin_thresholds_pct: [5, 10, 20]
+    horizon_trades: null  # null -> match the run's observed trade count
+    max_cone_steps: 200
   # Single fan-out guard: total planned evaluations (grid points × windows)
   # beyond which a study launch must be explicitly confirmed.
   max_evaluations_warn: 200

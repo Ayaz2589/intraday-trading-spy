@@ -56,9 +56,13 @@ always including the first and final trade index.)
 |---|---|---|
 | 401 | missing/invalid JWT | existing auth envelope (unchanged) |
 | 404 | unknown `run_id`, or run not owned by caller | existing error envelope, `"run not found"` (same as significance) |
-| 422 | run has fewer than 2 trades | error envelope with plain-English reason, e.g. `"this run has 1 trade — at least 2 are needed to simulate reorderings"` |
-| 422 | run has no stored trade data (pre-010 vintage) | plain-English reason, e.g. `"this run has no stored per-trade data; re-run it to enable simulation"` |
-| 422 | run's config snapshot lacks a readable starting equity | plain-English reason |
+| 400 | run has fewer than 2 trades | `{"error": "validation_error", "message": "this run has 1 trade — at least 2 are needed to simulate reorderings"}` |
+| 400 | run has no stored trade data (pre-010 vintage) | validation_error envelope, `"this run has no stored per-trade data — re-run the backtest to enable Monte Carlo simulation"` |
+| 400 | run's config snapshot lacks a readable starting equity | validation_error envelope |
+
+*(Implementation note: the project's domain-validation convention is 400 via
+`errors.raise_validation_error`, not 422 as originally drafted — aligned at
+implement time.)*
 
 **Semantics**
 
