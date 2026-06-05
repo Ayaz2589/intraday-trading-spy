@@ -141,7 +141,7 @@ replaces the whole dict).
 
 - data-model.md: `pooled_gate` jsonb shape, migration 0123 DDL shape, response
   model families, TS mirrors, invariants.
-- contracts/api.md: the new endpoints (1 validation + 5 insights), examples,
+- contracts/api.md: the new endpoints (1 validation + 6 insights), examples,
   errors.
 - quickstart.md: env/migration setup, test commands, SC-001 reproduction
   walkthrough.
