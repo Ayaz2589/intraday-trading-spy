@@ -399,7 +399,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   edge_timeseries: {
     title: "Edge time-series",
     description:
-      "One point per out-of-sample window across the whole archive, per config. A stable edge plots as points consistently above zero; a regime-bound edge alternates — exactly what failed the wf-rr3 gate. Click any point to drill into that window's full run (trades, journal, chart).",
+      "One point per out-of-sample window across the whole archive, per config. A stable edge plots as points consistently above zero; a regime-bound edge alternates — exactly what failed the wf-rr3 gate. Defaults to Expectancy R because raw $ is meaningless across configs run at different account sizes; shaded bands mark labeled market regimes. Click any point to drill into that window's full run.",
   },
   window_distribution: {
     title: "Per-config window distribution",

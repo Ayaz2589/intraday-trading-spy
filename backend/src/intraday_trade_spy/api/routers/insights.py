@@ -38,8 +38,17 @@ def edge_timeseries_endpoint(
     storage_client=Depends(get_storage_client),
 ) -> EdgeTimeseriesResponse:
     """One point per OOS child run, computed from stored per-trade data
-    (FR-005); the fingerprint pins analyses + signals staleness (FR-007)."""
+    (FR-005); the fingerprint pins analyses + signals staleness (FR-007).
+    016-polish: labeled market regimes ride along for the chart overlay."""
+    from intraday_trade_spy.api.claude_analyst import DEFAULT_CONFIG_PATH
+    from intraday_trade_spy.config import load_config
+
     out = storage_client.insights_edge_timeseries(config_name=config_name)
+    cfg = load_config(DEFAULT_CONFIG_PATH)
+    out["regimes"] = [
+        {"name": rw.name, "start": rw.start.isoformat(), "end": rw.end.isoformat()}
+        for rw in cfg.data.regimes
+    ]
     return EdgeTimeseriesResponse.model_validate(out)
 
 

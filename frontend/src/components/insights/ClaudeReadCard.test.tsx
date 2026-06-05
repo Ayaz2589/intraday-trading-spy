@@ -39,6 +39,13 @@ const ANALYSIS = {
         evidence_metric: "nonexistent.metric",
         confidence: "low",
       },
+      {
+        // Claude cites with bracket notation; our flatten map uses dots —
+        // lookup must normalize (live smoke 2026-06-05 caught this).
+        claim: "Bracket-notation citation resolves",
+        evidence_metric: "distribution.rows[1].pnl_q50",
+        confidence: "medium",
+      },
     ],
     risks: ["Two windows bleed heavily"],
     suggested_experiments: [
@@ -51,7 +58,10 @@ const ANALYSIS = {
   truncated: false,
 };
 
-const METRICS = { "pooled_gate.expectancy_dollars_ci": "[−0.53, +2.56]" };
+const METRICS = {
+  "pooled_gate.expectancy_dollars_ci": "[−0.53, +2.56]",
+  "distribution.rows.1.pnl_q50": 61,
+};
 
 function wrap(ui: ReactNode) {
   const client = new QueryClient({
@@ -87,7 +97,10 @@ describe("ClaudeReadCard", () => {
     );
     // Cited metric value rendered FROM OUR DATA beside the claim.
     expect(screen.getByText(/\[−0\.53, \+2\.56\]/)).toBeInTheDocument();
+    // Risks/experiments are collapsed by default (progressive disclosure).
+    fireEvent.click(screen.getByRole("button", { name: /risks \(1\)/i }));
     expect(screen.getByText(/Two windows bleed heavily/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /experiments to run \(1\)/i }));
     expect(screen.getByText(/Regime filter helps/)).toBeInTheDocument();
     const footer = screen.getByTestId("claude-footer");
     expect(footer).toHaveTextContent("h1");
@@ -188,5 +201,125 @@ describe("ClaudeReadCard — determinism label (US4)", () => {
     await waitFor(() =>
       expect(screen.getByText(/non-deterministic/i)).toBeInTheDocument()
     );
+  });
+});
+
+describe("ClaudeReadCard — citation path normalization (016-polish)", () => {
+  it("resolves bracket-notation evidence_metric against the dot-keyed map", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() =>
+      expect(screen.getByText(/Bracket-notation citation resolves/)).toBeInTheDocument()
+    );
+    const row = screen.getByText(/Bracket-notation citation resolves/).closest("tr")!;
+    expect(row).toHaveTextContent("61");
+    expect(row).not.toHaveTextContent(/not found/i);
+  });
+});
+
+describe("ClaudeReadCard — redesigned sections (mockup 2026-06-05)", () => {
+  it("renders a derived verdict banner when provided, labeled as gate-derived", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card({
+      banner: {
+        tone: "fail",
+        title: "Not deployable — lockbox precondition unmet",
+        text: "Every computed pooled-gate CI includes zero.",
+      },
+    }));
+    const banner = await screen.findByTestId("insights-verdict-banner");
+    expect(banner).toHaveTextContent(/not deployable/i);
+    expect(banner).toHaveTextContent(/seeded gates/i); // determinism-split honesty
+  });
+
+  it("lays out risks and experiments as labeled sections with footer actions", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /risks \(1\)/i })).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByRole("button", { name: /risks \(1\)/i }));
+    expect(screen.getByTestId("claude-risks")).toHaveTextContent(/Two windows bleed heavily/);
+    fireEvent.click(screen.getByRole("button", { name: /experiments to run \(1\)/i }));
+    const exp = screen.getByTestId("claude-experiments");
+    expect(exp).toHaveTextContent(/Regime filter helps/);
+    expect(exp).toHaveTextContent(/Run a filtered walk-forward/);
+    // footer row carries the actions on the right
+    const footer = screen.getByTestId("claude-footer-row");
+    expect(footer).toHaveTextContent(/regenerate/i);
+    expect(footer).toHaveTextContent(/pause/i);
+  });
+});
+
+const MANY_FINDINGS = {
+  ...ANALYSIS,
+  analysis: {
+    ...ANALYSIS.analysis,
+    findings: [
+      { claim: "Low-confidence tail claim", evidence_metric: "nonexistent.metric", confidence: "low" },
+      { claim: "Strong gate claim", evidence_metric: "pooled_gate.expectancy_dollars_ci", confidence: "high" },
+      { claim: "Medium structural claim", evidence_metric: "distribution.rows[1].pnl_q50", confidence: "medium" },
+      { claim: "Second strong claim", evidence_metric: "pooled_gate.expectancy_dollars_ci", confidence: "high" },
+      { claim: "Another low claim", evidence_metric: "nonexistent.metric", confidence: "low" },
+    ],
+  },
+};
+
+describe("ClaudeReadCard — progressive disclosure (declutter)", () => {
+  it("shows only the top 3 findings by confidence, with show-all expanding the rest", async () => {
+    getAnalysisMock.mockResolvedValue(MANY_FINDINGS);
+    wrap(await card());
+    await waitFor(() => expect(screen.getAllByTestId("claude-finding")).toHaveLength(3));
+    // sorted: the two HIGH claims lead
+    const rows = screen.getAllByTestId("claude-finding");
+    expect(rows[0]).toHaveTextContent(/Strong gate claim/);
+    expect(rows[1]).toHaveTextContent(/Second strong claim/);
+    fireEvent.click(screen.getByRole("button", { name: /show all 5/i }));
+    expect(screen.getAllByTestId("claude-finding")).toHaveLength(5);
+  });
+
+  it("collapses risks and experiments behind count headers by default", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /risks \(1\)/i })).toBeInTheDocument()
+    );
+    expect(screen.queryByText(/Two windows bleed heavily/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Run a filtered walk-forward/)).not.toBeInTheDocument();
+  });
+
+  it("renders leaf-key metric paths with the full path on hover", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() => expect(screen.getAllByTestId("claude-finding").length).toBeGreaterThan(0));
+    // bracket citation distribution.rows[1].pnl_q50 -> leaf "pnl_q50"
+    const leaf = screen.getByText("pnl_q50");
+    expect(leaf).toBeInTheDocument();
+    expect(leaf.closest("[title]")?.getAttribute("title")).toContain("distribution.rows[1].pnl_q50");
+  });
+
+  it("colors confidence chips and clamps claims to one line", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() => expect(screen.getAllByTestId("claude-finding").length).toBeGreaterThan(0));
+    const high = screen.getByText("high");
+    expect(high.getAttribute("style")).toContain("--profit");
+    const claimCell = screen.getByText(/Pooled expectancy is positive/).closest("td")!;
+    expect(claimCell.getAttribute("style")).toContain("ellipsis");
+  });
+
+  it("folds the pause notice into a slim footer line when a verdict banner is present", async () => {
+    getSettingsMock.mockResolvedValue({
+      claude_enabled: false, disabled_reason: "manual", configured: true,
+    });
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card({
+      banner: { tone: "fail", title: "Not deployable — lockbox precondition unmet", text: "x" },
+    }));
+    await waitFor(() =>
+      expect(screen.getByTestId("claude-paused-inline")).toBeInTheDocument()
+    );
+    expect(screen.queryByTestId("claude-paused")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /re-enable/i })).toBeInTheDocument();
   });
 });

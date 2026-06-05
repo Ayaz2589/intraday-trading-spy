@@ -63,9 +63,10 @@ def _patch_pool(monkeypatch, rows, captured):
 
 EDGE_ROWS = [
     # run_id, study_id, window_index, config_name, range_start, range_end,
-    # trades, net_pnl, expectancy_dollars, expectancy_r, pnl_std, created_at
-    ("r1", "s1", 0, "wf-rr3", "2019-01-02", "2019-06-28", 227, 118.0, 0.52, 0.018, 39.5, "2026-06-05T00:46:00Z"),
-    ("r2", "s1", 1, "wf-rr3", "2019-07-01", "2019-12-31", 216, 90.0, 0.42, 0.015, 38.1, "2026-06-05T00:47:00Z"),
+    # trades, net_pnl, expectancy_dollars, expectancy_r, pnl_std,
+    # account_value, created_at
+    ("r1", "s1", 0, "wf-rr3", "2019-01-02", "2019-06-28", 227, 118.0, 0.52, 0.018, 39.5, 1000.0, "2026-06-05T00:46:00Z"),
+    ("r2", "s1", 1, "wf-rr3", "2019-07-01", "2019-12-31", 216, 90.0, 0.42, 0.015, 38.1, 1000.0, "2026-06-05T00:47:00Z"),
 ]
 
 
@@ -82,6 +83,10 @@ def test_edge_timeseries_scopes_to_validation_and_user(monkeypatch):
     assert p0["run_id"] == "r1" and p0["config_name"] == "wf-rr3"
     assert p0["trades"] == 227
     assert p0["expectancy_dollars"] == 0.52
+    # 016-polish: account size per point — $ values are NOT comparable across
+    # configs run at different account sizes ($2.5M default vs $1k wf-rr3).
+    assert p0["account_value"] == 1000.0
+    assert "config_snapshot" in sql
 
 
 def test_edge_timeseries_optional_config_filter(monkeypatch):
@@ -116,11 +121,20 @@ def test_edge_timeseries_empty_archive(monkeypatch):
     assert out["snapshot_fingerprint"] == "empty"
 
 
+GATE = {
+    "passed": False,
+    "expectancy_dollars_ci": {"point": 0.91, "low": -0.71, "high": 2.6},
+    "computed_at": "2026-06-05T13:00:00Z",
+}
+
 DIST_ROWS = [
     # config_name, windows, windows_positive, pnl_q25, pnl_q50, pnl_q75,
-    # exp_q25, exp_q50, exp_q75, total_trades
-    ("default", 12, 9, -50.0, 124.0, 420.0, -0.3, 0.6, 1.9, 2600),
-    ("wf-rr3", 12, 7, -120.0, 61.0, 510.0, -0.6, 0.3, 2.4, 2607),
+    # exp_q25, exp_q50, exp_q75, r_q25, r_q50, r_q75, total_trades,
+    # win_rate, profit_factor, account_value, gate jsonb, gate_study_id
+    ("default", 12, 9, -50.0, 124.0, 420.0, -0.3, 0.6, 1.9, -0.05, 0.02, 0.08, 2600,
+     0.41, 1.05, 2500000.0, None, None),
+    ("wf-rr3", 12, 7, -120.0, 61.0, 510.0, -0.6, 0.3, 2.4, -0.06, 0.03, 0.09, 2607,
+     0.39, 1.12, 1000.0, GATE, "study-9"),
 ]
 
 
