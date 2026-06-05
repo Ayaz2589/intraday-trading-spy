@@ -218,6 +218,12 @@ class BarListResponse(_ResponseBase):
     bars: list[BarView]
 
 
+class RunSessionsResponse(_ResponseBase):
+    # Post-014 viewer-scale fix: the run's ET session-day list, so the viewer
+    # can offer a date picker without loading every bar in the range.
+    sessions: list[date]
+
+
 class ConfigView(_ResponseBase):
     id: UUID
     name: str

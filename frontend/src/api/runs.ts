@@ -44,8 +44,17 @@ export function listJournal(
   return apiRequest<JournalListResponse>(`/api/runs/${runId}/journal`, { searchParams: opts })
 }
 
-export function listBars(runId: UUID): Promise<BarListResponse> {
-  return apiRequest<BarListResponse>(`/api/runs/${runId}/bars`)
+export function listBars(
+  runId: UUID,
+  opts: { session?: string } = {}
+): Promise<BarListResponse> {
+  // session=YYYY-MM-DD limits the response to one ET day (~78 bars) — a
+  // year-long study child run is ~20k bars, far too heavy to ship at once.
+  return apiRequest<BarListResponse>(`/api/runs/${runId}/bars`, { searchParams: opts })
+}
+
+export function listRunSessions(runId: UUID): Promise<{ sessions: string[] }> {
+  return apiRequest<{ sessions: string[] }>(`/api/runs/${runId}/sessions`)
 }
 
 export function getManifest(runId: UUID): Promise<RunManifestResponse> {

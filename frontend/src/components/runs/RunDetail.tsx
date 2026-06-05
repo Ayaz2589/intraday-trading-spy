@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRun } from '@/hooks/useRun'
-import { useRunBars } from '@/hooks/useRunBars'
+import {
+  usePrefetchAdjacentSessions,
+  useRunBars,
+  useRunSessions,
+} from '@/hooks/useRunBars'
 import { useRunManifest } from '@/hooks/useRunManifest'
 import { useRunSignals, flattenSignals } from '@/hooks/useRunSignals'
 import { useRunTrades, flattenTrades } from '@/hooks/useRunTrades'
 import { PriceChart } from '@/components/price-chart'
-import { SessionPicker } from '@/components/session-picker'
+import { SessionCalendarPicker } from '@/components/session-calendar-picker'
 import { JournalTable } from '@/components/journal-table'
 import { buildMarkers } from '@/components/journal-markers'
 import { Skeleton } from '@/components/skeleton'
@@ -38,7 +42,6 @@ const sessionDate = (iso: string) => iso.slice(0, 10)
 export function RunDetail({ runId }: Props) {
   const runQuery = useRun(runId)
   const manifestQuery = useRunManifest(runId)
-  const barsQuery = useRunBars(runId)
   const signalsQuery = useRunSignals(runId)
   const tradesQuery = useRunTrades(runId)
   const queryClient = useQueryClient()
@@ -46,6 +49,32 @@ export function RunDetail({ runId }: Props) {
   const [pickedSession, setPickedSession] = useState<string | null>(null)
   const [showRejections, setShowRejections] = useState(false)
   const [filter, setFilter] = useState<JournalFilter>('all')
+
+  // Session scale fix (post-014): the session-date list comes from a cheap
+  // dedicated endpoint, and bars load ONE session at a time — a year-long
+  // study child run is ~20k bars, which used to ship in a single response.
+  const sessionsQuery = useRunSessions(runId)
+  const sessions = useMemo(
+    () => sessionsQuery.data?.sessions ?? [],
+    [sessionsQuery.data],
+  )
+  const selectedSession = resolveSession(sessions, pickedSession)
+  const barsQuery = useRunBars(runId, selectedSession ?? undefined)
+  usePrefetchAdjacentSessions(runId, sessions, selectedSession)
+
+  // Long runs paginate signals/trades at 100/page; walk every page so the
+  // journal, markers, and rejection breakdown see the WHOLE run (this used to
+  // silently truncate year-long child runs to their first ~100 rows).
+  useEffect(() => {
+    if (signalsQuery.hasNextPage && !signalsQuery.isFetchingNextPage) {
+      signalsQuery.fetchNextPage()
+    }
+  }, [signalsQuery])
+  useEffect(() => {
+    if (tradesQuery.hasNextPage && !tradesQuery.isFetchingNextPage) {
+      tradesQuery.fetchNextPage()
+    }
+  }, [tradesQuery])
 
   // Child queries (bars/signals/trades) don't poll on their own. When the run
   // transitions queued/running → finished, force a refetch so the skeletons
@@ -95,16 +124,10 @@ export function RunDetail({ runId }: Props) {
     [rejectionBreakdown]
   )
 
-  const sessions = useMemo(
-    () => Array.from(new Set(bars.map(b => sessionDate(b.timestamp)))),
-    [bars]
-  )
+  // sessions now come from the dedicated endpoint (see sessionsQuery above).
 
-  // Resolve the displayed session from the user's pick, falling back to the
-  // first session. Switching runs re-renders this view without remounting, so
-  // the pick can be a date from the previous run that doesn't exist in the new
-  // run's bars — which would filter the chart down to nothing (blank chart).
-  const selectedSession = resolveSession(sessions, pickedSession)
+  // selectedSession is resolved above (next to the bars query) so the
+  // per-session bars fetch and the adjacent-session prefetch share it.
 
   // ---- Replay ----
   // Bars for the selected session; the playhead (cursor) indexes into these.
@@ -721,7 +744,7 @@ function RunChart({
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <SessionPicker
+      <SessionCalendarPicker
         sessions={sessions}
         selected={selectedSession}
         onChange={onSessionChange}

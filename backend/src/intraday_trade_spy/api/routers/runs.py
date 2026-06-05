@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from intraday_trade_spy.api.schemas import (
     JournalListResponse,
     RunListResponse,
     RunManifestView,
+    RunSessionsResponse,
     RunStatusResponse,
     RunView,
     SignalListResponse,
@@ -135,9 +137,35 @@ def list_journal(
     return JournalListResponse(events=page.events, next_cursor=page.next_cursor)
 
 
+@router.get("/runs/{run_id}/sessions", response_model=RunSessionsResponse)
+def list_run_sessions(
+    run_id: UUID,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> RunSessionsResponse:
+    """Session-date list for the run's range (post-014 viewer-scale fix).
+
+    Study child runs can span years; the viewer needs the day list WITHOUT
+    pulling every bar. One cheap DISTINCT aggregate (the 013 R8 helper)."""
+    run = storage_client.get_run(run_id=run_id, user_id=user_id)
+    if run is None:
+        errors.raise_not_found(f"run {run_id} not found")
+
+    sessions = storage_client.bars_present_session_dates(
+        range_start=str(run["range_start"]),
+        range_end=str(run["range_end"]),
+    )
+    return RunSessionsResponse(sessions=sessions)
+
+
 @router.get("/runs/{run_id}/bars", response_model=BarListResponse)
 def list_bars(
     run_id: UUID,
+    session: Optional[date] = Query(
+        None,
+        description="Limit bars to one ET session day (post-014 viewer-scale "
+        "fix — a year-long child run is ~20k bars; one session is ~78).",
+    ),
     user_id: UUID = Depends(auth_user_id),
     storage_client=Depends(get_storage_client),
 ) -> BarListResponse:
@@ -145,10 +173,12 @@ def list_bars(
     if run is None:
         errors.raise_not_found(f"run {run_id} not found")
 
-    rows = storage_client.list_bars(
-        range_start=str(run["range_start"]),
-        range_end=str(run["range_end"]),
-    )
+    if session is not None:
+        range_start = range_end = str(session)
+    else:
+        range_start, range_end = str(run["range_start"]), str(run["range_end"])
+
+    rows = storage_client.list_bars(range_start=range_start, range_end=range_end)
     return BarListResponse(bars=[BarView.model_validate(r) for r in rows])
 
 
