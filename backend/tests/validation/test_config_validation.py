@@ -119,3 +119,18 @@ def test_monte_carlo_config_overrides():
     assert cfg.monte_carlo.iterations == 500
     assert cfg.monte_carlo.horizon_trades == 100
     assert cfg.monte_carlo.seed == 20260604  # other defaults untouched
+
+
+# ---- Feature 016 (pooled study gate) ----------------------------------------
+
+
+def test_pooled_gate_config_defaults():
+    cfg = ValidationConfig()
+    assert cfg.pooled_gate.alpha == 0.05
+    assert cfg.pooled_gate.seed == 20260605
+
+
+def test_pooled_gate_yaml_round_trip():
+    cfg = load_config(CONFIG_YAML)
+    assert cfg.validation.pooled_gate.alpha == 0.05
+    assert cfg.validation.pooled_gate.seed == 20260605

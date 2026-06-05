@@ -1,5 +1,6 @@
 import { StudyHeaderCard } from './StudyHeaderCard'
 import { StudyStatCards } from './StudyStatCards'
+import { PooledGatePanel } from './PooledGatePanel'
 import { WindowRows } from './WindowRows'
 import { SensitivityPointsTable } from './SensitivityPointsTable'
 import { SensitivitySurface } from './sensitivity-surface'
@@ -50,6 +51,11 @@ export function StudyDetailPage({
       )}
 
       <StudyStatCards study={study} />
+
+      {/* Feature 016: the pooled gate — the headline for walk-forward studies.
+          Full-gate completion is signaled solely by result.pooled_gate.mode
+          === 'full' (never study progress fields — analyze I1). */}
+      {finished && study.kind === 'walk_forward' && <PooledGatePanel study={study} />}
 
       {finished && study.kind === 'walk_forward' && (
         <WindowRows result={study.result as WalkForwardResult} />

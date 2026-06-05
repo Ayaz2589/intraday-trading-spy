@@ -88,3 +88,17 @@ export function BacktestsIcon() {
     </Svg>
   )
 }
+
+export function InsightsIcon() {
+  return (
+    <Svg>
+      <path d="M4 19h16" />
+      <path d="M6 16l3.5-4 3 2.5L17 9" />
+      <circle cx={6} cy={16} r={1} fill="currentColor" stroke="none" />
+      <circle cx={9.5} cy={12} r={1} fill="currentColor" stroke="none" />
+      <circle cx={12.5} cy={14.5} r={1} fill="currentColor" stroke="none" />
+      <circle cx={17} cy={9} r={1} fill="currentColor" stroke="none" />
+      <path d="M15.5 4.5l1 2 2 1-2 1-1 2-1-2-2-1 2-1Z" fill="currentColor" fillOpacity={0.16} />
+    </Svg>
+  )
+}

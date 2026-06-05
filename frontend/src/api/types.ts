@@ -207,6 +207,8 @@ export type WalkForwardWindowResult = {
 }
 
 export type WalkForwardResult = {
+  // Feature 016: the persisted pooled gate (additive key).
+  pooled_gate?: PooledGateResult | null
   mode: 'rolling' | 'anchored'
   train_months: number
   step_months: number
@@ -346,6 +348,108 @@ export type MonteCarloResult = {
 }
 
 export type MonteCarloRequest = { run_id: UUID }
+
+// ---- Feature 016 (advisory Claude narrative) -------------------------------
+
+export type ClaudeFinding = {
+  claim: string
+  evidence_metric: string
+  confidence: 'low' | 'medium' | 'high'
+}
+
+export type ClaudeExperiment = { hypothesis: string; how_to_test: string }
+
+export type ClaudeAnalysis = {
+  summary: string
+  findings: ClaudeFinding[]
+  risks: string[]
+  suggested_experiments: ClaudeExperiment[]
+  truncated?: boolean
+  fingerprints?: Record<string, string | null>
+}
+
+export type StoredAnalysisView = {
+  id: string | null
+  scope: 'study' | 'insights'
+  scope_id: string | null
+  payload_hash: string
+  model: string
+  analysis: ClaudeAnalysis
+  created_at: string | null
+  truncated: boolean
+}
+
+export type InsightSettingsView = {
+  claude_enabled: boolean
+  disabled_reason: 'billing' | 'manual' | null
+  configured: boolean
+}
+
+// ---- Feature 016 (pooled study gate) ---------------------------------------
+
+export type CIStat = { point: number | null; low: number | null; high: number | null }
+
+export type PerWindowP = { window_index: number; p_value: number | null; significant: boolean }
+
+export type FisherStat = { x2: number; df: number; p: number }
+
+// ---- Feature 016 (insights aggregates) -------------------------------------
+
+export type EdgeTimeseriesPoint = {
+  run_id: string
+  study_id: string
+  window_index: number | null
+  config_name: string | null
+  range_start: string
+  range_end: string
+  trades: number
+  net_pnl: number
+  expectancy_dollars: number | null
+  expectancy_r: number | null
+  pnl_std: number | null
+}
+
+export type EdgeTimeseriesResponse = {
+  points: EdgeTimeseriesPoint[]
+  snapshot_fingerprint: string
+}
+
+export type ConfigDistributionRow = {
+  config_name: string | null
+  windows: number
+  windows_positive: number
+  pnl_q25: number | null
+  pnl_q50: number | null
+  pnl_q75: number | null
+  expectancy_q25: number | null
+  expectancy_q50: number | null
+  expectancy_q75: number | null
+  total_trades: number
+}
+
+export type ConfigDistributionResponse = {
+  rows: ConfigDistributionRow[]
+  snapshot_fingerprint: string
+}
+
+export type PooledGateResult = {
+  computed_at: string | null
+  mode: 'fast' | 'full'
+  passed: boolean
+  alpha: number
+  pooled_trades: number
+  windows_total: number
+  windows_with_trades: number
+  windows_positive: number
+  total_net_pnl_dollars: number
+  expectancy_dollars_ci: CIStat
+  expectancy_r_ci: CIStat
+  sign_test_p: number
+  monte_carlo: MonteCarloResult
+  per_window_p: PerWindowP[] | null
+  fisher: FisherStat | null
+  seed: number
+}
 
 export type LockboxState = 'unspent' | 'spent' | 'burned'
 export type LockboxStatus = {
