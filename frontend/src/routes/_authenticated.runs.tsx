@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { RunsList } from '@/components/runs/RunsList'
-import { openStrategyMenu } from '@/lib/strategy-menu-controller'
 
 // SideNav redesign: the sidebar no longer lists runs, so /runs is now the
 // backtests LIST page (the 007-era RunsList finally wired in) instead of a
@@ -18,7 +17,7 @@ function RunsLanding() {
           Every saved run — open one to inspect its trades, journal, and chart
         </p>
       </section>
-      <RunsList onStartBacktest={openStrategyMenu} />
+      <RunsList />
     </div>
   )
 }

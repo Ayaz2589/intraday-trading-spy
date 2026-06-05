@@ -2,11 +2,7 @@ import { useRuns, flattenRuns } from '@/hooks/useRuns'
 import { HelpTooltip } from '@/components/help-tooltip'
 import { RunRow } from './RunRow'
 
-interface Props {
-  onStartBacktest(): void
-}
-
-export function RunsList({ onStartBacktest }: Props) {
+export function RunsList() {
   const query = useRuns()
   const runs = flattenRuns(query.data)
 
@@ -41,16 +37,9 @@ export function RunsList({ onStartBacktest }: Props) {
           <HelpTooltip helpKey="backtest_queue" />
         </h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Start your first backtest to see results here.
+          Runs are created by validation studies — every walk-forward window,
+          sensitivity point, and lockbox evaluation is saved as a drillable run.
         </p>
-        <button
-          type="button"
-          onClick={onStartBacktest}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded"
-          data-testid="empty-start-backtest"
-        >
-          Start backtest
-        </button>
         <p className="text-xs text-muted-foreground mt-4 inline-flex items-center gap-1">
           Or push CLI runs with <code>--push-to-supabase</code>
           <HelpTooltip helpKey="cloud_push" />
