@@ -349,13 +349,10 @@ def test_delete_all_runs_returns_count(unit_client, stub_storage_client):
 
 def test_list_runs_includes_study_kind(unit_client, stub_storage_client):
     """Origin badge data: study children carry study_kind from the FK embed."""
-    from uuid import UUID
-    TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")
-
     class _Page:
         next_cursor = None
     page = _Page()
-    row = _make_run_row(uuid4(), TEST_USER_ID)
+    row = _make_run_row(uuid4(), uuid4())
     row["study_id"] = str(uuid4())
     row["segment"] = "validation"
     row["window_index"] = 3
@@ -369,16 +366,28 @@ def test_list_runs_includes_study_kind(unit_client, stub_storage_client):
     assert run["study_kind"] == "walk_forward"
     assert run["segment"] == "validation"
     assert run["window_index"] == 3
+    # Cover sensitivity kind as well
+    row2 = _make_run_row(uuid4(), uuid4())
+    row2["study_id"] = str(uuid4())
+    row2["segment"] = "train"
+    row2["window_index"] = None
+    row2["study_kind"] = "sensitivity"
+    page.runs = [row, row2]
+    stub_storage_client.list_runs.return_value = page
+
+    r = unit_client.get("/api/runs")
+    assert r.status_code == 200
+    runs = r.json()["runs"]
+    assert runs[1]["study_kind"] == "sensitivity"
+    assert runs[1]["segment"] == "train"
+    assert runs[1]["window_index"] is None
 
 
 def test_list_runs_study_kind_null_for_standalone(unit_client, stub_storage_client):
-    from uuid import UUID
-    TEST_USER_ID = UUID("11111111-1111-1111-1111-111111111111")
-
     class _Page:
         next_cursor = None
     page = _Page()
-    page.runs = [_make_run_row(uuid4(), TEST_USER_ID)]
+    page.runs = [_make_run_row(uuid4(), uuid4())]
     stub_storage_client.list_runs.return_value = page
 
     r = unit_client.get("/api/runs")

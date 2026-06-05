@@ -69,6 +69,7 @@ def test_get_run_study_fields_null_for_standalone(unit_client, stub_storage_clie
     assert body["study_id"] is None
     assert body["segment"] is None
     assert body["window_index"] is None
+    assert body["study_kind"] is None
 
 
 def test_list_runs_rows_carry_study_fields(unit_client, stub_storage_client):
