@@ -52,6 +52,9 @@ export type Run = {
   study_id?: UUID | null
   segment?: 'train' | 'validation' | 'lockbox' | null
   window_index?: number | null
+  // /runs origin badge: study kind flattened server-side from the
+  // validation_studies FK embed. Null/absent for standalone (CLI) runs.
+  study_kind?: 'walk_forward' | 'sensitivity' | null
 }
 
 export type RunListResponse = { runs: Run[]; next_cursor: string | null }
