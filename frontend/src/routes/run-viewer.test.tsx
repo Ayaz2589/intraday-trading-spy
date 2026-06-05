@@ -282,6 +282,18 @@ describe("RunViewer route", () => {
       "child_run",
       "study_drilldown",
       "rerun_study",
+      // Feature 015 Monte Carlo keys render in the run-detail Monte Carlo
+      // panel (post-click), not the legacy run-viewer; coverage lives in
+      // monte-carlo-panel.test.tsx + run-monte-carlo-section.test.tsx.
+      "monte_carlo_simulation",
+      "shuffle_method",
+      "max_drawdown_distribution",
+      "losing_streak",
+      "underwater_period",
+      "mc_iterations_seed",
+      "forward_cone",
+      "risk_of_ruin",
+      "mc_in_sample_caveat",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: none in flight — `014-study-run-persistence` is implemented & merged. Next up: `015` (insights), then `016` (optional UI lanes).
+**Active plan**: none in flight — `015-monte-carlo` is implemented & merged. Next up: `016` (insights), then `017` (optional UI lanes).
 
-**Most recent spec**: [specs/014-study-run-persistence/spec.md](specs/014-study-run-persistence/spec.md)
+**Most recent spec**: [specs/015-monte-carlo/spec.md](specs/015-monte-carlo/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -21,6 +21,7 @@
 - [specs/012-config-management/plan.md](specs/012-config-management/plan.md) — implemented & merged to main (Phase 2 follow-on; first-class named configs create/duplicate/rename/delete/activate + SPY-workable default cap=400 fixing the 0-trade wall; backend+UI; edit-isolation/journaling/e2e verified live on cloud).
 - [specs/013-data-observability/plan.md](specs/013-data-observability/plan.md) — implemented & merged to main (Data-page uplift: backfill job history w/ persistent failure reasons, cache summary + no-missing verdict, year×month completeness heatmap w/ exact missing-day hover, light lineage; no DB migration — R8 psycopg aggregate; verified live: 168k bars, 0 missing sessions).
 - [specs/014-study-run-persistence/plan.md](specs/014-study-run-persistence/plan.md) — implemented & merged to main (study child-run persistence + drill-down: every study eval persisted as a spec_hash-deduped, fail-soft child run; lockbox child + ledger link; runs list hides children; Re-run study; redesigned study detail page w/ expandable IS/OOS rows; zero migrations; also fixed the latent API summary-write crash that emptied the runs table since 010; e2e-verified live).
+- [specs/015-monte-carlo/plan.md](specs/015-monte-carlo/plan.md) — implemented & merged to main (Monte Carlo path-risk on any run: seeded shuffle drawdown/streak/underwater distributions vs observed, bootstrap forward cone + terminal percentiles, risk-of-ruin per threshold; run-detail panel w/ caveat-unless-provably-OOS banner + thin-sample badge; POST /api/validation/monte-carlo on-demand/deterministic/no persistence; zero migrations, zero new deps; e2e-verified live).
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,

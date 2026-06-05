@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  computeMonteCarlo,
   computeSignificance,
   getLockboxStatus,
   getStudy,
@@ -105,5 +106,15 @@ export function useRunLockbox() {
 export function useSignificance() {
   return useMutation({
     mutationFn: (runId: UUID) => computeSignificance({ run_id: runId }),
+  })
+}
+
+// Feature 015: Monte Carlo path-risk (on-demand, deterministic).
+export function useMonteCarlo() {
+  return useMutation({
+    mutationFn: (runId: UUID) => computeMonteCarlo({ run_id: runId }),
+    // A refused simulation (too few trades, no trade data) is deterministic —
+    // retrying the 400 can never succeed, it only delays the explanation.
+    retry: false,
   })
 }

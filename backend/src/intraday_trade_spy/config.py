@@ -172,11 +172,25 @@ class SignificanceConfig(BaseModel):
     seed: int = 20260603
 
 
+class MonteCarloConfig(BaseModel):
+    """Feature 015: Monte Carlo path-risk parameters. One `iterations` knob
+    drives both the shuffle and bootstrap methods; all randomness is seeded so
+    identical inputs+config yield byte-identical results."""
+
+    iterations: int = 2000
+    seed: int = 20260604
+    ruin_thresholds_pct: list[float] = Field(default_factory=lambda: [5, 10, 20])
+    # None -> horizon matches the run's observed trade count.
+    horizon_trades: int | None = None
+    max_cone_steps: int = 200
+
+
 class ValidationConfig(BaseModel):
     split: SplitConfig = Field(default_factory=SplitConfig)
     walk_forward: WalkForwardConfig = Field(default_factory=WalkForwardConfig)
     sensitivity: SensitivityConfig = Field(default_factory=SensitivityConfig)
     significance: SignificanceConfig = Field(default_factory=SignificanceConfig)
+    monte_carlo: MonteCarloConfig = Field(default_factory=MonteCarloConfig)
     # Single canonical fan-out guard (resolves analyze finding D1): the total
     # planned evaluations (grid points × windows) beyond which a study launch
     # requires explicit confirmation.

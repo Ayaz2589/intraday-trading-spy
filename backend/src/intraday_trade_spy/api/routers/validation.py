@@ -12,6 +12,7 @@ from intraday_trade_spy.api.schemas import (
     LockboxRunRequest,
     LockboxRunResponse,
     LockboxStatusView,
+    MonteCarloRequest,
     SignificanceRequest,
     StartStudyRequest,
     StartStudyResponse,
@@ -23,16 +24,18 @@ from intraday_trade_spy.api.schemas import (
 from intraday_trade_spy.api.validation_lifecycle import (
     LargeStudyNotConfirmed,
     LockboxAlreadySpent,
+    MonteCarloNotComputable,
     RunNotFound,
     StudyConfigNotFound,
     StudyNotFound,
     get_lockbox_status_view,
     rerun_study,
     run_lockbox,
+    run_monte_carlo_for_run,
     run_significance_for_run,
     start_study,
 )
-from intraday_trade_spy.models import SignificanceResult
+from intraday_trade_spy.models import MonteCarloResult, SignificanceResult
 
 router = APIRouter(prefix="/validation")
 
@@ -91,6 +94,24 @@ def significance_endpoint(
         )
     except RunNotFound:
         errors.raise_not_found("run not found")
+
+
+@router.post("/monte-carlo", response_model=MonteCarloResult)
+def monte_carlo_endpoint(
+    body: MonteCarloRequest,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> MonteCarloResult:
+    """Feature 015: on-demand, deterministic, never persisted — the response's
+    seed/iterations/trade_count regenerate every number exactly."""
+    try:
+        return run_monte_carlo_for_run(
+            run_id=body.run_id, user_id=user_id, storage=storage_client
+        )
+    except RunNotFound:
+        errors.raise_not_found("run not found")
+    except MonteCarloNotComputable as exc:
+        errors.raise_validation_error(exc.reason)
 
 
 @router.get("/lockbox", response_model=LockboxStatusView)

@@ -322,6 +322,11 @@ class SignificanceRequest(_Base):
     run_id: UUID
 
 
+class MonteCarloRequest(_Base):
+    # Feature 015: on-demand Monte Carlo path-risk for one owned run.
+    run_id: UUID
+
+
 class LockboxRunRequest(_Base):
     config_name: str = Field(min_length=1, max_length=200)
     override: bool = False

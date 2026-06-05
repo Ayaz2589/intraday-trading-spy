@@ -1,6 +1,8 @@
 import { apiRequest } from './client'
 import type {
   LockboxRunRequest,
+  MonteCarloRequest,
+  MonteCarloResult,
   LockboxRunResponse,
   LockboxStatus,
   SignificanceRequest,
@@ -40,6 +42,11 @@ export function rerunStudy(studyId: UUID): Promise<StudyRerunResponse> {
 
 export function computeSignificance(body: SignificanceRequest): Promise<SignificanceResult> {
   return apiRequest<SignificanceResult>('/api/validation/significance', { method: 'POST', body })
+}
+
+// Feature 015: on-demand Monte Carlo path-risk for one owned run.
+export function computeMonteCarlo(body: MonteCarloRequest): Promise<MonteCarloResult> {
+  return apiRequest<MonteCarloResult>('/api/validation/monte-carlo', { method: 'POST', body })
 }
 
 export function getLockboxStatus(): Promise<LockboxStatus> {

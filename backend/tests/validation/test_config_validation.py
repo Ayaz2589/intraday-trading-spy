@@ -87,3 +87,35 @@ def test_build_effective_config_preserves_validation():
 def test_submodels_are_importable():
     # Stable public surface used by split.py / walk_forward.py / significance.py.
     assert SplitConfig and WalkForwardConfig and SignificanceConfig
+
+
+# ---- Feature 015 (Monte Carlo path-risk) -----------------------------------
+
+
+def test_monte_carlo_config_defaults():
+    cfg = ValidationConfig()
+    mc = cfg.monte_carlo
+    assert mc.iterations == 2000
+    assert mc.seed == 20260604
+    assert mc.ruin_thresholds_pct == [5, 10, 20]
+    assert mc.horizon_trades is None  # None -> match observed trade count
+    assert mc.max_cone_steps == 200
+
+
+def test_monte_carlo_yaml_block_round_trip():
+    cfg = load_config(CONFIG_YAML)
+    mc = cfg.validation.monte_carlo
+    assert mc.iterations == 2000
+    assert mc.seed == 20260604
+    assert [float(t) for t in mc.ruin_thresholds_pct] == [5.0, 10.0, 20.0]
+    assert mc.horizon_trades is None
+    assert mc.max_cone_steps == 200
+
+
+def test_monte_carlo_config_overrides():
+    cfg = ValidationConfig.model_validate(
+        {"monte_carlo": {"iterations": 500, "horizon_trades": 100}}
+    )
+    assert cfg.monte_carlo.iterations == 500
+    assert cfg.monte_carlo.horizon_trades == 100
+    assert cfg.monte_carlo.seed == 20260604  # other defaults untouched
