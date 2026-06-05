@@ -8,6 +8,16 @@
 
 **Input**: User description: "Monte Carlo path-risk analysis on any run's trades: drawdown/path-risk distributions, forward projection cone, and risk-of-ruin probabilities, attached to the run detail page like the significance panel. Approved brainstorm design: docs/superpowers/specs/2026-06-04-monte-carlo-path-risk-design.md (source of truth for decided architecture and scope)."
 
+## Clarifications
+
+### Session 2026-06-04
+
+- Q: Which rule governs the in-sample caveat banner (notably for sensitivity
+  children persisted with no segment by mixed train+validation studies)? →
+  A: Caveat unless provably out-of-sample — show the banner for every run whose
+  segment is not `validation` or `lockbox`; this includes train-segment
+  children, no-segment sensitivity children, and all plain backtests.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Assess drawdown / path risk of a run (Priority: P1)
@@ -118,16 +128,18 @@ it, including iteration count and seed), and each simulation is journaled.
 the education and journaling, and the caveat prevents the most dangerous
 misread (treating in-sample risk estimates as real).
 
-**Independent Test**: Open the panel on a train-segment child run and verify
-the caveat banner; open it on a validation-segment (OOS) child and verify no
-banner; verify every displayed concept exposes a tooltip; verify the
-simulation event is journaled.
+**Independent Test**: Open the panel on a train-segment or no-segment child
+run and verify the caveat banner; open it on a validation-segment (OOS) child
+and verify no banner; verify every displayed concept exposes a tooltip; verify
+the simulation event is journaled.
 
 **Acceptance Scenarios**:
 
-1. **Given** a train-segment child run or a plain backtest, **When** the panel
-   renders, **Then** a caveat explains that in-sample risk estimates are
-   optimistic and OOS windows or the lockbox run are preferred.
+1. **Given** a run that is not provably out-of-sample (train-segment child,
+   sensitivity child persisted without a segment, or a plain backtest),
+   **When** the panel renders, **Then** a caveat explains that the risk
+   estimates may be optimistic and OOS windows or the lockbox run are
+   preferred.
 2. **Given** a validation-segment or lockbox child run, **When** the panel
    renders, **Then** no in-sample caveat is shown.
 3. **Given** any rendered Monte Carlo concept (shuffle distribution, cone,
@@ -153,6 +165,8 @@ simulation event is journaled.
 - Repeat launches on the same run → byte-identical results (seeded determinism);
   no state accumulates (nothing is persisted).
 - A run owned by another user → not found (ownership enforced).
+- Sensitivity children persisted without a segment (mixed train+validation
+  studies) → not provably OOS; the in-sample caveat shows.
 
 ## Requirements *(mandatory)*
 
@@ -187,9 +201,11 @@ simulation event is journaled.
   stored trade data with a plain-English reason, and MUST flag results as
   low-confidence when the trade count is below the existing low-confidence
   threshold.
-- **FR-009**: The panel MUST display an in-sample caveat when the run's trades
-  are in-sample (train-segment child or plain backtest) and MUST NOT display
-  it for validation-segment or lockbox children.
+- **FR-009**: The panel MUST display the in-sample caveat for every run that
+  is not provably out-of-sample — i.e., whenever the run's segment is neither
+  `validation` nor `lockbox` (this includes train-segment children,
+  sensitivity children persisted without a segment, and all plain backtests) —
+  and MUST NOT display it for validation-segment or lockbox children.
 - **FR-010**: Every Monte Carlo concept shown in the UI MUST have an
   educational tooltip covering what it is, why it matters, and how the app
   computes it (including iterations and seed).
@@ -229,8 +245,8 @@ simulation event is journaled.
   thresholds, and orderings/invariants (band ordering, ruin monotonicity,
   shuffle terminal-equity constancy) hold in 100% of simulations.
 - **SC-005**: 100% of Monte Carlo concepts displayed carry an educational
-  tooltip; in-sample runs always show the caveat and OOS/lockbox runs never
-  do.
+  tooltip; runs not provably out-of-sample always show the caveat and
+  validation/lockbox runs never do.
 - **SC-006**: Runs that cannot be simulated (too few trades, no trade data)
   always receive a plain-English explanation rather than a bare failure.
 
