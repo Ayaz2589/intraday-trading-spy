@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { CSSProperties } from 'react'
 import { useActivateConfig, useDeleteConfig, useRenameConfig } from '@/hooks/useConfigs'
 import { HelpTooltip } from '@/components/help-tooltip'
@@ -82,6 +82,10 @@ function ConfigRow({
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(config.name)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Re-sync when the configs query refetches after a successful rename — the
+  // row is keyed by stable id, so no remount happens.
+  useEffect(() => setName(config.name), [config.name])
 
   const knobs = knobsFromConfig(config)
   const chips = knobChips(knobs)

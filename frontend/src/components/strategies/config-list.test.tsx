@@ -161,4 +161,50 @@ describe('ConfigsSection', () => {
       expect(document.querySelector(`[data-help-key="${key}"]`)).toBeTruthy()
     }
   })
+
+  it('shows the updated name when renaming again after a successful rename', async () => {
+    patchConfigMock.mockResolvedValue(cfg('2', 'renamed'))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ConfigsSection
+          configs={[cfg('1', 'default', true), cfg('2', 'wf-rr3')]}
+          expandedId={null}
+          onToggle={() => {}}
+        />
+      </QueryClientProvider>,
+    )
+    // Open rename, type a partial edit, then cancel — leaving name state as 'partial'
+    // (different from the eventual refetched config.name).
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rename' })[1])
+    fireEvent.change(screen.getByLabelText('rename wf-rr3'), { target: { value: 'partial' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    // Simulate an out-of-band refetch that delivers a new name ('renamed') —
+    // the row is keyed by stable id so no remount happens.
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <ConfigsSection
+          configs={[cfg('1', 'default', true), cfg('2', 'renamed')]}
+          expandedId={null}
+          onToggle={() => {}}
+        />
+      </QueryClientProvider>,
+    )
+    // Reopen rename: input MUST show the new name, not the stale 'partial'.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rename' })[1])
+    expect(screen.getByLabelText('rename renamed')).toHaveValue('renamed')
+  })
+
+  it('does not call rename when Save name is clicked with the unchanged name', () => {
+    wrap(
+      <ConfigsSection
+        configs={[cfg('1', 'default', true), cfg('2', 'wf-rr3')]}
+        expandedId={null}
+        onToggle={() => {}}
+      />,
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rename' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+    expect(patchConfigMock).not.toHaveBeenCalled()
+  })
 })
