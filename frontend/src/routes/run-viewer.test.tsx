@@ -276,6 +276,12 @@ describe("RunViewer route", () => {
       "cache_heatmap",
       "backfill_job_history",
       "data_lineage",
+      // Feature 014 keys render on the validation pages / child-run badge
+      // (this fixture run is standalone, so the badge doesn't mount);
+      // coverage lives in run-study-badge / WindowRows / StudiesTable tests.
+      "child_run",
+      "study_drilldown",
+      "rerun_study",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

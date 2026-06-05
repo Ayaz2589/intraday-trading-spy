@@ -45,6 +45,19 @@ learning app.
   picker pre-selects the active config so the validation engine has
   real configs to compare. See `specs/012-config-management/` and
   [`docs/research-tooling-uplift.md`](docs/research-tooling-uplift.md).
+- **Feature 013 (Data observability)** — implemented. Data-page uplift:
+  backfill job history with persistent failure reasons, cache summary +
+  no-missing-session verdict, year×month completeness heatmap with
+  exact missing-day hover, and a light lineage line. See
+  `specs/013-data-observability/`.
+- **Feature 014 (Study child-runs + drill-down)** — implemented. Every
+  validation-study evaluation (walk-forward window, sensitivity grid
+  point, lockbox one-shot) persists as a real, drillable run — trades,
+  journal, chart, and significance included. Study detail page
+  redesigned with expandable IS/OOS window rows; child runs are hidden
+  from the main runs list and badge back to their study; "Re-run
+  study" clones any pre-014 study into a drillable one. See
+  `specs/014-study-run-persistence/`.
 
 ## Quickstart
 

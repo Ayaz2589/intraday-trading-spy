@@ -49,13 +49,21 @@ def _serialize(entry: JournalEntry, col: str) -> str:
     return str(v)
 
 
-def write_journal_csv(entries: list[JournalEntry], path: Path) -> None:
+def journal_dict_rows(entries: list[JournalEntry]) -> list[dict[str, str]]:
+    """The exact dict rows a csv.DictReader would yield from write_journal_csv
+    output — same sort order, same per-column string serialization. Feature 014
+    uses this so the in-memory push path shares one serialization with the CSV
+    path (parity-locked in tests/storage/test_build_run_payload.py)."""
     sorted_entries = sorted(
         entries,
         key=lambda e: (e.timestamp.isoformat(), STATUS_PRIORITY[e.status], e.row_seq),
     )
+    return [{c: _serialize(e, c) for c in COLUMNS} for e in sorted_entries]
+
+
+def write_journal_csv(entries: list[JournalEntry], path: Path) -> None:
     with open(path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
         writer.writerow(COLUMNS)
-        for entry in sorted_entries:
-            writer.writerow([_serialize(entry, c) for c in COLUMNS])
+        for row in journal_dict_rows(entries):
+            writer.writerow([row[c] for c in COLUMNS])

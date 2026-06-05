@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react'
+import { HelpTooltip } from '../help-tooltip'
 import type { ValidationStudy, WalkForwardResult, SensitivitySurface } from '@/api/types'
 
 // Validation-page redesign: the studies table — stats row, kind chips, config
@@ -49,7 +50,14 @@ function Detail({ label, value, mono = false }: { label: string; value: string; 
   )
 }
 
-export function StudiesTable({ studies }: { studies: ValidationStudy[] }) {
+export function StudiesTable({
+  studies,
+  onRerun,
+}: {
+  studies: ValidationStudy[]
+  // Feature 014 (FR-010): when provided, expanded rows offer "Re-run study".
+  onRerun?: (studyId: string) => void
+}) {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   if (studies.length === 0) {
@@ -159,10 +167,34 @@ export function StudiesTable({ studies }: { studies: ValidationStudy[] }) {
                             <span className="mono">{s.failure_reason}</span>
                           </div>
                         )}
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                           <a href={`/validation/${s.id}`} style={{ color: 'var(--accent, #2563eb)', fontWeight: 600, fontSize: 'var(--fs-sm, 13px)' }}>
                             Open full results →
                           </a>
+                          {onRerun && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onRerun(s.id)
+                                }}
+                                style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 'var(--r-sm, 6px)',
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--surface-2, #f6f7f9)',
+                                  color: 'var(--text)',
+                                  fontSize: 'var(--fs-xs, 11px)',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                ↻ Re-run study
+                              </button>
+                              <HelpTooltip helpKey="rerun_study" />
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>

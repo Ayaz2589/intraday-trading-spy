@@ -1,43 +1,52 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { WalkForwardTable } from "@/components/validation/walk-forward-table";
-import { SensitivitySurface } from "@/components/validation/sensitivity-surface";
-import { useStudy, useStudyStatus } from "@/hooks/useStudies";
-import type { SensitivitySurface as Surface, WalkForwardResult } from "@/api/types";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { StudyDetailPage } from "@/components/validation/StudyDetailPage";
+import { HelpTooltip } from "@/components/help-tooltip";
+import { useRerunStudy, useStudy, useStudyStatus } from "@/hooks/useStudies";
+
+// Feature 014: thin mount — the page composition lives in
+// components/validation/StudyDetailPage.tsx (testable without the router).
 
 export const Route = createFileRoute("/_authenticated/validation_/$studyId")({
-  component: StudyDetailPage,
+  component: StudyDetailRoute,
 });
 
-function StudyDetailPage() {
+function StudyDetailRoute() {
   const { studyId } = Route.useParams();
   const status = useStudyStatus(studyId);
   const study = useStudy(studyId);
+  const rerun = useRerunStudy();
+  const navigate = useNavigate();
 
-  const s = study.data;
-  const inFlight = status.data?.status === "queued" || status.data?.status === "running";
+  const rerunAction = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      <button
+        type="button"
+        disabled={rerun.isPending}
+        onClick={() =>
+          rerun.mutate(studyId, {
+            // Jump straight to the fresh (drillable) study.
+            onSuccess: (r) =>
+              navigate({ to: "/validation/$studyId", params: { studyId: r.study_id } }),
+          })
+        }
+        style={{
+          padding: "5px 12px",
+          borderRadius: "var(--r-sm, 6px)",
+          border: "1px solid var(--border)",
+          background: "var(--surface-2, #f6f7f9)",
+          color: "var(--text)",
+          fontSize: "var(--fs-sm, 13px)",
+          fontWeight: 600,
+          cursor: rerun.isPending ? "wait" : "pointer",
+        }}
+      >
+        {rerun.isPending ? "Re-running…" : "↻ Re-run study"}
+      </button>
+      <HelpTooltip helpKey="rerun_study" />
+    </span>
+  );
 
   return (
-    <div style={{ padding: "var(--sp-5)", display: "grid", gap: "var(--sp-5)", maxWidth: 900 }}>
-      <h2>Study {studyId.slice(0, 8)}…</h2>
-
-      {status.data && (
-        <div className="stat-label">
-          {status.data.status} · {status.data.progress_completed}/{status.data.progress_total}
-          {status.data.failure_reason ? ` · ${status.data.failure_reason}` : ""}
-        </div>
-      )}
-
-      {inFlight && <div className="stat-label">Running… this page updates automatically.</div>}
-
-      {s?.status === "finished" && s.result && s.kind === "walk_forward" && (
-        <WalkForwardTable result={s.result as WalkForwardResult} />
-      )}
-      {s?.status === "finished" && s.result && s.kind === "sensitivity" && (
-        <SensitivitySurface surface={s.result as Surface} />
-      )}
-      {s?.status === "failed" && (
-        <div style={{ color: "var(--loss)" }}>Study failed: {s.failure_reason}</div>
-      )}
-    </div>
+    <StudyDetailPage study={study.data} status={status.data} rerunAction={rerunAction} />
   );
 }

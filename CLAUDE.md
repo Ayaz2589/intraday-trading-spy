@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: none in flight — `013-data-observability` is implemented & merged. Next up: `014` (study child-run persistence + drill-down), then `015` (insights).
+**Active plan**: [specs/014-study-run-persistence/plan.md](specs/014-study-run-persistence/plan.md) — study child-run persistence + drill-down (in flight). Next up: `015` (insights).
 
-**Most recent spec**: [specs/013-data-observability/spec.md](specs/013-data-observability/spec.md)
+**Most recent spec**: [specs/014-study-run-persistence/spec.md](specs/014-study-run-persistence/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 

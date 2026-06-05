@@ -229,6 +229,10 @@ class WindowMetrics(BaseModel):
     range_start: date
     range_end: date
     run_id: str
+    # Feature 014: True when run_id refers to a stored, drillable run (successful
+    # push or dedup hit). Default False ⇒ pre-014 results and failed pushes both
+    # read as not-drillable — one mechanism gates every UI link (FR-007).
+    persisted: bool = False
     total_trades: int
     expectancy_dollars: float | None
     expectancy_r: float | None
@@ -266,6 +270,8 @@ class SensitivityPoint(BaseModel):
     trade_count: int
     low_confidence: bool
     run_id: str
+    # Feature 014: same drillability semantics as WindowMetrics.persisted.
+    persisted: bool = False
 
 
 class SensitivitySurface(BaseModel):

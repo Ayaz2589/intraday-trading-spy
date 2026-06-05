@@ -583,6 +583,10 @@ class SupabaseStorageClient:
             self._client.table("runs")
             .select("*")
             .eq("user_id", str(user_id))
+            # Feature 014 (FR-008): hide study children — a study can spawn
+            # hundreds of child runs; they're reached via their study, never
+            # listed here. Dedup-referenced standalone runs keep study_id NULL.
+            .is_("study_id", "null")
             .order("started_at", desc=True)
             .order("id", desc=True)
             .limit(limit + 1)

@@ -16,6 +16,7 @@ from intraday_trade_spy.api.schemas import (
     StartStudyRequest,
     StartStudyResponse,
     StudyListResponse,
+    StudyRerunResponse,
     ValidationStudyStatusView,
     ValidationStudyView,
 )
@@ -24,7 +25,9 @@ from intraday_trade_spy.api.validation_lifecycle import (
     LockboxAlreadySpent,
     RunNotFound,
     StudyConfigNotFound,
+    StudyNotFound,
     get_lockbox_status_view,
+    rerun_study,
     run_lockbox,
     run_significance_for_run,
     start_study,
@@ -164,3 +167,31 @@ def get_study_status_endpoint(
     if row is None:
         errors.raise_not_found("validation study not found")
     return ValidationStudyStatusView.model_validate(row)
+
+
+@router.post(
+    "/studies/{study_id}/rerun", response_model=StudyRerunResponse, status_code=202
+)
+def rerun_study_endpoint(
+    study_id: UUID,
+    background_tasks: BackgroundTasks,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> StudyRerunResponse:
+    """Feature 014 (FR-010): clone a study's kind + config + params into a
+    brand-new study (full child persistence applies). 404 unknown study;
+    a since-deleted config surfaces the existing config-not-found error."""
+    try:
+        new_id, planned = rerun_study(
+            study_id=study_id,
+            user_id=user_id,
+            storage=storage_client,
+            background_tasks=background_tasks,
+        )
+    except StudyNotFound:
+        errors.raise_not_found("validation study not found")
+    except StudyConfigNotFound as exc:
+        errors.raise_config_not_found(exc.name)
+    except ValueError as exc:
+        errors.raise_validation_error(str(exc))
+    return StudyRerunResponse(study_id=new_id, planned_evaluations=planned)

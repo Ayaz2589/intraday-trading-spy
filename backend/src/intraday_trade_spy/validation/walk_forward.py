@@ -49,6 +49,9 @@ def _window_metrics(result, *, segment: str, start: date, end: date) -> WindowMe
         range_start=start,
         range_end=end,
         run_id=result.run.run_id,
+        # Feature 014: set by the study orchestrator's persistence stamp; plain
+        # engine results (no persistence) default to not-drillable.
+        persisted=bool(getattr(result, "persisted", False)),
         total_trades=s.total_trades,
         expectancy_dollars=s.expectancy_dollars,
         expectancy_r=s.expectancy_r,

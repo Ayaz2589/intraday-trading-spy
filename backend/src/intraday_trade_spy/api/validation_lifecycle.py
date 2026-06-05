@@ -42,11 +42,106 @@ class RunNotFound(Exception):
         super().__init__(run_id)
 
 
+class StudyNotFound(Exception):
+    def __init__(self, study_id: str) -> None:
+        self.study_id = study_id
+        super().__init__(study_id)
+
+
 class LockboxAlreadySpent(Exception):
     def __init__(self, spent_fingerprint: str | None, spent_run_id=None) -> None:
         self.spent_fingerprint = spent_fingerprint
         self.spent_run_id = spent_run_id
         super().__init__("lockbox already spent")
+
+
+# Segment values the runs.segment CHECK accepts (0111). A combined
+# train+validation evaluation is stored with segment NULL — the true segment
+# label lives in the study's result JSON (analyze I1 / 014 remediation).
+_DB_SEGMENTS = {"train", "validation", "lockbox"}
+
+
+def make_study_persist(
+    *,
+    storage,
+    user_id,
+    config_id,
+    strategy_id,
+    study_id,
+    config_params: dict | None,
+    base_path: str | None = None,
+):
+    """Build the per-evaluation persistence callback for a study (Feature 014).
+
+    Returns `persist(result, *, segment, window_index, coords=None) ->
+    (run_id, persisted)`. Owns everything the orchestrator must never see:
+
+      - spec-hash dedup (an identical finished run is referenced, not re-pushed)
+      - the in-memory payload build + atomic push_run RPC
+      - post-push stamping of spec_hash and the per-eval config_snapshot
+        (the api/lifecycle.py single-backtest pattern)
+      - the train_validation → NULL segment mapping (0111 CHECK)
+      - fail-soft error handling: NEVER raises — a persistence failure returns
+        (local_run_id, False) and the study's math proceeds untouched (FR-006)
+    """
+    from intraday_trade_spy.run_spec import compute_spec_hash
+    from intraday_trade_spy.storage.push import build_run_payload
+
+    base_params = config_params or {}
+    path = base_path or DEFAULT_CONFIG_PATH
+
+    def persist(result, *, segment, window_index, coords=None):
+        try:
+            from intraday_trade_spy.config import _deep_merge
+            from intraday_trade_spy.validation.sweep import dotted_to_nested
+
+            params = (
+                _deep_merge(base_params, dotted_to_nested(coords))
+                if coords
+                else base_params
+            )
+            fp = result.run.data_fingerprint
+            spec_hash = compute_spec_hash(
+                strategy_id=str(strategy_id),
+                params=params,
+                symbol="SPY",
+                range_start=fp.earliest_timestamp.date(),
+                range_end=fp.latest_timestamp.date(),
+            )
+            existing = storage.find_finished_run_by_spec(spec_hash=spec_hash)
+            if existing is not None:
+                return str(existing), True
+
+            run_id = uuid4()
+            payload = build_run_payload(
+                result,
+                user_id=user_id,
+                config_id=config_id,
+                strategy_id=strategy_id,
+                run_id=run_id,
+                study_id=study_id,
+                segment=segment if segment in _DB_SEGMENTS else None,
+                window_index=window_index,
+            )
+            storage.push_run(payload)
+            storage.set_run_spec_hash(run_id=run_id, spec_hash=spec_hash)
+            eff = build_effective_config(params, base_path=path)
+            storage.set_run_config_snapshot(
+                run_id=run_id,
+                config_snapshot={
+                    "risk": eff.risk.model_dump(mode="json"),
+                    "strategy": eff.strategy.model_dump(mode="json"),
+                },
+            )
+            return str(run_id), True
+        except Exception as exc:  # noqa: BLE001 — fail-soft: persistence is additive
+            _log.exception(
+                "study %s: child-run persist failed (segment=%s window=%s): %s",
+                study_id, segment, window_index, exc,
+            )
+            return result.run.run_id, False
+
+    return persist
 
 
 def get_lockbox_status_view(*, user_id, storage, base_cfg: Config | None = None) -> dict:
@@ -147,10 +242,25 @@ def run_lockbox(
     summary = result.summary.model_dump(mode="json")
     state = decision.state  # 'spent' or 'burned'
 
+    # Feature 014 (FR-003): the one-shot evaluation is itself a drillable run
+    # (segment='lockbox', no study parent). Fail-soft: a persistence failure
+    # must never block the spend — the append-only ledger row is the critical,
+    # immutable record, so it carries run_id=None in that case.
+    persist = make_study_persist(
+        storage=storage,
+        user_id=user_id,
+        config_id=cfg_row.get("id") if isinstance(cfg_row, dict) else None,
+        strategy_id=cfg_row.get("strategy_id") if isinstance(cfg_row, dict) else None,
+        study_id=None,
+        config_params=params,
+    )
+    child_run_id, persisted = persist(result, segment="lockbox", window_index=None)
+    run_id = child_run_id if persisted else None
+
     storage.append_lockbox_row(
         ledger_id=uuid4(), lockbox_start=lb.start, lockbox_end=lb.end,
         config_fingerprint=fingerprint, result=summary, state=state,
-        override=(decision.action == "burn"),
+        override=(decision.action == "burn"), run_id=run_id,
     )
     storage.insert_journal_event(
         event_id=uuid4(),
@@ -166,7 +276,7 @@ def run_lockbox(
         "contaminated": state == "burned",
         "summary": summary,
         "config_fingerprint": fingerprint,
-        "run_id": None,
+        "run_id": run_id,
     }
 
 
@@ -302,6 +412,8 @@ def start_study(
     )
     cfg_row = storage.get_config_by_name(config_name) or {}
     config_params = cfg_row.get("params") if isinstance(cfg_row, dict) else None
+    # Feature 014: hand the task the identity context so every evaluation is
+    # persisted as a child run tagged with this study.
     background_tasks.add_task(
         run_study_task,
         study_id=study_id,
@@ -309,8 +421,43 @@ def start_study(
         params=params or {},
         storage=storage,
         config_params=config_params,
+        user_id=user_id,
+        config_id=cfg_row.get("id"),
+        strategy_id=cfg_row.get("strategy_id"),
     )
     return study_id, planned
+
+
+def rerun_study(
+    *,
+    study_id,
+    user_id,
+    storage,
+    background_tasks,
+    base_cfg: Config | None = None,
+):
+    """Feature 014 (FR-010): clone an existing study's kind + config + params
+    into a brand-new study via the existing start_study() — identical
+    parameters, no re-optimization (constitution II). confirm_large=True: the
+    operator is explicitly re-running something that already ran once. The
+    original study row is never modified. Returns (new_study_id, planned)."""
+    row = storage.get_validation_study(study_id=str(study_id), user_id=user_id)
+    if row is None:
+        raise StudyNotFound(str(study_id))
+
+    stored = row.get("params") or {}
+    return start_study(
+        user_id=user_id,
+        kind=row["kind"],
+        config_name=stored.get("config_name") or "default",
+        # The stored row's "walk_forward" key holds the original `params`
+        # argument for BOTH kinds (see start_study's insert_validation_study).
+        params=stored.get("walk_forward") or {},
+        confirm_large=True,
+        storage=storage,
+        background_tasks=background_tasks,
+        base_cfg=base_cfg,
+    )
 
 
 def _segment_window(segment: str, segs):
@@ -339,10 +486,14 @@ def run_study_task(
     storage,
     cfg: Config | None = None,
     config_params: dict | None = None,
+    user_id=None,
+    config_id=None,
+    strategy_id=None,
     _df=None,
     _engine=None,
     _segment_df=None,
     _evaluate_point=None,
+    _persist=None,
 ) -> None:
     params = params or {}
     try:
@@ -351,6 +502,20 @@ def run_study_task(
             # request path); user knobs over the base config.yaml.
             cfg = build_effective_config(config_params or {}, base_path=DEFAULT_CONFIG_PATH)
         segs = _segments(cfg)
+
+        # Feature 014: with the identity context present, every evaluation is
+        # persisted as a child run. Without it (older callers / unit tests) the
+        # study runs exactly as 011 did — no persistence.
+        persist = _persist
+        if persist is None and user_id is not None and config_id is not None and strategy_id is not None:
+            persist = make_study_persist(
+                storage=storage,
+                user_id=user_id,
+                config_id=config_id,
+                strategy_id=strategy_id,
+                study_id=study_id,
+                config_params=config_params,
+            )
 
         if kind == "walk_forward":
             wf = _build_walk_forward(cfg, params)
@@ -366,7 +531,8 @@ def run_study_task(
                 pool = segs.train_validation
                 df = _materialize_df(storage, cfg, pool.start, pool.end)
             run_walk_forward_study(
-                study_id=study_id, df=df, segments=segs, wf=wf, engine=engine, storage=storage
+                study_id=study_id, df=df, segments=segs, wf=wf, engine=engine,
+                storage=storage, persist=persist,
             )
 
         elif kind == "sensitivity":
@@ -394,7 +560,7 @@ def run_study_task(
 
             run_sensitivity_study(
                 study_id=study_id, grid=grid, metric=metric, segment=segment,
-                evaluate_point=evaluate_point, storage=storage,
+                evaluate_point=evaluate_point, storage=storage, persist=persist,
             )
 
         else:

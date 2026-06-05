@@ -5,6 +5,7 @@ import {
   getStudy,
   getStudyStatus,
   listStudies,
+  rerunStudy,
   runLockbox,
   startStudy,
 } from '@/api/validation'
@@ -12,6 +13,7 @@ import { adaptivePollingInterval } from '@/lib/polling'
 import type {
   StartStudyRequest,
   StartStudyResponse,
+  StudyRerunResponse,
   UUID,
   ValidationStudy,
   ValidationStudyStatus,
@@ -67,6 +69,17 @@ export function useStartStudy() {
   const client = useQueryClient()
   return useMutation<StartStudyResponse, Error, StartStudyRequest>({
     mutationFn: startStudy,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: studiesQueryKey() })
+    },
+  })
+}
+
+// Feature 014 (FR-010): clone an existing study into a fresh, drillable one.
+export function useRerunStudy() {
+  const client = useQueryClient()
+  return useMutation<StudyRerunResponse, Error, UUID>({
+    mutationFn: rerunStudy,
     onSuccess: () => {
       client.invalidateQueries({ queryKey: studiesQueryKey() })
     },
