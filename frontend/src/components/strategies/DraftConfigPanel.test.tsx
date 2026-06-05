@@ -99,3 +99,10 @@ describe("DraftConfigPanel (017 US2)", () => {
     expect(createConfigMock).not.toHaveBeenCalled();
   });
 });
+
+describe("DraftConfigPanel — boundary tooltip (017 US3)", () => {
+  it("carries the claude_experiment_draft HelpTooltip", async () => {
+    const { container } = wrap(await panel());
+    expect(container.querySelector('[data-help-key="claude_experiment_draft"]')).toBeTruthy();
+  });
+});

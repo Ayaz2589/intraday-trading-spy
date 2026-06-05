@@ -401,3 +401,14 @@ describe("ClaudeReadCard — Draft config → (017 US2)", () => {
     expect(draft?.hypothesis).toMatch(/wider risk:reward/i);
   });
 });
+
+describe("ClaudeReadCard — draft boundary tooltip (017 US3)", () => {
+  it("explains the draft concept on the experiments surface", async () => {
+    getAnalysisMock.mockResolvedValue(WITH_CHANGES);
+    const { container } = wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
+    );
+    expect(container.querySelector('[data-help-key="claude_experiment_draft"]')).toBeTruthy();
+  });
+});

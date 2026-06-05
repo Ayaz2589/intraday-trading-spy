@@ -66,14 +66,14 @@ friendly notice.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T008 [P] [US2] Failing tests in frontend/src/lib/draft-config.test.ts: `encodeDraft`/`decodeDraft` round-trip the DraftConfig shape (data-model §E); `decodeDraft` returns null for garbage strings, valid-base64-wrong-shape JSON, and oversized input — never throws
-- [ ] T009 [US2] Implement frontend/src/lib/draft-config.ts (base64url encode/decode with defensive parsing)
-- [ ] T010 [P] [US2] Failing API contract tests in backend/tests/api/new/test_configs_description.py (unit_client + stub storage): POST /api/configs with `description` passes it to `create_config` and echoes it in the response; description > 500 chars → 400; omitted → null; GET /api/configs rows include `description`
-- [ ] T011 [US2] Implement: `description` on the config create request/views in backend/src/intraday_trade_spy/api/schemas.py; pass-through in backend/src/intraday_trade_spy/api/routers/configs.py; `create_config(..., description=None)` + row mapping in backend/src/intraday_trade_spy/storage/client.py
-- [ ] T012 [P] [US2] Failing component tests in frontend/src/components/strategies/DraftConfigPanel.test.tsx: renders the badge ("review before creating"), provenance line, and base → suggested rows with the changed values highlighted; resolves the base config by name from the supplied configs list; missing base → falls back to the active config WITH a substitution notice (FR-004); suggested name is `<base>-exp-<n>` and suffixes on collision with existing names; Create calls the standard create API with merged params + description; Dismiss fires the dismiss callback and creates nothing
-- [ ] T013 [US2] Implement frontend/src/components/strategies/DraftConfigPanel.tsx (props: draft, configs, activeConfig, onDismiss; merge changes over the base's params; create via the existing configs API client; highlight changed knobs using the config-knobs labels)
-- [ ] T014 [US2] Failing integration tests: ClaudeReadCard shows "Draft config →" ONLY on experiments with surviving changes and clicking navigates to /strategies with the encoded draft (mock router — extend ClaudeReadCard.test.tsx); the strategies surface renders DraftConfigPanel when a valid `?draft=` is present and a friendly notice + normal page when the param is malformed (extend/create frontend/src/components/strategies/config-manager.test.tsx)
-- [ ] T015 [US2] Implement: draft button + navigate in frontend/src/components/insights/ClaudeReadCard.tsx; `validateSearch` for `draft` in frontend/src/routes/_authenticated.strategies.tsx (sign-in precedent); host DraftConfigPanel + malformed-param notice in frontend/src/components/strategies/config-manager.tsx
+- [x] T008 [P] [US2] Failing tests in frontend/src/lib/draft-config.test.ts: `encodeDraft`/`decodeDraft` round-trip the DraftConfig shape (data-model §E); `decodeDraft` returns null for garbage strings, valid-base64-wrong-shape JSON, and oversized input — never throws
+- [x] T009 [US2] Implement frontend/src/lib/draft-config.ts (base64url encode/decode with defensive parsing)
+- [x] T010 [P] [US2] Failing API contract tests in backend/tests/api/new/test_configs_description.py (unit_client + stub storage): POST /api/configs with `description` passes it to `create_config` and echoes it in the response; description > 500 chars → 400; omitted → null; GET /api/configs rows include `description`
+- [x] T011 [US2] Implement: `description` on the config create request/views in backend/src/intraday_trade_spy/api/schemas.py; pass-through in backend/src/intraday_trade_spy/api/routers/configs.py; `create_config(..., description=None)` + row mapping in backend/src/intraday_trade_spy/storage/client.py
+- [x] T012 [P] [US2] Failing component tests in frontend/src/components/strategies/DraftConfigPanel.test.tsx: renders the badge ("review before creating"), provenance line, and base → suggested rows with the changed values highlighted; resolves the base config by name from the supplied configs list; missing base → falls back to the active config WITH a substitution notice (FR-004); suggested name is `<base>-exp-<n>` and suffixes on collision with existing names; Create calls the standard create API with merged params + description; Dismiss fires the dismiss callback and creates nothing
+- [x] T013 [US2] Implement frontend/src/components/strategies/DraftConfigPanel.tsx (props: draft, configs, activeConfig, onDismiss; merge changes over the base's params; create via the existing configs API client; highlight changed knobs using the config-knobs labels)
+- [x] T014 [US2] Failing integration tests: ClaudeReadCard shows "Draft config →" ONLY on experiments with surviving changes and clicking navigates to /strategies with the encoded draft (mock router — extend ClaudeReadCard.test.tsx); the strategies surface renders DraftConfigPanel when a valid `?draft=` is present and a friendly notice + normal page when the param is malformed (extend/create frontend/src/components/strategies/config-manager.test.tsx)
+- [x] T015 [US2] Implement: draft button + navigate in frontend/src/components/insights/ClaudeReadCard.tsx; `validateSearch` for `draft` in frontend/src/routes/_authenticated.strategies.tsx (sign-in precedent); host DraftConfigPanel + malformed-param notice in frontend/src/components/strategies/config-manager.tsx
 
 **Checkpoint**: full loop works — insight → draft → reviewed create → run.
 
@@ -85,21 +85,21 @@ friendly notice.
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T016 [P] [US3] Failing tests: `claude_experiment_draft` exists in HELP_CONTENT and is rendered on both the experiment chips area and the draft panel (extend ClaudeReadCard.test.tsx + DraftConfigPanel.test.tsx; update the help-content census count + run-viewer sweep, +1 concept); the ConfigManager list renders a config's `description` (provenance) muted under its name (extend config-manager.test.tsx — FR-007/SC-004)
+- [x] T016 [P] [US3] Failing tests: `claude_experiment_draft` exists in HELP_CONTENT and is rendered on both the experiment chips area and the draft panel (extend ClaudeReadCard.test.tsx + DraftConfigPanel.test.tsx; update the help-content census count + run-viewer sweep, +1 concept); the ConfigManager list renders a config's `description` (provenance) muted under its name (extend config-manager.test.tsx — FR-007/SC-004)
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Implement: `claude_experiment_draft` entry in frontend/src/components/help-content.ts ("Claude suggests — you create"); HelpTooltips wired on the chips area + panel; description display in frontend/src/components/strategies/config-manager.tsx
+- [x] T017 [US3] Implement: `claude_experiment_draft` entry in frontend/src/components/help-content.ts ("Claude suggests — you create"); HelpTooltips wired on the chips area + panel; description display in frontend/src/components/strategies/config-manager.tsx
 
 ---
 
 ## Phase 6: Polish & Verification
 
-- [ ] T018 [P] Full backend suite green: `PYTHONPATH=. .venv/bin/pytest -q --ignore=tests/api/integration --ignore=tests/test_yfinance_integration.py` from backend/
-- [ ] T019 [P] Full frontend suite + types: `npm test -- --run` and `npx tsc --noEmit` from frontend/ (3 price-chart failures remain the known baseline)
-- [ ] T020 Rebuild backend container (`docker compose up -d --build backend`) and verify the configs create schema exposes `description` in OpenAPI + endpoints still 401 unauthenticated
+- [x] T018 [P] Full backend suite green: `PYTHONPATH=. .venv/bin/pytest -q --ignore=tests/api/integration --ignore=tests/test_yfinance_integration.py` from backend/
+- [x] T019 [P] Full frontend suite + types: `npm test -- --run` and `npx tsc --noEmit` from frontend/ (3 price-chart failures remain the known baseline)
+- [x] T020 Rebuild backend container (`docker compose up -d --build backend`) and verify the configs create schema exposes `description` in OpenAPI + endpoints still 401 unauthenticated
 - [ ] T021 Live e2e per quickstart.md (user-driven): Regenerate the insights analysis (one fresh paid call — schema-version bump), confirm ≥1 experiment carries chips (SC-006), Draft config → panel → edit → Create → config visible with provenance (SC-004) → launch a study (SC-001, under 2 min); dismiss + malformed-param + pre-017-analysis negative checks (SC-005)
-- [ ] T022 [P] Update docs/research-tooling-uplift.md roadmap (017 scope-as-built) — docs, TDD-exempt
+- [x] T022 [P] Update docs/research-tooling-uplift.md roadmap (017 scope-as-built) — docs, TDD-exempt
 
 ---
 

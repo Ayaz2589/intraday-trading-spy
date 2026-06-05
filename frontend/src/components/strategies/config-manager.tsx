@@ -295,6 +295,12 @@ function ConfigRow({
           >
             {config.name}
           </button>
+          {/* 017: durable provenance (e.g. drafted from a Claude experiment) */}
+          {config.description && (
+            <span className="stat-label" title={config.description}>
+              {config.description}
+            </span>
+          )}
           {config.is_active ? (
             <span
               data-testid={`active-badge-${config.name}`}

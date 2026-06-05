@@ -171,3 +171,20 @@ describe('ConfigManager — Claude draft hosting (017 US2)', () => {
     expect(screen.queryByTestId('draft-config-panel')).not.toBeInTheDocument()
   })
 })
+
+describe('ConfigManager — provenance display (017 US3)', () => {
+  it('renders a config description muted under its name', async () => {
+    const { ConfigManager } = await import('./config-manager')
+    listConfigsMock.mockResolvedValue({ configs: [
+      { id: '11111111-1111-1111-1111-111111111111', name: 'wf-rr3-exp-1', mode: 'backtest',
+        timeframe: '5m', strategy_id: '22222222-2222-2222-2222-222222222222',
+        params: {}, is_active: false,
+        description: 'Drafted from Claude analysis d7e75317 · experiment 1: Test rr 2.5' },
+    ] })
+    listPresetsMock.mockResolvedValue({ presets: [] })
+    wrap(createElement(ConfigManager))
+    await waitFor(() =>
+      expect(screen.getByText(/drafted from claude analysis d7e75317/i)).toBeInTheDocument()
+    )
+  })
+})

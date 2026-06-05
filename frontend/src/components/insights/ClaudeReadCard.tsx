@@ -305,7 +305,8 @@ export function ClaudeReadCard({
                 >
                   {experimentsOpen ? '▾' : '▸'} EXPERIMENTS TO RUN (
                   {analysis.analysis.suggested_experiments.length})
-                </button>
+                </button>{' '}
+                <HelpTooltip helpKey="claude_experiment_draft" />
                 {experimentsOpen && (
                   <div
                     data-testid="claude-experiments"
