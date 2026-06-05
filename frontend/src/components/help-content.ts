@@ -82,7 +82,15 @@ export type HelpContentKey =
   | "mc_iterations_seed"
   | "forward_cone"
   | "risk_of_ruin"
-  | "mc_in_sample_caveat";
+  | "mc_in_sample_caveat"
+  // Feature 016 (insights) concepts
+  | "pooled_gate"
+  | "sign_test"
+  | "fisher_combined"
+  | "edge_timeseries"
+  | "window_distribution"
+  | "claude_advisory"
+  | "snapshot_pin";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -354,7 +362,7 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   shuffle_method: {
     title: "Reshuffle (path risk)",
     description:
-      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades\!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
+      "Take the exact trades this run produced and shuffle their ORDER thousands of times. Every shuffle ends at the same final P&L (same trades!) — but the drawdowns, losing streaks, and time underwater along the way differ. If your observed drawdown sits near the unlucky tail of the distribution, your smooth curve was partly ordering luck.",
   },
   max_drawdown_distribution: {
     title: "Max drawdown distribution",
