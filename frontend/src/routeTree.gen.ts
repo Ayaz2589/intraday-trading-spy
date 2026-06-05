@@ -17,6 +17,7 @@ import { Route as AuthenticatedValidationRouteImport } from './routes/_authentic
 import { Route as AuthenticatedStrategiesRouteImport } from './routes/_authenticated.strategies'
 import { Route as AuthenticatedRunsRouteImport } from './routes/_authenticated.runs'
 import { Route as AuthenticatedInsightsRouteImport } from './routes/_authenticated.insights'
+import { Route as AuthenticatedDocsRouteImport } from './routes/_authenticated.docs'
 import { Route as AuthenticatedDataRouteImport } from './routes/_authenticated.data'
 import { Route as AuthenticatedValidationStudyIdRouteImport } from './routes/_authenticated.validation_.$studyId'
 import { Route as AuthenticatedRunsRunIdRouteImport } from './routes/_authenticated.runs_.$runId'
@@ -60,6 +61,11 @@ const AuthenticatedInsightsRoute = AuthenticatedInsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDocsRoute = AuthenticatedDocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedDataRoute = AuthenticatedDataRouteImport.update({
   id: '/data',
   path: '/data',
@@ -80,6 +86,7 @@ const AuthenticatedRunsRunIdRoute = AuthenticatedRunsRunIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/data': typeof AuthenticatedDataRoute
+  '/docs': typeof AuthenticatedDocsRoute
   '/insights': typeof AuthenticatedInsightsRoute
   '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/data': typeof AuthenticatedDataRoute
+  '/docs': typeof AuthenticatedDocsRoute
   '/insights': typeof AuthenticatedInsightsRoute
   '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/data': typeof AuthenticatedDataRoute
+  '/_authenticated/docs': typeof AuthenticatedDocsRoute
   '/_authenticated/insights': typeof AuthenticatedInsightsRoute
   '/_authenticated/runs': typeof AuthenticatedRunsRoute
   '/_authenticated/strategies': typeof AuthenticatedStrategiesRoute
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/data'
+    | '/docs'
     | '/insights'
     | '/runs'
     | '/strategies'
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/data'
+    | '/docs'
     | '/insights'
     | '/runs'
     | '/strategies'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/data'
+    | '/_authenticated/docs'
     | '/_authenticated/insights'
     | '/_authenticated/runs'
     | '/_authenticated/strategies'
@@ -220,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInsightsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/docs': {
+      id: '/_authenticated/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof AuthenticatedDocsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/data': {
       id: '/_authenticated/data'
       path: '/data'
@@ -246,6 +265,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDataRoute: typeof AuthenticatedDataRoute
+  AuthenticatedDocsRoute: typeof AuthenticatedDocsRoute
   AuthenticatedInsightsRoute: typeof AuthenticatedInsightsRoute
   AuthenticatedRunsRoute: typeof AuthenticatedRunsRoute
   AuthenticatedStrategiesRoute: typeof AuthenticatedStrategiesRoute
@@ -256,6 +276,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDataRoute: AuthenticatedDataRoute,
+  AuthenticatedDocsRoute: AuthenticatedDocsRoute,
   AuthenticatedInsightsRoute: AuthenticatedInsightsRoute,
   AuthenticatedRunsRoute: AuthenticatedRunsRoute,
   AuthenticatedStrategiesRoute: AuthenticatedStrategiesRoute,

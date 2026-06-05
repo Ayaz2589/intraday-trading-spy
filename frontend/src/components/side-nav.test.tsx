@@ -19,6 +19,7 @@ const LINKS: Array<[string, string]> = [
   ['Data', '/data'],
   ['Strategy', '/strategies'],
   ['Backtests', '/runs'],
+  ['Docs', '/docs'],
 ]
 
 describe('<SideNav />', () => {
@@ -26,7 +27,7 @@ describe('<SideNav />', () => {
     localStorage.clear()
   })
 
-  it('renders the five nav links with labels when expanded', () => {
+  it('renders the six nav links with labels when expanded', () => {
     render(<SideNav />)
     for (const [label, href] of LINKS) {
       const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
