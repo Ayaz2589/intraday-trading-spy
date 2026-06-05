@@ -159,14 +159,6 @@ export type RunManifestResponse = {
   config: Config
 }
 
-export type StartBacktestRequest = {
-  config_name: string
-  data_csv_path?: string
-  start_date?: string // YYYY-MM-DD
-  end_date?: string // YYYY-MM-DD
-}
-export type StartBacktestResponse = { run_id: UUID; status: 'queued' }
-
 export type StartDataDownloadRequest = { start_date: string; end_date: string }
 export type StartDataDownloadResponse = { job_id: UUID; status: 'queued' }
 
