@@ -36,7 +36,7 @@ export function StudyDetailPage({
   const finished = study.status === 'finished' && study.result != null
 
   return (
-    <div style={{ padding: 'var(--sp-5)', display: 'grid', gap: 12, maxWidth: 1000 }}>
+    <div style={{ padding: 'var(--sp-5)', display: 'grid', gap: 12 }}>
       <StudyHeaderCard study={study} action={rerunAction} />
 
       {inFlight && status && (

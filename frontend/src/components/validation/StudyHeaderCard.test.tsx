@@ -55,4 +55,17 @@ describe('StudyHeaderCard', () => {
     render(<StudyHeaderCard study={study({ status: 'failed', failure_reason: 'no bars' })} />)
     expect(screen.getByTestId('study-header-card').textContent).toContain('no bars')
   })
+
+  // Re-run UX fix (post-014): in-flight studies get a real progress bar in
+  // the header instead of a bare text line on an empty page.
+  it('renders a progress bar while the study is running', () => {
+    render(<StudyHeaderCard study={study({ status: 'running', progress_completed: 6, progress_total: 24 })} />)
+    const bar = screen.getByTestId('study-header-progress-bar')
+    expect(bar.style.width).toBe('25%')
+  })
+
+  it('renders no progress bar for finished studies', () => {
+    render(<StudyHeaderCard study={study()} />)
+    expect(screen.queryByTestId('study-header-progress-bar')).not.toBeInTheDocument()
+  })
 })
