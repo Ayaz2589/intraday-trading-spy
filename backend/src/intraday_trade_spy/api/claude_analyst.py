@@ -20,6 +20,7 @@ import anthropic
 
 from intraday_trade_spy.config import Config, load_config
 from intraday_trade_spy.models import ClaudeAnalysis
+from intraday_trade_spy.validation.knobs import registry_prompt_section, sanitize_changes
 
 DEFAULT_CONFIG_PATH = os.environ.get(
     "INTRADAY_CONFIG_PATH", os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "config.yaml")
@@ -56,7 +57,10 @@ Output discipline:
 - suggested_experiments are research actions for the operator (config
   changes to test, studies to run) — never trades to place.
 - Be direct about weaknesses, overfitting risk, and what the data cannot say.
-"""
+""" + "\n" + registry_prompt_section()
+# Feature 017: the tunable-knob section is generated FROM the registry so
+# prompt and enforcement cannot drift (research R5). Enforcement never relies
+# on the model complying (FR-010) — see _sanitize_experiments.
 
 
 # ---- exception taxonomy --------------------------------------------------------
@@ -124,6 +128,7 @@ def build_insights_payload(*, timeseries: dict, distribution: dict, max_windows:
         points = sorted(points, key=lambda p: str(p.get("range_start")))[-max_windows:]
     return {
         "scope": "insights",
+        "analysis_schema_version": 2,
         "timeseries": {"points": points},
         "distribution": {"rows": distribution.get("rows") or []},
         "fingerprints": {
@@ -146,6 +151,7 @@ def build_study_payload(*, study: dict) -> dict:
         )
     return {
         "scope": "study",
+        "analysis_schema_version": 2,
         "study_id": str(study.get("id")),
         "params": study.get("params") or {},
         "pooled_gate": gate,
@@ -187,6 +193,17 @@ def _error_type(exc: Exception) -> str | None:
     if isinstance(body, dict):
         return ((body.get("error") or {}).get("type"))
     return None
+
+
+def _sanitize_experiments(analysis: dict) -> None:
+    """Feature 017 (FR-002): drop off-registry / out-of-bounds suggestions
+    BEFORE storage so every stored analysis is trustworthy as-is. In place;
+    experiments left with nothing render text-only."""
+    for exp in analysis.get("suggested_experiments") or []:
+        if isinstance(exp, dict):
+            exp["suggested_config_changes"] = [
+                c.model_dump() for c in sanitize_changes(exp.get("suggested_config_changes"))
+            ]
 
 
 def run_claude_analysis(
@@ -269,6 +286,7 @@ def run_claude_analysis(
     analysis = parsed.model_dump()
     analysis["truncated"] = bool(payload.get("truncated"))
     analysis["fingerprints"] = payload.get("fingerprints") or {}
+    _sanitize_experiments(analysis)
 
     stored = storage.insert_insight_analysis(
         user_id=user_id,

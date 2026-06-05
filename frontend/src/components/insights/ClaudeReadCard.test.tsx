@@ -323,3 +323,50 @@ describe("ClaudeReadCard — progressive disclosure (declutter)", () => {
     expect(screen.getByRole("button", { name: /re-enable/i })).toBeInTheDocument();
   });
 });
+
+const WITH_CHANGES = {
+  ...ANALYSIS,
+  analysis: {
+    ...ANALYSIS.analysis,
+    suggested_experiments: [
+      {
+        hypothesis: "Test a wider risk:reward",
+        how_to_test: "Run a walk-forward on the modified config",
+        suggested_config_changes: [
+          { knob_path: "strategy.vwap_pullback.target.risk_reward", value: 2.5 },
+          { knob_path: "strategy.vwap_pullback.max_distance_from_vwap_pct", value: 0.4 },
+        ],
+      },
+      {
+        hypothesis: "Regime filter helps",
+        how_to_test: "Needs new strategy code",
+        suggested_config_changes: [],
+      },
+    ],
+  },
+};
+
+describe("ClaudeReadCard — structured knob suggestions (017 US1)", () => {
+  it("renders surviving changes as label → value chips", async () => {
+    getAnalysisMock.mockResolvedValue(WITH_CHANGES);
+    wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(2\)/i })
+    );
+    const exp = screen.getByTestId("claude-experiments");
+    expect(exp).toHaveTextContent(/risk:reward target → 2.5/);
+    expect(exp).toHaveTextContent(/max distance from VWAP \(%\) → 0.4/);
+  });
+
+  it("renders text-only (no chips) for experiments without surviving changes", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS); // pre-017 shape: key absent
+    wrap(await card());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /experiments to run \(1\)/i })
+    );
+    const exp = screen.getByTestId("claude-experiments");
+    expect(exp).toHaveTextContent(/Regime filter helps/);
+    expect(exp?.querySelectorAll("[data-testid='exp-change-chip']")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /draft config/i })).not.toBeInTheDocument();
+  });
+});

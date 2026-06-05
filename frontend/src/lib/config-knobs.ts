@@ -69,3 +69,21 @@ export function buildParams(
     },
   }
 }
+
+// Feature 017: friendly labels keyed by dotted knob path — mirrors the
+// backend knob registry (validation/knobs.py) for rendering Claude's
+// suggested_config_changes. Fallback for unknown paths: the path leaf.
+export const KNOB_PATH_LABELS: Record<string, string> = {
+  'risk.account_value': 'account value ($)',
+  'risk.max_risk_per_trade_pct': 'max risk per trade (%)',
+  'risk.max_position_value_pct': 'max position value (% of account)',
+  'risk.max_consecutive_losses': 'max consecutive losses',
+  'strategy.opening_range.minutes': 'opening range (minutes)',
+  'strategy.vwap_pullback.target.risk_reward': 'risk:reward target',
+  'strategy.vwap_pullback.stop.buffer_pct': 'stop buffer (%)',
+  'strategy.vwap_pullback.max_distance_from_vwap_pct': 'max distance from VWAP (%)',
+}
+
+export function knobLabel(path: string): string {
+  return KNOB_PATH_LABELS[path] ?? path.split('.').pop() ?? path
+}

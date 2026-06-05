@@ -6,6 +6,7 @@ import {
   useSetClaudeEnabled,
 } from '@/hooks/useInsights'
 import { HelpTooltip } from '../help-tooltip'
+import { knobLabel } from '@/lib/config-knobs'
 
 // Feature 016 (US3): the advisory Claude narrative — shared by the Insights
 // right rail (scope='insights') and the pooled gate panel (scope='study').
@@ -314,6 +315,27 @@ export function ClaudeReadCard({
                       >
                         <div style={{ fontWeight: 600 }}>{e.hypothesis}</div>
                         <div className="stat-label">{e.how_to_test}</div>
+                        {(e.suggested_config_changes?.length ?? 0) > 0 && (
+                          <div
+                            style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}
+                          >
+                            {e.suggested_config_changes?.map((c, j) => (
+                              <span
+                                key={j}
+                                data-testid="exp-change-chip"
+                                className="mono stat-label"
+                                title={c.knob_path}
+                                style={{
+                                  border: '1px solid var(--info)',
+                                  borderRadius: 'var(--r-md)',
+                                  padding: '0 8px',
+                                }}
+                              >
+                                {knobLabel(c.knob_path)} → {c.value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -139,6 +139,8 @@ export type Config = {
   // Feature 012 — exactly one config per user is the active one (pre-selected
   // in every picker). Optional so pre-012 cached shapes still type-check.
   is_active?: boolean
+  // Feature 017 — durable provenance (e.g. drafted from a Claude experiment).
+  description?: string | null
 }
 
 // Feature 012 — built-in preset a config can be created from. Read-only
@@ -357,7 +359,14 @@ export type ClaudeFinding = {
   confidence: 'low' | 'medium' | 'high'
 }
 
-export type ClaudeExperiment = { hypothesis: string; how_to_test: string }
+export type ConfigChange = { knob_path: string; value: number }
+
+export type ClaudeExperiment = {
+  hypothesis: string
+  how_to_test: string
+  // Feature 017: whitelist-sanitized knob suggestions (absent on pre-017 rows)
+  suggested_config_changes?: ConfigChange[]
+}
 
 export type ClaudeAnalysis = {
   summary: string
