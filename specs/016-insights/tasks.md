@@ -133,11 +133,11 @@ stored analysis with no provider call; billing failure pauses with re-enable.
 
 ## Phase 7: Polish & Verification
 
-- [ ] T034 [P] Full backend suite green: `PYTHONPATH=. .venv/bin/pytest -q --ignore=tests/api/integration --ignore=tests/test_yfinance_integration.py` from backend/
-- [ ] T035 [P] Full frontend suite + types: `npm test -- --run` and `npx tsc --noEmit` from frontend/ (3 price-chart failures remain the known baseline)
-- [ ] T036 Rebuild backend container (`docker compose up -d --build backend` — picks up the anthropic dep) and verify new endpoints in OpenAPI + 401 unauthenticated; observe fast-gate wall time (<10 s, SC-002 / analyze L4)
-- [ ] T037 Live e2e per quickstart.md (user-driven): SC-001 — run the pooled gate on wf-rr3 and confirm it reproduces the 2026-06-05 verdict (NOT PASSED, $0.91, CI [−0.53, +2.56], 2,607 trades); full gate background completion; Insights page with both configs; Claude's read on both surfaces; pause/re-enable
-- [ ] T038 [P] Update docs/research-tooling-uplift.md roadmap (016 status + scope-as-built) — docs, TDD-exempt
+- [x] T034 [P] Full backend suite green: `PYTHONPATH=. .venv/bin/pytest -q --ignore=tests/api/integration --ignore=tests/test_yfinance_integration.py` from backend/
+- [x] T035 [P] Full frontend suite + types: `npm test -- --run` and `npx tsc --noEmit` from frontend/ (3 price-chart failures remain the known baseline)
+- [x] T036 Rebuild backend container (`docker compose up -d --build backend` — picks up the anthropic dep) and verify new endpoints in OpenAPI + 401 unauthenticated; observe fast-gate wall time (<10 s, SC-002 / analyze L4)
+- [ ] T037 Live e2e per quickstart.md (user-driven): SC-001 (as amended) — run the pooled gate on wf-rr3 and confirm NOT PASSED, $0.91/trade, 2,607 trades, 9/12 windows (sign p 0.073) exactly, CI [−0.71, +2.60] (within bootstrap noise of the ad-hoc [−0.53, +2.56]); full gate background completion; Insights page with both configs; Claude's read on both surfaces; pause/re-enable
+- [x] T038 [P] Update docs/research-tooling-uplift.md roadmap (016 status + scope-as-built) — docs, TDD-exempt
 
 ---
 

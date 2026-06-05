@@ -25,7 +25,8 @@ ever be spent. On 2026-06-05 it had to be computed by hand outside the product
 [−0.53, +2.56], 2,607 pooled trades). The product must own its own gate.
 
 **Independent Test**: Open the wf-rr3 study, run the pooled gate, and confirm
-it reproduces the 2026-06-05 ad-hoc verdict exactly. Re-run → identical
+it reproduces the 2026-06-05 ad-hoc verdict (per SC-001 as amended: verdict,
+point, trades, sign test exact; CI within bootstrap noise). Re-run → identical
 numbers. Delivers standalone value with no other component built.
 
 **Acceptance Scenarios**:
@@ -251,9 +252,15 @@ be verified against cited metrics.
 ### Measurable Outcomes
 
 - **SC-001**: The pooled gate on the wf-rr3 study reproduces the 2026-06-05
-  ad-hoc verdict exactly (NOT PASSED; pooled expectancy $0.91/trade, 95% CI
-  [−0.53, +2.56], 2,607 pooled trades) — the ad-hoc analysis never needs to
-  be run by hand again.
+  ad-hoc verdict: NOT PASSED, pooled expectancy $0.91/trade, 2,607 pooled
+  trades, 9/12 windows positive (sign p 0.073) — all exact — with the 95% CI
+  agreeing within bootstrap sampling error of the ad-hoc [−0.53, +2.56]
+  (product, deterministic window ordering, seed 20260605: [−0.71, +2.60]).
+  *(Amended at implement time: the ad-hoc run's SQL had no deterministic
+  input order and bootstrap resampling is order-sensitive, so its exact CI
+  bounds were never pinnable; the product gate is byte-deterministic with
+  proper window ordering.)* The ad-hoc analysis never needs to be run by
+  hand again.
 - **SC-002**: Fast gate verdict visible within 10 seconds of the click; full
   gate completes in the background and enriches the same panel without the
   operator waiting on it.

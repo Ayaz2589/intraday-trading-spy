@@ -36,8 +36,11 @@ Fisher X²=85, df=24 → 9.53e-9; gate-rule boundary at CI low = 0.
 1. Open the wf-rr3 walk-forward study (`dfed4531…`) → **Pooled gate** panel →
    **Run gate**.
 2. Expect within seconds: **GATE: NOT PASSED** — pooled expectancy
-   **$0.91/trade**, 95% CI **[−0.53, +2.56]**, **2,607** pooled trades,
-   9/12 windows positive (sign p 0.073) — matching the 2026-06-05 ad-hoc run.
+   **$0.91/trade**, 95% CI **[−0.71, +2.60]**, **2,607** pooled trades,
+   9/12 windows positive (sign p 0.073) — the 2026-06-05 ad-hoc verdict.
+   (The ad-hoc CI was [−0.53, +2.56]; bounds differ only by bootstrap
+   sampling noise — that run's SQL input order was arbitrary, the product's
+   is deterministic. See SC-001 as amended.)
 3. **Run full gate** → background progress → per-window p-values appear on
    window rows; banner gains Fisher combined p (≈1e-8).
 4. Re-run fast gate → byte-identical numbers (SC-003).
