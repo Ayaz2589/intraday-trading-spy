@@ -21,6 +21,18 @@ export function ConfigWorkbench() {
     if (expandedId === undefined && activeConfig) setExpandedId(activeConfig.id)
   }, [expandedId, activeConfig])
 
+  // If the expanded config disappears (deleted), collapse cleanly instead of
+  // pointing at a dead id.
+  useEffect(() => {
+    if (
+      typeof expandedId === 'string' &&
+      configs.length > 0 &&
+      !configs.some(c => c.id === expandedId)
+    ) {
+      setExpandedId(null)
+    }
+  }, [configs, expandedId])
+
   return (
     <div data-testid="config-manager" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <NewConfigSection

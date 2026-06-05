@@ -7,6 +7,7 @@ import { ConfigWorkbench } from './config-manager'
 const listConfigsMock = vi.fn()
 const listPresetsMock = vi.fn()
 const createConfigMock = vi.fn()
+const deleteConfigMock = vi.fn()
 vi.mock('@/api/configs', () => ({
   listConfigs: () => listConfigsMock(),
   listPresets: () => listPresetsMock(),
@@ -14,7 +15,7 @@ vi.mock('@/api/configs', () => ({
   duplicateConfig: vi.fn(),
   activateConfig: vi.fn(),
   patchConfig: vi.fn(),
-  deleteConfig: vi.fn(),
+  deleteConfig: (id: unknown) => deleteConfigMock(id),
 }))
 
 function wrap(ui: ReactNode) {
@@ -33,7 +34,7 @@ const cfg = (id: string, name: string, is_active = false) => ({
 })
 
 beforeEach(() => {
-  for (const m of [listConfigsMock, listPresetsMock, createConfigMock]) m.mockReset()
+  for (const m of [listConfigsMock, listPresetsMock, createConfigMock, deleteConfigMock]) m.mockReset()
   listPresetsMock.mockResolvedValue({
     presets: [{ name: 'aggressive', description: 'more signals', params: {} }],
   })
@@ -77,5 +78,22 @@ describe('ConfigWorkbench', () => {
     await waitFor(() =>
       expect(screen.getByTestId('config-editor-my-aggro')).toBeInTheDocument(),
     )
+  })
+
+  it('collapses cleanly when the expanded config is deleted', async () => {
+    listConfigsMock
+      .mockResolvedValueOnce({ configs: [cfg('1', 'default', true), cfg('2', 'wf-rr3')] })
+      .mockResolvedValue({ configs: [cfg('1', 'default', true)] })
+    deleteConfigMock.mockResolvedValue({ deleted: '2' })
+    wrap(<ConfigWorkbench />)
+    // Expand the non-active config, then delete it.
+    await waitFor(() => expect(screen.getByTestId('config-editor-default')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'toggle wf-rr3' }))
+    await waitFor(() => expect(screen.getByTestId('config-editor-wf-rr3')).toBeInTheDocument())
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'confirm delete wf-rr3' }))
+    await waitFor(() => expect(screen.queryByTestId('config-row-wf-rr3')).toBeNull())
+    // Stale expandedId must be cleared — nothing expanded, no crash.
+    expect(screen.queryByTestId('config-editor-wf-rr3')).toBeNull()
   })
 })
