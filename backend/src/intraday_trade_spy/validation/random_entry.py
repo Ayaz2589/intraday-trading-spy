@@ -69,6 +69,11 @@ def random_entry_null(
     if n_trades <= 0 or not bars:
         return [0.0] * iterations
 
+    # The observed risk profile arrives as a MEDIAN (extract_trade_stats), so
+    # an even trade count can yield a fractional share quantity (e.g. 40.5) —
+    # TradePlan.quantity is an integer. Quantize to whole shares, minimum 1.
+    quantity = max(1, int(round(quantity)))
+
     eligible = [
         i for i, b in enumerate(bars[:-1]) if clock.allow_new_trades(b.timestamp)
     ]

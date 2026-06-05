@@ -77,3 +77,18 @@ def test_null_handles_zero_trades():
     out = random_entry_null(bars=bars, clock=clock, broker=broker, n_trades=0,
                             stop_distance=0.5, risk_reward=2.0, quantity=10, iterations=10, seed=1)
     assert out == [0.0] * 10
+
+
+def test_fractional_quantity_is_quantized_to_whole_shares():
+    """A run whose median trade quantity lands on .5 (even trade count) used
+    to crash the whole significance computation: TradePlan.quantity is an int
+    but extract_trade_stats feeds the raw median straight through. Found live
+    on wf-rr3 OOS window 8 (median quantity 40.5)."""
+    bars, clock, broker = _session_bars(), _clock(), PaperBroker(slippage_per_share=0.01)
+    null = random_entry_null(
+        bars=bars, clock=clock, broker=broker, n_trades=2,
+        stop_distance=0.5, risk_reward=2.0,
+        quantity=40.5,  # fractional median — must not crash TradePlan
+        iterations=20, seed=7,
+    )
+    assert len(null) == 20
