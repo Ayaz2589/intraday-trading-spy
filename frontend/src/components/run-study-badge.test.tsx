@@ -14,7 +14,7 @@ function run(over: Partial<Run> = {}): Run {
     range_end: '2019-03-29',
     bar_count: 100,
     summary: {
-      pnl: 0, win_rate: 0.5, sharpe: 0, max_drawdown: 0,
+      pnl: '0', win_rate: 0.5, sharpe: 0, max_drawdown: '0',
       total_trades: 3, total_signals: 10, rejected_signals: 7,
     } as Run['summary'],
     data_fingerprint: 'fp',

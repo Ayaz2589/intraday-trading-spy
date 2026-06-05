@@ -125,7 +125,7 @@ describe('Feature 007 HelpTooltip coverage (T128 / SC-008)', () => {
     const tree = (
       <QueryClientProvider client={client}>
         <AuthenticatedTopbar />
-        <RunsList onStartBacktest={() => {}} />
+        <RunsList />
         <StrategyList />
         <StartBacktestDialog open onClose={() => {}} />
         <SignalsTable runId="11111111-1111-1111-1111-111111111111" />

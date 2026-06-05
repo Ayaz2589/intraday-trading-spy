@@ -72,7 +72,17 @@ export type HelpContentKey =
   // Feature 014 (study child-run persistence) concepts
   | "child_run"
   | "study_drilldown"
-  | "rerun_study";
+  | "rerun_study"
+  // Feature 015 (Monte Carlo path-risk) concepts
+  | "monte_carlo_simulation"
+  | "shuffle_method"
+  | "max_drawdown_distribution"
+  | "losing_streak"
+  | "underwater_period"
+  | "mc_iterations_seed"
+  | "forward_cone"
+  | "risk_of_ruin"
+  | "mc_in_sample_caveat";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
