@@ -83,7 +83,7 @@ insights/aggregation" shifts to **014**. Adjust numbers at spec time.
 |---|---|---|---|
 | **012 — First-class configs** ✅ **DONE** | create / duplicate / rename / delete / activate named configs; presets as starting points; config-management UI on the Strategies page; SPY-workable default (cap=400) + presets that all trade; every picker pre-selects the active config | The unlock: without it Job 2 has nothing to compare; also fixed the 0-trade `position_size_cap` wall | 011 |
 | **013 — Data observability** ✅ **DONE** *(inserted; numbers below shifted +1)* | Data-page uplift: backfill job history w/ persistent failure reasons, cache summary strip, year×month completeness heatmap w/ exact missing-day hover, light lineage line | Operator couldn't tell "what happened" after a backfill; trust-the-data prerequisite for research | 009 |
-| **014 — Study child-run persistence + drill-down** | orchestrator writes each window/grid eval as a real (study-tagged) run; study-detail rows link to run-detail; significance attaches to a window; runs list hides study children | Closes the run/study seam; makes significance + drill-down work end-to-end | 011, complements 012 |
+| **014 — Study child-run persistence + drill-down** ✅ **DONE** | orchestrator writes each window/grid eval as a real (study-tagged) run; study-detail rows link to run-detail; significance attaches to a window; runs list hides study children; + "Re-run study" (drillability path for pre-014 studies) and the redesigned study detail page (expandable IS/OOS rows) | Closes the run/study seam; makes significance + drill-down work end-to-end | 011, complements 012 |
 | **015 — Insights / aggregation + retention** | cross-run insights API + views (per-config distribution, sensitivity across the archive, edge time-series, rejection mining) + soft-delete (the trimmed `008`) | Far more valuable once child runs exist to aggregate | 014 |
 | **016 (optional) — Research/Learn UI lanes** | reorganize nav/IA into "Backtest / Learn" and "Validate / Research" sections over the shared core | Clarity; can be folded into earlier features | 012, 014 |
 
@@ -233,7 +233,7 @@ May be folded into 012/013 rather than shipped standalone.
 This uplift slots **between Phase 2 (validation, done) and Phase 3 (forward
 paper)** — it's what makes Phase 2 actually usable for research before we invest
 in live execution. Order: **012 (configs, done) → 013 (data observability,
-done — inserted at spec time) → 014 (study runs) → 015 (insights) → [016
+done — inserted at spec time) → 014 (study runs, done) → 015 (insights) → [016
 lanes]**. The roadmap's §10 feature map carries the same numbering.
 
 Sequencing rule (unchanged from the roadmap): one spec in flight at a time; write
