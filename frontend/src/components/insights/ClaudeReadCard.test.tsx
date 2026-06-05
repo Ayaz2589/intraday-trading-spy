@@ -213,3 +213,33 @@ describe("ClaudeReadCard — citation path normalization (016-polish)", () => {
     expect(row).not.toHaveTextContent(/not found/i);
   });
 });
+
+describe("ClaudeReadCard — redesigned sections (mockup 2026-06-05)", () => {
+  it("renders a derived verdict banner when provided, labeled as gate-derived", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card({
+      banner: {
+        tone: "fail",
+        title: "Not deployable — lockbox precondition unmet",
+        text: "Every computed pooled-gate CI includes zero.",
+      },
+    }));
+    const banner = await screen.findByTestId("insights-verdict-banner");
+    expect(banner).toHaveTextContent(/not deployable/i);
+    expect(banner).toHaveTextContent(/seeded gates/i); // determinism-split honesty
+  });
+
+  it("lays out risks and experiments as labeled sections with footer actions", async () => {
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    wrap(await card());
+    await waitFor(() => expect(screen.getByTestId("claude-risks")).toBeInTheDocument());
+    expect(screen.getByTestId("claude-risks")).toHaveTextContent(/Two windows bleed heavily/);
+    const exp = screen.getByTestId("claude-experiments");
+    expect(exp).toHaveTextContent(/Regime filter helps/);
+    expect(exp).toHaveTextContent(/Run a filtered walk-forward/);
+    // footer row carries the actions on the right
+    const footer = screen.getByTestId("claude-footer-row");
+    expect(footer).toHaveTextContent(/regenerate/i);
+    expect(footer).toHaveTextContent(/pause/i);
+  });
+});

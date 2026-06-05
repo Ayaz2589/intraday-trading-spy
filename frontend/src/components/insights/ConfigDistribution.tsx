@@ -11,6 +11,13 @@ import type { ConfigDistributionRow } from '@/api/types'
 const usd = (v: number | null) => (v == null ? '—' : `$${Math.round(v).toLocaleString()}`)
 const f2 = (v: number | null) => (v == null ? '—' : v.toFixed(2))
 
+// Redesign: signed values color like the rest of the app (loss red / profit green).
+function Signed({ v, fmt }: { v: number | null; fmt: (v: number | null) => string }) {
+  if (v == null) return <>—</>
+  const color = v < 0 ? 'var(--loss)' : v > 0 ? 'var(--profit)' : undefined
+  return <span style={{ color }}>{fmt(v)}</span>
+}
+
 function GateChip({
   row,
   onOpenStudy,
@@ -91,10 +98,18 @@ export function ConfigDistribution({
                   </td>
                   <td className="mono">{f2(r.profit_factor)}</td>
                   <td className="mono">
-                    {f2(r.r_q25)} / <strong>{f2(r.r_q50)}</strong> / {f2(r.r_q75)}
+                    <Signed v={r.r_q25} fmt={f2} /> /{' '}
+                    <strong>
+                      <Signed v={r.r_q50} fmt={f2} />
+                    </strong>{' '}
+                    / <Signed v={r.r_q75} fmt={f2} />
                   </td>
                   <td className="mono">
-                    {usd(r.pnl_q25)} / <strong>{usd(r.pnl_q50)}</strong> / {usd(r.pnl_q75)}
+                    <Signed v={r.pnl_q25} fmt={usd} /> /{' '}
+                    <strong>
+                      <Signed v={r.pnl_q50} fmt={usd} />
+                    </strong>{' '}
+                    / <Signed v={r.pnl_q75} fmt={usd} />
                   </td>
                   <td className="mono">{r.total_trades.toLocaleString()}</td>
                   <td>

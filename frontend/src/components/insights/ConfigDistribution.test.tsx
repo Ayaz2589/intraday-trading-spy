@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { ConfigDistribution } from "./ConfigDistribution";
 
@@ -67,5 +67,16 @@ describe("ConfigDistribution — enrichment (016-polish)", () => {
     expect(onOpenStudy).toHaveBeenCalledWith("study-9");
     // configs without a computed gate show a quiet placeholder
     expect(screen.getByTestId("dist-row-default")).toHaveTextContent(/no gate/i);
+  });
+});
+
+describe("ConfigDistribution — signed value coloring (redesign)", () => {
+  it("colors negative quartiles as loss and positive as profit", () => {
+    render(<ConfigDistribution rows={ROWS} />);
+    const wf = screen.getByTestId("dist-row-wf-rr3");
+    const neg = within(wf).getByText("-0.06");
+    expect(neg.getAttribute("style")).toContain("--loss");
+    const pos = within(wf).getByText("0.09");
+    expect(pos.getAttribute("style")).toContain("--profit");
   });
 });

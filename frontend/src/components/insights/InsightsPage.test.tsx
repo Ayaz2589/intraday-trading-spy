@@ -47,6 +47,10 @@ const DIST = {
       config_name: "wf-rr3", windows: 12, windows_positive: 9,
       pnl_q25: -50, pnl_q50: 124, pnl_q75: 420,
       expectancy_q25: -0.3, expectancy_q50: 0.6, expectancy_q75: 1.9,
+      r_q25: -0.05, r_q50: 0.02, r_q75: 0.08,
+      win_rate: 0.41, profit_factor: 1.05, account_value: 25000,
+      gate_passed: null, gate_ci_low: null, gate_ci_high: null,
+      gate_computed_at: null, gate_study_id: null,
       total_trades: 2607,
     },
   ],
@@ -54,14 +58,20 @@ const DIST = {
 };
 
 describe("InsightsPage", () => {
-  it("renders the split layout: charts column + right rail", async () => {
+  it("renders the stacked full-width layout: header, charts, then Claude's read", async () => {
     edgeMock.mockResolvedValue(EDGE);
     distMock.mockResolvedValue(DIST);
     const { InsightsPage } = await import("./InsightsPage");
     wrap(createElement(InsightsPage));
     await waitFor(() => expect(screen.getByTestId("edge-timeseries")).toBeInTheDocument());
+    const header = screen.getByTestId("insights-header");
+    expect(header).toHaveTextContent(/out-of-sample validation/i);
     expect(screen.getByTestId("config-distribution")).toBeInTheDocument();
-    expect(screen.getByTestId("insights-right-rail")).toBeInTheDocument();
+    const claude = await screen.findByTestId("claude-read");
+    // Claude's read stacks BELOW the distribution table (redesign: no right rail).
+    const dist = screen.getByTestId("config-distribution");
+    expect(dist.compareDocumentPosition(claude) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("insights-right-rail")).not.toBeInTheDocument();
   });
 
   it("wires empty states through", async () => {
@@ -76,16 +86,21 @@ describe("InsightsPage", () => {
   });
 });
 
-describe("InsightsPage — Claude rail (US3)", () => {
-  it("hosts the ClaudeReadCard in the right rail", async () => {
+describe("InsightsPage — derived gate verdict banner (redesign)", () => {
+  it("shows the red not-deployable banner when every computed gate failed", async () => {
     edgeMock.mockResolvedValue(EDGE);
-    distMock.mockResolvedValue(DIST);
+    distMock.mockResolvedValue({
+      ...DIST,
+      rows: [{
+        ...DIST.rows[0],
+        gate_passed: false, gate_ci_low: -0.71, gate_ci_high: 2.6, gate_study_id: "s9",
+      }],
+    });
     const { InsightsPage } = await import("./InsightsPage");
     wrap(createElement(InsightsPage));
-    await waitFor(() => expect(screen.getByTestId("claude-read")).toBeInTheDocument());
-    expect(screen.getByTestId("insights-right-rail")).toContainElement(
-      screen.getByTestId("claude-read")
-    );
+    const banner = await screen.findByTestId("insights-verdict-banner");
+    expect(banner).toHaveTextContent(/not deployable/i);
+    expect(banner).toHaveTextContent(/lockbox precondition unmet/i);
   });
 });
 

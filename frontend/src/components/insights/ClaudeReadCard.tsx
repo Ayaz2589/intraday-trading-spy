@@ -50,14 +50,24 @@ function sameFingerprints(
   return true
 }
 
+// Redesign 2026-06-05: a verdict banner DERIVED FROM THE SEEDED GATES (not
+// Claude) can headline the card — the page computes it from gate chips.
+export type VerdictBanner = {
+  tone: 'pass' | 'fail'
+  title: string
+  text: string
+}
+
 export function ClaudeReadCard({
   scope,
   scopeId,
+  banner,
   currentFingerprints,
   metricValues = {},
 }: {
   scope: 'study' | 'insights'
   scopeId?: string
+  banner?: VerdictBanner
   currentFingerprints?: Record<string, string | null> | null
   metricValues?: Record<string, string | number>
 }) {
@@ -131,6 +141,30 @@ export function ClaudeReadCard({
         </div>
       )}
 
+      {banner && (
+        <div
+          data-testid="insights-verdict-banner"
+          style={{
+            border: `1px solid ${banner.tone === 'pass' ? 'var(--profit)' : 'var(--loss)'}`,
+            borderRadius: 'var(--r-md)',
+            padding: 'var(--sp-3) var(--sp-4)',
+            marginBottom: 'var(--sp-3)',
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              color: banner.tone === 'pass' ? 'var(--profit)' : 'var(--loss)',
+            }}
+          >
+            {banner.tone === 'pass' ? '✓' : '✕'} {banner.title}
+          </div>
+          <div className="stat-label">
+            {banner.text} <span>(derived from the seeded gates — not Claude)</span>
+          </div>
+        </div>
+      )}
+
       {analysis && (
         <div style={{ display: 'grid', gap: 'var(--sp-3)' }}>
           <div>{analysis.analysis.summary}</div>
@@ -139,7 +173,7 @@ export function ClaudeReadCard({
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>claim</th>
+                  <th>claim — each tied to a cited metric</th>
                   <th>cited metric</th>
                   <th>conf.</th>
                 </tr>
@@ -169,26 +203,84 @@ export function ClaudeReadCard({
             </table>
           )}
 
-          {analysis.analysis.risks.length > 0 && (
-            <div className="stat-label">
-              Risks: {analysis.analysis.risks.join(' · ')}
-            </div>
-          )}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 'var(--sp-4)',
+            }}
+          >
+            {analysis.analysis.risks.length > 0 && (
+              <div data-testid="claude-risks">
+                <div className="stat-label" style={{ marginBottom: 4 }}>RISKS</div>
+                {analysis.analysis.risks.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0' }}>
+                    <span style={{ color: 'var(--loss)' }}>●</span>
+                    <span>{r}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {analysis.analysis.suggested_experiments.length > 0 && (
-            <div className="stat-label">
-              Experiments to run:{' '}
-              {analysis.analysis.suggested_experiments
-                .map((e) => `${e.hypothesis} (${e.how_to_test})`)
-                .join(' · ')}
-            </div>
-          )}
+            {analysis.analysis.suggested_experiments.length > 0 && (
+              <div data-testid="claude-experiments">
+                <div className="stat-label" style={{ marginBottom: 4 }}>EXPERIMENTS TO RUN</div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {analysis.analysis.suggested_experiments.map((e, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--r-md)',
+                        padding: 'var(--sp-2) var(--sp-3)',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{e.hypothesis}</div>
+                      <div className="stat-label">{e.how_to_test}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
-          <div className="stat-label mono" data-testid="claude-footer">
-            snapshot {analysis.payload_hash.slice(0, 8)} · {analysis.model} ·{' '}
-            {analysis.created_at?.slice(0, 10) ?? '—'}
-            {analysis.truncated ? ' · time-series truncated' : ''}{' '}
-            <HelpTooltip helpKey="snapshot_pin" />
+          <div
+            data-testid="claude-footer-row"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--sp-3)',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div className="stat-label mono" data-testid="claude-footer">
+              snapshot {analysis.payload_hash.slice(0, 8)} · {analysis.model} ·{' '}
+              {analysis.created_at?.slice(0, 10) ?? '—'}
+              {analysis.truncated ? ' · time-series truncated' : ''}{' '}
+              <HelpTooltip helpKey="snapshot_pin" />
+            </div>
+            {cfg?.configured && cfg.claude_enabled && (
+              <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={generate.isPending || upToDate}
+                  title={upToDate ? 'analysis is pinned to the current data — nothing changed' : undefined}
+                  onClick={() => generate.mutate(true)}
+                >
+                  {generate.isPending ? 'Analyzing…' : 'Regenerate'}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={setEnabled.isPending}
+                  onClick={() => setEnabled.mutate(false)}
+                >
+                  Pause
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -199,28 +291,18 @@ export function ClaudeReadCard({
         </div>
       )}
 
-      {cfg?.configured && cfg.claude_enabled && (
+      {/* No stored analysis yet: the primary call-to-action (footer owns the
+          actions once an analysis exists). */}
+      {cfg?.configured && cfg.claude_enabled && !analysis && (
         <div style={{ display: 'flex', gap: 'var(--sp-3)', marginTop: 'var(--sp-3)' }}>
-          {!analysis ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={generate.isPending}
-              onClick={() => generate.mutate(false)}
-            >
-              {generate.isPending ? 'Analyzing…' : "Get Claude's read"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn"
-              disabled={generate.isPending || upToDate}
-              title={upToDate ? 'analysis is pinned to the current data — nothing changed' : undefined}
-              onClick={() => generate.mutate(true)}
-            >
-              {generate.isPending ? 'Analyzing…' : 'Regenerate'}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={generate.isPending}
+            onClick={() => generate.mutate(false)}
+          >
+            {generate.isPending ? 'Analyzing…' : "Get Claude's read"}
+          </button>
           <button
             type="button"
             className="btn"
