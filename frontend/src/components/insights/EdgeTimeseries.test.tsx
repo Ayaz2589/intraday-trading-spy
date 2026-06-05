@@ -79,3 +79,18 @@ describe("EdgeTimeseries — metric toggle (016-polish)", () => {
     expect(screen.getByText("2019 demo regime")).toBeInTheDocument();
   });
 });
+
+describe("EdgeTimeseries — taller detailed chart (016-polish round 3)", () => {
+  it("renders a tall chart with window-extent bars and rich hover detail", () => {
+    const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    const svg = container.querySelector("svg")\!;
+    expect(parseInt(svg.style.height, 10)).toBeGreaterThanOrEqual(300);
+    expect(container.querySelectorAll("[data-testid='ls-extent']").length).toBe(3);
+    fireEvent.mouseEnter(container.querySelectorAll("[data-testid='ls-point']")[0]);
+    const tip = screen.getByTestId("ls-tooltip");
+    expect(tip).toHaveTextContent(/227 trades/);
+    expect(tip).toHaveTextContent(/2019-01-02 → 2019-06-28/);
+    expect(tip).toHaveTextContent(/\$118/);      // net PnL always in the detail
+    expect(tip).toHaveTextContent(/0\.018/);     // expectancy R always in the detail
+  });
+});

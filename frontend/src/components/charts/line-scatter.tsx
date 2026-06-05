@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+type Hover = { left: number; top: number; lines: string[] }
+
 // Feature 016: reusable hand-rolled SVG multi-series line/scatter chart
 // (equity-curve precedent — no chart dependency). Points are clickable;
 // a dashed zero line is drawn when the values cross zero.
@@ -10,8 +12,13 @@ import { useEffect, useRef, useState } from 'react'
 
 export type LineScatterPoint = {
   x: number
+  // Optional range end: the point renders at the midpoint with a horizontal
+  // extent bar spanning [x, xEnd] (e.g. a validation window's date range).
+  xEnd?: number
   y: number
   label?: string
+  // Rich hover-tooltip lines (custom tooltip; faster than the native title).
+  detail?: string[]
   datum?: unknown
 }
 
@@ -46,6 +53,7 @@ export function LineScatter({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(800)
+  const [hover, setHover] = useState<Hover | null>(null)
 
   useEffect(() => {
     const el = wrapRef.current
@@ -61,7 +69,7 @@ export function LineScatter({
   const all = series.flatMap((s) => s.points)
   if (all.length === 0) return null
 
-  const xs = all.map((p) => p.x)
+  const xs = all.flatMap((p) => (p.xEnd != null ? [p.x, p.xEnd] : [p.x]))
   const ys = all.map((p) => p.y)
   const xMin = Math.min(...xs)
   const xMax = Math.max(...xs)
@@ -77,8 +85,11 @@ export function LineScatter({
   const y = (v: number) => H - PAD_B - ((v - yMin) / (yMax - yMin || 1)) * (H - PAD_T - PAD_B)
   const crossesZero = yMin < 0 && yMax > 0
 
-  // 5 evenly spaced y ticks (gridlines + labels).
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => yMin + t * (yMax - yMin))
+  // Evenly spaced y ticks (gridlines + labels) — denser on tall charts.
+  const yTickCount = H >= 300 ? 7 : 5
+  const yTicks = Array.from({ length: yTickCount }, (_, i) =>
+    yMin + (i / (yTickCount - 1)) * (yMax - yMin),
+  )
 
   // 6 evenly spaced x ticks; consecutive duplicate labels collapse (years).
   const xTickValues = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => xMin + t * (xMax - xMin))
@@ -95,7 +106,7 @@ export function LineScatter({
     .filter((b) => b.from < b.to)
 
   return (
-    <div ref={wrapRef}>
+    <div ref={wrapRef} style={{ position: 'relative' }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
         {visibleBands.map((b, i) => (
           <g key={i}>
@@ -171,32 +182,93 @@ export function LineScatter({
           />
         )}
 
-        {series.map((s) => (
-          <g key={s.id}>
-            <polyline
-              points={s.points.map((p) => `${x(p.x)},${y(p.y)}`).join(' ')}
-              stroke={s.color}
-              strokeWidth={1.5}
-              fill="none"
-              opacity={0.7}
-            />
-            {s.points.map((p, i) => (
-              <circle
-                key={i}
-                data-testid="ls-point"
-                cx={x(p.x)}
-                cy={y(p.y)}
-                r={4}
-                fill={s.color}
-                style={{ cursor: onPointClick ? 'pointer' : undefined }}
-                onClick={() => onPointClick?.(p.datum)}
-              >
-                {p.label && <title>{p.label}</title>}
-              </circle>
-            ))}
-          </g>
-        ))}
+        {series.map((s) => {
+          const cx = (p: LineScatterPoint) => x(p.xEnd != null ? (p.x + p.xEnd) / 2 : p.x)
+          const last = s.points[s.points.length - 1]
+          return (
+            <g key={s.id}>
+              <polyline
+                points={s.points.map((p) => `${cx(p)},${y(p.y)}`).join(' ')}
+                stroke={s.color}
+                strokeWidth={1.5}
+                fill="none"
+                opacity={0.7}
+              />
+              {s.points.map((p, i) =>
+                p.xEnd != null ? (
+                  <line
+                    key={`e${i}`}
+                    data-testid="ls-extent"
+                    x1={x(p.x)}
+                    y1={y(p.y)}
+                    x2={x(p.xEnd)}
+                    y2={y(p.y)}
+                    stroke={s.color}
+                    strokeWidth={2.5}
+                    opacity={0.3}
+                  />
+                ) : null,
+              )}
+              {s.points.map((p, i) => (
+                <circle
+                  key={i}
+                  data-testid="ls-point"
+                  cx={cx(p)}
+                  cy={y(p.y)}
+                  r={4.5}
+                  fill={s.color}
+                  style={{ cursor: onPointClick ? 'pointer' : undefined }}
+                  onClick={() => onPointClick?.(p.datum)}
+                  onMouseEnter={() =>
+                    p.detail &&
+                    setHover({ left: cx(p), top: y(p.y), lines: p.detail })
+                  }
+                  onMouseLeave={() => setHover(null)}
+                >
+                  {p.label && <title>{p.label}</title>}
+                </circle>
+              ))}
+              {last && (
+                <text
+                  data-testid="ls-series-label"
+                  x={cx(last) + 8}
+                  y={y(last.y) + 3}
+                  fontSize={10}
+                  fill={s.color}
+                  fontWeight={600}
+                >
+                  {s.id}
+                </text>
+              )}
+            </g>
+          )
+        })}
       </svg>
+      {hover && (
+        <div
+          data-testid="ls-tooltip"
+          className="mono"
+          style={{
+            position: 'absolute',
+            left: Math.min(hover.left + 12, W - 220),
+            top: Math.max(hover.top - 10, 0),
+            background: 'var(--bg-elevated, #fff)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--r-md)',
+            padding: '6px 10px',
+            fontSize: 'var(--fs-xs, 11px)',
+            pointerEvents: 'none',
+            zIndex: 5,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+          }}
+        >
+          {hover.lines.map((l, i) => (
+            <div key={i} style={i === 0 ? { fontWeight: 700 } : undefined}>
+              {l}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="stat-label" style={{ display: 'flex', gap: 'var(--sp-4)', marginTop: 4 }}>
         {series.map((s) => (
           <span key={s.id}>

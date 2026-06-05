@@ -61,8 +61,18 @@ export function EdgeTimeseries({
       .filter((p) => metricValue(p, metric) != null)
       .map((p) => ({
         x: Date.parse(p.range_start),
+        xEnd: Date.parse(p.range_end),
         y: metricValue(p, metric) as number,
         label: `${p.range_start}..${p.range_end} · ${p.trades} trades · ${metricLabel(p, metric)}`,
+        detail: [
+          p.config_name ?? '(unknown config)',
+          `${p.range_start} → ${p.range_end}`,
+          `${p.trades} trades`,
+          `net PnL $${Math.round(p.net_pnl).toLocaleString()}`,
+          `expectancy ${p.expectancy_r != null ? p.expectancy_r.toFixed(3) : '—'} R · ` +
+            `$${p.expectancy_dollars != null ? p.expectancy_dollars.toFixed(2) : '—'}/trade`,
+          'click to open the window run →',
+        ],
         datum: p.run_id,
       })),
   }))
@@ -107,6 +117,7 @@ export function EdgeTimeseries({
           <LineScatter
             series={series}
             bands={bands}
+            height={320}
             formatY={(v) =>
               metric === 'r'
                 ? v.toFixed(2)

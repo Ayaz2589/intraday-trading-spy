@@ -37,10 +37,10 @@ describe("LineScatter", () => {
     expect(onClick).toHaveBeenCalledWith({ run: "r1" });
   });
 
-  it("renders a legend entry per series", () => {
+  it("renders a legend entry per series (id also appears as the line-end label)", () => {
     render(<LineScatter series={SERIES} />);
-    expect(screen.getByText("wf-rr3")).toBeInTheDocument();
-    expect(screen.getByText("default")).toBeInTheDocument();
+    expect(screen.getAllByText("wf-rr3").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("default").length).toBeGreaterThan(0);
   });
 });
 
@@ -81,5 +81,46 @@ describe("LineScatter — axes & rendering cleanup (016-polish round 2)", () => 
   it("draws points as true circles (uniform scaling — no preserveAspectRatio stretch)", () => {
     const { container } = render(<LineScatter series={SERIES} />);
     expect(container.querySelector("svg")?.getAttribute("preserveAspectRatio")).not.toBe("none");
+  });
+});
+
+describe("LineScatter — in-chart detail (016-polish round 3)", () => {
+  const DETAILED = [
+    {
+      id: "wf-rr3",
+      color: "#6b8cae",
+      points: [
+        { x: 10, xEnd: 20, y: 5, datum: { run: "r1" }, detail: ["wf-rr3", "2019-01-02 → 2019-06-28", "227 trades"] },
+        { x: 30, xEnd: 40, y: -2, datum: { run: "r2" }, detail: ["wf-rr3", "2019-07-01 → 2019-12-31", "216 trades"] },
+      ],
+    },
+  ];
+
+  it("renders a window-extent bar per point when xEnd is provided", () => {
+    const { container } = render(<LineScatter series={DETAILED} />);
+    expect(container.querySelectorAll("[data-testid='ls-extent']")).toHaveLength(2);
+  });
+
+  it("shows a rich hover tooltip with the detail lines and hides it on leave", () => {
+    const { container } = render(<LineScatter series={DETAILED} />);
+    const point = container.querySelectorAll("[data-testid='ls-point']")[0];
+    fireEvent.mouseEnter(point);
+    const tip = screen.getByTestId("ls-tooltip");
+    expect(tip).toHaveTextContent("2019-01-02 → 2019-06-28");
+    expect(tip).toHaveTextContent("227 trades");
+    fireEvent.mouseLeave(point);
+    expect(screen.queryByTestId("ls-tooltip")).not.toBeInTheDocument();
+  });
+
+  it("labels each series at its line end", () => {
+    const { container } = render(<LineScatter series={DETAILED} />);
+    const labels = container.querySelectorAll("[data-testid='ls-series-label']");
+    expect(labels).toHaveLength(1);
+    expect(labels[0].textContent).toBe("wf-rr3");
+  });
+
+  it("densifies y-ticks on tall charts", () => {
+    const { container } = render(<LineScatter series={DETAILED} height={320} />);
+    expect(container.querySelectorAll("[data-testid='ls-ytick']").length).toBeGreaterThanOrEqual(7);
   });
 });
