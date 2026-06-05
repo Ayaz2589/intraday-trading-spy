@@ -87,9 +87,13 @@ describe('ConfigEditor', () => {
     fireEvent.change(screen.getByLabelText('Position cap'), { target: { value: '500' } })
     fireEvent.click(screen.getByRole('button', { name: 'save wf-rr3' }))
     await waitFor(() => expect(patchConfigMock).toHaveBeenCalledTimes(1))
-    const [id, patch] = patchConfigMock.mock.calls[0] as [string, { params: Record<string, { max_position_value_pct?: number }> }]
+    const [id, patch] = patchConfigMock.mock.calls[0] as [
+      string,
+      { params: { risk: { max_position_value_pct: number }; strategy: { enabled_setup: string } } },
+    ]
     expect(id).toBe('1')
     expect(patch.params.risk.max_position_value_pct).toBe(500)
+    expect(patch.params.strategy.enabled_setup).toBe('vwap_pullback_long')
   })
 
   it('renders position-cap educational tooltips', () => {

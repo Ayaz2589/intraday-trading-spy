@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useUpdateConfig } from '@/hooks/useConfigs'
 import { HelpTooltip } from '@/components/help-tooltip'
@@ -46,6 +46,8 @@ export function ConfigEditor({ config }: { config: Config }) {
   const savedKnobs = useMemo(() => knobsFromConfig(config), [config])
   const [knobs, setKnobs] = useState<KnobValues>(savedKnobs)
   const [savedFlash, setSavedFlash] = useState(false)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(flashTimer.current), [])
   useEffect(() => setKnobs(savedKnobs), [savedKnobs])
 
   const enabledSetup =
@@ -64,7 +66,7 @@ export function ConfigEditor({ config }: { config: Config }) {
     setSavedFlash(false)
     update.mutate(
       { id: config.id, params: buildParams(knobs, enabledSetup) },
-      { onSuccess: () => { setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1500) } },
+      { onSuccess: () => { setSavedFlash(true); flashTimer.current = setTimeout(() => setSavedFlash(false), 1500) } },
     )
   }
 
