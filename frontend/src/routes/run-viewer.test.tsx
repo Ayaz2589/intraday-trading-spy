@@ -293,6 +293,7 @@ describe("RunViewer route", () => {
       "mc_iterations_seed",
       "forward_cone",
       "risk_of_ruin",
+      "mc_in_sample_caveat",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

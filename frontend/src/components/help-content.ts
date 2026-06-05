@@ -376,6 +376,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     description:
       "Across all simulated forward paths, the fraction where equity dipped below your STARTING account value by at least each threshold — at any point, even if it recovered later. A 12% chance of a −10% dip means roughly 1 in 8 futures touches that pain level. Pick the threshold you genuinely couldn't stomach and check its probability before trading a strategy forward.",
   },
+  mc_in_sample_caveat: {
+    title: "In-sample caveat",
+    description:
+      "These trades came from data the strategy's settings were tuned against (or that can't be proven otherwise), so the edge — and therefore every risk estimate built on it — is likely overstated. Only walk-forward validation windows and the lockbox run are provably out-of-sample. Use those for the honest version of these numbers.",
+  },
   lockbox: {
     title: "Lockbox",
     description:

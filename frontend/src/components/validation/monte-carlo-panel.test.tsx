@@ -122,3 +122,36 @@ describe("MonteCarloPanel (US3 — risk of ruin)", () => {
     expect(container.querySelector('[data-help-key="risk_of_ruin"]')).toBeTruthy();
   });
 });
+
+describe("MonteCarloPanel (US4 — trust signals)", () => {
+  it("shows the thin-sample badge when low_confidence is true", () => {
+    render(
+      createElement(MonteCarloPanel, {
+        result: { ...FIXTURE, low_confidence: true, trade_count: 11 },
+      })
+    );
+    const badge = screen.getByTestId("mc-low-confidence");
+    expect(badge).toHaveTextContent(/thin sample/i);
+    expect(badge).toHaveTextContent("11");
+  });
+
+  it("hides the thin-sample badge when low_confidence is false", () => {
+    render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    expect(screen.queryByTestId("mc-low-confidence")).not.toBeInTheDocument();
+  });
+
+  it("tooltip sweep: every panel concept carries a HelpTooltip", () => {
+    const { container } = render(createElement(MonteCarloPanel, { result: FIXTURE }));
+    for (const key of [
+      "shuffle_method",
+      "max_drawdown_distribution",
+      "losing_streak",
+      "underwater_period",
+      "forward_cone",
+      "risk_of_ruin",
+      "mc_iterations_seed",
+    ]) {
+      expect(container.querySelector(`[data-help-key="${key}"]`)).toBeTruthy();
+    }
+  });
+});

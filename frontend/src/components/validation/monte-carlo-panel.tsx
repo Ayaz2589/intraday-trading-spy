@@ -104,6 +104,12 @@ export function MonteCarloPanel({ result }: { result: MonteCarloResult }) {
 
   return (
     <div data-testid="monte-carlo-panel" style={{ display: "grid", gap: "var(--sp-4)" }}>
+      {result.low_confidence && (
+        <div data-testid="mc-low-confidence" className="stat-label">
+          ⚠ thin sample — only {result.trade_count} trades; treat these
+          distributions as noisy
+        </div>
+      )}
       <div>
         <div className="stat-label" style={{ marginBottom: "var(--sp-2)" }}>
           Drawdown risk — {result.iterations.toLocaleString()} reshuffles of your real trades{" "}

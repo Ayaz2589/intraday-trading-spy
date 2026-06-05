@@ -118,3 +118,34 @@ describe("RunMonteCarloSection", () => {
     ).toBeTruthy();
   });
 });
+
+describe("RunMonteCarloSection (US4 — in-sample caveat rule)", () => {
+  // Clarified rule (spec Session 2026-06-04): caveat unless provably OOS —
+  // banner iff segment is NOT 'validation' and NOT 'lockbox'.
+  const cases: Array<[string, string | null | undefined, boolean]> = [
+    ["train child", "train", true],
+    ["no-segment sensitivity child", null, true],
+    ["plain backtest (undefined)", undefined, true],
+    ["validation (OOS) child", "validation", false],
+    ["lockbox child", "lockbox", false],
+  ];
+  for (const [label, segment, shows] of cases) {
+    it(`${shows ? "shows" : "hides"} the caveat for ${label}`, async () => {
+      const { RunMonteCarloSection } = await import("./run-monte-carlo-section");
+      wrap(
+        createElement(RunMonteCarloSection, {
+          runId: "run-1" as never,
+          segment: segment as never,
+        })
+      );
+      const banner = screen.queryByTestId("mc-insample-caveat");
+      if (shows) {
+        expect(banner).toBeInTheDocument();
+        expect(banner).toHaveTextContent(/optimistic/i);
+        expect(banner?.querySelector('[data-help-key="mc_in_sample_caveat"]')).toBeTruthy();
+      } else {
+        expect(banner).not.toBeInTheDocument();
+      }
+    });
+  }
+});

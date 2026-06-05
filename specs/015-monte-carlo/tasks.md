@@ -75,14 +75,14 @@ cone has ≤200 steps with unchanged sampled values.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T015 [P] [US2] Failing unit tests: bootstrap cone — band ordering at every step; horizon defaults to observed trade count and honors config override; downsampling ≤ `max_cone_steps` always including first and final trade_index; percentile values at sampled steps equal full-resolution values (research.md R7); terminal-equity distribution with observed = starting_equity + sum(pnls); seeded determinism, in backend/tests/validation/test_monte_carlo.py
-- [ ] T016 [P] [US2] Failing API contract test: response includes `cone` (horizon_trades, steps ≤ max_cone_steps) and `terminal_equity` per contracts/api.md, in backend/tests/api/new/test_monte_carlo_api.py
-- [ ] T018 [P] [US2] Failing component tests: cone fan chart SVG renders five bands + median line + horizon label from fixture, with `forward_cone` HelpTooltip, in frontend/src/components/validation/monte-carlo-panel.test.tsx
+- [x] T015 [P] [US2] Failing unit tests: bootstrap cone — band ordering at every step; horizon defaults to observed trade count and honors config override; downsampling ≤ `max_cone_steps` always including first and final trade_index; percentile values at sampled steps equal full-resolution values (research.md R7); terminal-equity distribution with observed = starting_equity + sum(pnls); seeded determinism, in backend/tests/validation/test_monte_carlo.py
+- [x] T016 [P] [US2] Failing API contract test: response includes `cone` (horizon_trades, steps ≤ max_cone_steps) and `terminal_equity` per contracts/api.md, in backend/tests/api/new/test_monte_carlo_api.py
+- [x] T018 [P] [US2] Failing component tests: cone fan chart SVG renders five bands + median line + horizon label from fixture, with `forward_cone` HelpTooltip, in frontend/src/components/validation/monte-carlo-panel.test.tsx
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Implement bootstrap simulation + cone downsampling in backend/src/intraday_trade_spy/validation/monte_carlo.py, add `MonteCarloConeStep`/`MonteCarloCone` models and `cone`+`terminal_equity` fields to `MonteCarloResult` in backend/src/intraday_trade_spy/models.py, wire through `run_monte_carlo_for_run()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py
-- [ ] T019 [US2] Implement the cone section (hand-rolled SVG fan chart) in frontend/src/components/validation/monte-carlo-panel.tsx, extend types in frontend/src/api/types.ts, add `forward_cone` entry to frontend/src/components/help-content.ts
+- [x] T017 [US2] Implement bootstrap simulation + cone downsampling in backend/src/intraday_trade_spy/validation/monte_carlo.py, add `MonteCarloConeStep`/`MonteCarloCone` models and `cone`+`terminal_equity` fields to `MonteCarloResult` in backend/src/intraday_trade_spy/models.py, wire through `run_monte_carlo_for_run()` in backend/src/intraday_trade_spy/api/validation_lifecycle.py
+- [x] T019 [US2] Implement the cone section (hand-rolled SVG fan chart) in frontend/src/components/validation/monte-carlo-panel.tsx, extend types in frontend/src/api/types.ts, add `forward_cone` entry to frontend/src/components/help-content.ts
 
 **Checkpoint**: US1 + US2 work — drawdown + cone sections live.
 
@@ -98,14 +98,14 @@ threshold with monotone non-increasing values as thresholds deepen.
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T020 [P] [US3] Failing unit tests: ruin definition (path ruined iff min equity ≤ starting_equity × (1 − t/100) at any step); one probability per configured threshold in config order; monotonicity P(5%) ≥ P(10%) ≥ P(20%); seeded determinism, in backend/tests/validation/test_monte_carlo.py
-- [ ] T021 [P] [US3] Failing API contract test: response includes `ruin` list per contracts/api.md, in backend/tests/api/new/test_monte_carlo_api.py
-- [ ] T023 [P] [US3] Failing component test: ruin row renders a probability per threshold with `risk_of_ruin` HelpTooltip, in frontend/src/components/validation/monte-carlo-panel.test.tsx
+- [x] T020 [P] [US3] Failing unit tests: ruin definition (path ruined iff min equity ≤ starting_equity × (1 − t/100) at any step); one probability per configured threshold in config order; monotonicity P(5%) ≥ P(10%) ≥ P(20%); seeded determinism, in backend/tests/validation/test_monte_carlo.py
+- [x] T021 [P] [US3] Failing API contract test: response includes `ruin` list per contracts/api.md, in backend/tests/api/new/test_monte_carlo_api.py
+- [x] T023 [P] [US3] Failing component test: ruin row renders a probability per threshold with `risk_of_ruin` HelpTooltip, in frontend/src/components/validation/monte-carlo-panel.test.tsx
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Implement ruin computation (reusing US2's bootstrap path matrix — no second simulation) in backend/src/intraday_trade_spy/validation/monte_carlo.py, add `MonteCarloRuinPoint` model + `ruin` field in backend/src/intraday_trade_spy/models.py, wire through backend/src/intraday_trade_spy/api/validation_lifecycle.py
-- [ ] T024 [US3] Implement the ruin row in frontend/src/components/validation/monte-carlo-panel.tsx, extend types in frontend/src/api/types.ts, add `risk_of_ruin` entry to frontend/src/components/help-content.ts
+- [x] T022 [US3] Implement ruin computation (reusing US2's bootstrap path matrix — no second simulation) in backend/src/intraday_trade_spy/validation/monte_carlo.py, add `MonteCarloRuinPoint` model + `ruin` field in backend/src/intraday_trade_spy/models.py, wire through backend/src/intraday_trade_spy/api/validation_lifecycle.py
+- [x] T024 [US3] Implement the ruin row in frontend/src/components/validation/monte-carlo-panel.tsx, extend types in frontend/src/api/types.ts, add `risk_of_ruin` entry to frontend/src/components/help-content.ts
 
 **Checkpoint**: all three result groups live.
 
@@ -119,11 +119,11 @@ by T007's contract tests.)
 
 ### Tests for User Story 4 (write first, must fail)
 
-- [ ] T025 [P] [US4] Failing component tests: caveat banner shows iff `run.segment` is not `'validation'`/`'lockbox'` — cases: `'train'` (shows), `null` (shows), `undefined`/plain backtest (shows), `'validation'` (hidden), `'lockbox'` (hidden) per the spec clarification; low-confidence badge renders when `low_confidence: true`; tooltip sweep asserting every concept label in the panel has a `HelpTooltip`, in frontend/src/components/validation/monte-carlo-panel.test.tsx
+- [x] T025 [P] [US4] Failing component tests: caveat banner shows iff `run.segment` is not `'validation'`/`'lockbox'` — cases: `'train'` (shows), `null` (shows), `undefined`/plain backtest (shows), `'validation'` (hidden), `'lockbox'` (hidden) per the spec clarification; low-confidence badge renders when `low_confidence: true`; tooltip sweep asserting every concept label in the panel has a `HelpTooltip`, in frontend/src/components/validation/monte-carlo-panel.test.tsx
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Implement the in-sample caveat banner (copy: in-sample trades → risk estimates optimistic → prefer OOS windows or the lockbox run) + low-confidence badge in frontend/src/components/validation/monte-carlo-panel.tsx, add `mc_in_sample_caveat` entry to frontend/src/components/help-content.ts, pass `segment` from frontend/src/components/runs/RunDetail.tsx
+- [x] T026 [US4] Implement the in-sample caveat banner (copy: in-sample trades → risk estimates optimistic → prefer OOS windows or the lockbox run) + low-confidence badge in frontend/src/components/validation/monte-carlo-panel.tsx, add `mc_in_sample_caveat` entry to frontend/src/components/help-content.ts, pass `segment` from frontend/src/components/runs/RunDetail.tsx
 
 **Checkpoint**: all user stories complete.
 

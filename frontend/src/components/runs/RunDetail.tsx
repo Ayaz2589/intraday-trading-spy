@@ -211,8 +211,9 @@ export function RunDetail({ runId }: Props) {
         <>
           <RunSummaryCards summary={liveSummary} />
           <RunSignificanceSection runId={runId} />
-          {/* Feature 015: Monte Carlo path-risk (drawdown distributions). */}
-          <RunMonteCarloSection runId={runId} />
+          {/* Feature 015: Monte Carlo path-risk; segment drives the
+              caveat-unless-provably-OOS banner. */}
+          <RunMonteCarloSection runId={runId} segment={run.segment} />
           {manifestQuery.data && (
             <ConfigStrip
               params={manifestQuery.data.config.params}
