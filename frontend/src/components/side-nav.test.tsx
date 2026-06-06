@@ -126,4 +126,28 @@ describe('<SideNav /> — Delete all data (018.1 factory reset)', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete everything/i }))
     expect(await screen.findByText(/reset failed/i)).toBeInTheDocument()
   })
+
+  // Wiping 168k bar rows takes a while — the user must see that the delete is
+  // running, not a frozen page. Confirm swaps the dialog for a blocking
+  // full-screen overlay with a spinner until the reset resolves.
+  it('shows a blocking deleting overlay with a spinner while the wipe runs', async () => {
+    let rejectReset!: (e: Error) => void
+    factoryResetMock.mockReturnValue(
+      new Promise((_resolve, reject) => { rejectReset = reject }),
+    )
+    render(<SideNav />)
+    fireEvent.click(screen.getByTestId('side-nav-delete-all'))
+    fireEvent.click(screen.getByRole('button', { name: /delete everything/i }))
+
+    const overlay = await screen.findByTestId('factory-reset-overlay')
+    expect(overlay).toHaveTextContent(/deleting all data/i)
+    expect(overlay.querySelector('.spinner')).not.toBeNull()
+    // the confirm dialog has given way to the overlay
+    expect(screen.queryByText(/cannot be undone/i)).not.toBeInTheDocument()
+
+    // failure clears the overlay and surfaces the error in the rail
+    rejectReset(new Error('reset failed: db unreachable'))
+    expect(await screen.findByText(/reset failed/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('factory-reset-overlay')).not.toBeInTheDocument()
+  })
 })
