@@ -86,7 +86,10 @@ CREATE INDEX recommendation_trials_family_idx
 State notes: `config_id` nulls on config deletion while `config_name` keeps
 the trail (Principle VII, spec edge case). A trial is **validated** when its
 config has a finished walk-forward study (computed by join at read time —
-not denormalized).
+not denormalized). **Trial definition (analyze A1)**: a row is written for
+every draft-flow config creation — `source='claude'` when the draft carries
+an analysis id (including 017 experiment drafts; the panel is shared),
+`source='deterministic'` when drafted from a deterministic candidate card.
 
 ### insight_analyses (MODIFIED — same migration)
 

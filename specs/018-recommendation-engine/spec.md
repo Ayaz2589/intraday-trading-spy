@@ -321,6 +321,15 @@ lockbox data.
 - Only registered strategies may be referenced as alternatives in
   stop-tuning recommendations; today that set has one member, so the
   recommendation may state that no alternative exists yet.
+- **Trial definition (analyze A1 decision, 2026-06-06)**: any
+  analysis-originated draft counts as a trial — a ledger row is written for
+  every config created through the draft flow, whether the draft came from a
+  Recommendations-panel card or a 017 experiment card in Claude's read.
+  Drafts carrying an analysis id record `source='claude'`; drafts born from
+  a deterministic candidate card (no analysis id) record
+  `source='deterministic'`. This is broader than "panel-originated only" and
+  deliberately so: every Claude-suggested variant validated against the
+  archive erodes its out-of-sample meaning equally.
 
 ## Out of Scope
 
