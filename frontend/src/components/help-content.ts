@@ -96,7 +96,8 @@ export type HelpContentKey =
   // Feature 018 (recommendation engine) concepts
   | "health_verdict"
   | "recommendation_classes"
-  | "evidence_pack";
+  | "evidence_pack"
+  | "trial_count";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -459,6 +460,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Evidence pack",
     description:
       "The bundle of already-stored results a recommendation is computed from: this config's out-of-sample windows, matched-window comparisons against sibling configs, sensitivity-sweep neighborhoods, per-regime results, pooled-gate intervals, and how many variants were already tried. It is assembled read-only — no new backtests run — and pinned to a snapshot fingerprint so you always know which data a recommendation (or Claude's narrative about it) described.",
+  },
+  trial_count: {
+    title: "Trial count (data snooping)",
+    description:
+      "How many recommendation-originated config variants have already been tried against this same out-of-sample archive. Why it matters: every time you tune, test, and re-tune against the same data, the 'out-of-sample' label quietly stops being true — with enough tries, something will look good by luck alone. The ledger survives config deletion, feeds back into the evidence Claude reads, and the lockbox stays sealed as the final arbiter no recommendation can touch.",
   },
   lockbox: {
     title: "Lockbox",

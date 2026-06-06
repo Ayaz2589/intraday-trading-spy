@@ -20,6 +20,8 @@ export type CreateConfigBody = {
   params?: Record<string, unknown>
   // Feature 017 — durable provenance for drafted configs.
   description?: string
+  // Feature 018 (US3) — writes the trial-ledger row alongside creation.
+  provenance?: { analysis_id: string | null; source: 'claude' | 'deterministic' }
 }
 
 export function createConfig(body: CreateConfigBody): Promise<Config> {

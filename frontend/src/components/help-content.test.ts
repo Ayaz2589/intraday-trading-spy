@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HELP_CONTENT, type HelpContentKey } from "./help-content";
 
 describe("HELP_CONTENT", () => {
-  it("has every HelpContentKey covered (16 F004 + 9 F007 + 4 F009 + 12 F010 + 10 F011 + 4 F012 + 3 F013 + 3 F014 + 9 F015 + 7 F016 + 1 F017 + 3 F018 = 81 concepts)", () => {
+  it("has every HelpContentKey covered (16 F004 + 9 F007 + 4 F009 + 12 F010 + 10 F011 + 4 F012 + 3 F013 + 3 F014 + 9 F015 + 7 F016 + 1 F017 + 4 F018 = 82 concepts)", () => {
     const expected: HelpContentKey[] = [
       // Feature 004
       "vwap",
@@ -97,6 +97,7 @@ describe("HELP_CONTENT", () => {
       "health_verdict",
       "recommendation_classes",
       "evidence_pack",
+      "trial_count",
     ];
     for (const key of expected) {
       expect(HELP_CONTENT[key]).toBeDefined();

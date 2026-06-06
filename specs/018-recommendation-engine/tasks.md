@@ -107,17 +107,17 @@ implementable and testable (US1 alone is the MVP).
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T031 [P] [US3] Failing storage tests in `backend/tests/storage/test_recommend_storage.py`: insert trial row, family counts (drafted = rows; validated = rows whose config has a finished walk-forward study), deletion survival (config delete → config_id NULL, config_name retained, counts unchanged), same `config_name` under two `strategy_id`s counts separately per family (analyze U5)
-- [ ] T032 [P] [US3] Failing API tests in `backend/tests/api/new/test_configs_endpoints.py`: `POST /api/configs` with `provenance{analysis_id, source}` writes the ledger row in the same transaction; request without provenance behaves exactly as before (regression guard)
-- [ ] T033 [P] [US3] Failing tests: evidence pack embeds `trial_counts` (extend `backend/tests/recommend/test_evidence.py`); panel renders the ledger line "N drafted · M validated against this archive" + data-snooping warning + `trial_count` HelpTooltip (extend `frontend/src/components/recommend/RecommendationsPanel.test.tsx`, `frontend/src/components/help-content.test.ts`)
-- [ ] T034 [P] [US3] Failing test: DraftConfigPanel's create call passes provenance for EVERY draft-flow creation (analyze A1 decision): draft with analysis id → `provenance{analysis_id, source:'claude'}` (incl. 017 experiment drafts — same panel); draft without analysis id (deterministic candidate card) → `provenance{analysis_id: null, source:'deterministic'}` — in `frontend/src/components/strategies/DraftConfigPanel.test.tsx`
+- [X] T031 [P] [US3] Failing storage tests in `backend/tests/storage/test_recommend_storage.py`: insert trial row, family counts (drafted = rows; validated = rows whose config has a finished walk-forward study), deletion survival (config delete → config_id NULL, config_name retained, counts unchanged), same `config_name` under two `strategy_id`s counts separately per family (analyze U5)
+- [X] T032 [P] [US3] Failing API tests in `backend/tests/api/new/test_configs_endpoints.py`: `POST /api/configs` with `provenance{analysis_id, source}` writes the ledger row in the same transaction; request without provenance behaves exactly as before (regression guard)
+- [X] T033 [P] [US3] Failing tests: evidence pack embeds `trial_counts` (extend `backend/tests/recommend/test_evidence.py`); panel renders the ledger line "N drafted · M validated against this archive" + data-snooping warning + `trial_count` HelpTooltip (extend `frontend/src/components/recommend/RecommendationsPanel.test.tsx`, `frontend/src/components/help-content.test.ts`)
+- [X] T034 [P] [US3] Failing test: DraftConfigPanel's create call passes provenance for EVERY draft-flow creation (analyze A1 decision): draft with analysis id → `provenance{analysis_id, source:'claude'}` (incl. 017 experiment drafts — same panel); draft without analysis id (deterministic candidate card) → `provenance{analysis_id: null, source:'deterministic'}` — in `frontend/src/components/strategies/DraftConfigPanel.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Implement `recommendation_trials` CRUD + family-count queries in `backend/src/intraday_trade_spy/storage/client.py` → T031 green
-- [ ] T036 [US3] Implement provenance handling on config create in `backend/src/intraday_trade_spy/api/routers/configs.py` + the storage create path → T032 green
-- [ ] T037 [US3] Implement trial counts in `backend/src/intraday_trade_spy/recommend/evidence.py` + ledger line/warning/help copy in `frontend/src/components/recommend/RecommendationsPanel.tsx` and `frontend/src/components/help-content.ts` → T033 green
-- [ ] T038 [US3] Implement provenance pass-through in `frontend/src/components/strategies/DraftConfigPanel.tsx` + create-config API fn in `frontend/src/api/configs.ts` (or its existing home) → T034 green
+- [X] T035 [US3] Implement `recommendation_trials` CRUD + family-count queries in `backend/src/intraday_trade_spy/storage/client.py` → T031 green
+- [X] T036 [US3] Implement provenance handling on config create in `backend/src/intraday_trade_spy/api/routers/configs.py` + the storage create path → T032 green
+- [X] T037 [US3] Implement trial counts in `backend/src/intraday_trade_spy/recommend/evidence.py` + ledger line/warning/help copy in `frontend/src/components/recommend/RecommendationsPanel.tsx` and `frontend/src/components/help-content.ts` → T033 green
+- [X] T038 [US3] Implement provenance pass-through in `frontend/src/components/strategies/DraftConfigPanel.tsx` + create-config API fn in `frontend/src/api/configs.ts` (or its existing home) → T034 green
 
 **Checkpoint**: All three stories independently functional.
 

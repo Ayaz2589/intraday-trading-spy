@@ -236,3 +236,25 @@ describe('RecommendationsPanel', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('RecommendationsPanel — trial ledger (018 US3)', () => {
+  it('surfaces the family trial counts with the data-snooping warning', async () => {
+    getPackMock.mockResolvedValue({
+      ...PACK,
+      pack: { ...PACK.pack, trial_counts: { drafted: 9, validated: 4 } },
+      trial_counts: { drafted: 9, validated: 4 },
+    })
+    const { container } = wrap(<RecommendationsPanel />)
+    const ledger = await screen.findByTestId('rec-trial-ledger')
+    expect(ledger).toHaveTextContent(/9 drafted/i)
+    expect(ledger).toHaveTextContent(/4 validated/i)
+    expect(ledger).toHaveTextContent(/against this archive/i)
+    expect(container.querySelector('[data-help-key="trial_count"]')).toBeTruthy()
+  })
+
+  it('renders zero-trial families without the scary warning tone', async () => {
+    wrap(<RecommendationsPanel />)
+    const ledger = await screen.findByTestId('rec-trial-ledger')
+    expect(ledger).toHaveTextContent(/0 drafted/i)
+  })
+})

@@ -452,6 +452,14 @@ class StudyListResponse(_ResponseBase):
 # ---------- Feature 012: config management ----------
 
 
+class ProvenanceBody(_Base):
+    """Feature 018 (US3, analyze A1): recommendation provenance on config
+    create — writes the deletion-surviving trial ledger row."""
+
+    analysis_id: Optional[str] = None
+    source: Literal["claude", "deterministic"]
+
+
 class ConfigCreateRequest(_Base):
     name: str = Field(min_length=1, max_length=200)
     source: Literal["scratch", "preset", "duplicate"] = "scratch"
@@ -462,6 +470,9 @@ class ConfigCreateRequest(_Base):
     params: Optional[dict] = None
     # Feature 017: durable provenance ("Drafted from Claude analysis ...").
     description: Optional[str] = Field(default=None, max_length=500)
+    # Feature 018 (US3): when present, creation also writes the trial-ledger
+    # row (analyze A1 — any analysis-originated draft is a trial).
+    provenance: Optional[ProvenanceBody] = None
 
     @model_validator(mode="before")
     @classmethod

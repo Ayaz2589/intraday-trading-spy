@@ -106,3 +106,26 @@ describe("DraftConfigPanel — boundary tooltip (017 US3)", () => {
     expect(container.querySelector('[data-help-key="claude_experiment_draft"]')).toBeTruthy();
   });
 });
+
+describe("DraftConfigPanel — trial provenance (018 US3, analyze A1)", () => {
+  it("passes provenance{analysis_id, source:'claude'} for analysis-bearing drafts", async () => {
+    createConfigMock.mockResolvedValue({ ...BASE, id: "5", name: "wf-rr3-exp-1" });
+    wrap(await panel());
+    fireEvent.click(screen.getByRole("button", { name: /^create/i }));
+    await waitFor(() => expect(createConfigMock).toHaveBeenCalledTimes(1));
+    const body = createConfigMock.mock.calls[0][0];
+    expect(body.provenance).toEqual({
+      analysis_id: "d7e75317-4fd5-4d23-967d-a326c62c9c5b",
+      source: "claude",
+    });
+  });
+
+  it("passes source:'deterministic' with null analysis_id for candidate-card drafts", async () => {
+    createConfigMock.mockResolvedValue({ ...BASE, id: "6", name: "wf-rr3-exp-1" });
+    wrap(await panel({ draft: { ...DRAFT, analysis_id: "" } }));
+    fireEvent.click(screen.getByRole("button", { name: /^create/i }));
+    await waitFor(() => expect(createConfigMock).toHaveBeenCalledTimes(1));
+    const body = createConfigMock.mock.calls[0][0];
+    expect(body.provenance).toEqual({ analysis_id: null, source: "deterministic" });
+  });
+});

@@ -100,3 +100,53 @@ class TestListSensitivitySurfaces:
         _patch_pool(monkeypatch, [("study-2", "wf-rr3", SURFACE, "2026-06-02T00:00:00Z")], captured)
         out = _client().list_sensitivity_surfaces()
         assert out[0]["surface"]["segment"] == "validation"
+
+
+# ---- T031 (US3): the trial ledger — insert + family counts -------------------
+
+
+class TestRecommendationTrials:
+    def test_insert_writes_user_scoped_row(self, monkeypatch):
+        captured: dict = {}
+        _patch_pool(monkeypatch, [], captured)
+        _client().insert_recommendation_trial(
+            strategy_id="strat-1", config_id="cfg-1", config_name="default-exp-1",
+            analysis_id="ia-1", source="claude",
+        )
+        sql, params = captured["calls"][0]
+        assert "INSERT INTO public.recommendation_trials" in sql
+        assert params[0] == "11111111-1111-1111-1111-111111111111"  # user first
+        assert "strat-1" in params and "cfg-1" in params
+        assert "default-exp-1" in params and "ia-1" in params and "claude" in params
+
+    def test_counts_scope_by_user_and_strategy_family(self, monkeypatch):
+        # U5: same config_name under two strategies counts separately —
+        # the SQL must filter strategy_id, not just name.
+        captured: dict = {}
+        _patch_pool(monkeypatch, [(3, 2)], captured)
+        out = _client().recommendation_trial_counts(strategy_id="strat-1")
+        sql, params = captured["calls"][0]
+        assert "FROM public.recommendation_trials" in sql
+        assert "user_id = %s" in sql
+        assert "strategy_id = %s" in sql
+        assert params == ["11111111-1111-1111-1111-111111111111", "strat-1"]
+        assert out == {"drafted": 3, "validated": 2}
+
+    def test_validated_joins_by_config_name_so_counts_survive_deletion(self, monkeypatch):
+        # Deletion survival: config_id nulls on delete (FK), so the
+        # validated join must key on the denormalized config_name against
+        # finished walk-forward studies — never on the configs table.
+        captured: dict = {}
+        _patch_pool(monkeypatch, [(0, 0)], captured)
+        _client().recommendation_trial_counts(strategy_id="strat-1")
+        sql, _ = captured["calls"][0]
+        assert "config_name" in sql
+        assert "walk_forward" in sql
+        assert "finished" in sql
+        assert "JOIN public.configs" not in sql
+
+    def test_empty_ledger_yields_zero_counts(self, monkeypatch):
+        captured: dict = {}
+        _patch_pool(monkeypatch, [], captured)
+        out = _client().recommendation_trial_counts(strategy_id="strat-1")
+        assert out == {"drafted": 0, "validated": 0}

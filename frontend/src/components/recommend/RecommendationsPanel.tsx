@@ -122,6 +122,22 @@ export function RecommendationsPanel() {
                 seeded · deterministic — same archive, same candidates{' '}
                 <HelpTooltip helpKey="recommendation_classes" />
               </div>
+              {/* US3: the data-snooping ledger — visible honesty about how
+                  many variants this archive has already judged. */}
+              {packQuery.data && (
+                <div
+                  className="stat-label"
+                  data-testid="rec-trial-ledger"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                >
+                  <span className="mono">
+                    {packQuery.data.trial_counts.drafted} drafted ·{' '}
+                    {packQuery.data.trial_counts.validated} validated against this archive
+                  </span>
+                  — every variant tried against the same windows erodes what
+                  out-of-sample means <HelpTooltip helpKey="trial_count" />
+                </div>
+              )}
               {packQuery.isLoading && <p className="stat-label">assembling evidence…</p>}
               {candidates.length > 0 && (
                 <div style={{ display: 'grid', gap: 'var(--sp-2)' }}>
