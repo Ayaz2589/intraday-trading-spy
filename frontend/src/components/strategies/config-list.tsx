@@ -5,7 +5,7 @@ import { HelpTooltip } from '@/components/help-tooltip'
 import { SectionTitle, cardSection } from '@/components/section-title'
 import { ConfigEditor } from './config-editor'
 import { inputStyle } from './field'
-import { knobChips, knobsFromConfig, offDefaultKeys } from '@/lib/config-knobs'
+import { configDiffChips, knobsFromConfig, offDefaultKeys } from '@/lib/config-knobs'
 import { ActiveConfigHealthBadge } from '@/components/recommend/HealthBadge'
 import type { Config } from '@/api/types'
 
@@ -89,7 +89,7 @@ function ConfigRow({
   useEffect(() => setName(config.name), [config.name])
 
   const knobs = knobsFromConfig(config)
-  const chips = knobChips(knobs)
+  const chips = configDiffChips(knobs)
   const offCount = offDefaultKeys(knobs).length
 
   return (
@@ -150,7 +150,7 @@ function ConfigRow({
               <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: 10 }}>
                 {expanded ? '▾' : '▸'}
               </span>
-              {config.name}
+              <span style={{ fontSize: 'var(--fs-md)' }}>{config.name}</span>
             </button>
             {/* 017: durable provenance (e.g. drafted from a Claude experiment) */}
             {config.description && (
@@ -167,15 +167,27 @@ function ConfigRow({
             {config.is_active && <ActiveConfigHealthBadge configId={config.id} />}
             <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {chips.map(chip => (
-                <span key={chip.label} className="chip" style={summaryChip}>
+                <span
+                  key={chip.label}
+                  className={chip.diff ? 'chip chip-accent' : 'chip'}
+                  style={chip.diff ? undefined : summaryChip}
+                >
                   {chip.label}&nbsp;
-                  <span style={{ fontFamily: 'var(--mono)', color: 'var(--text)' }}>{chip.value}</span>
+                  <span style={{ fontFamily: 'var(--mono)', color: chip.diff ? undefined : 'var(--text)' }}>
+                    {chip.value}
+                  </span>
                 </span>
               ))}
             </span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
               {offCount > 0 && (
-                <span data-testid={`off-default-${config.name}`} className="chip chip-accent">
+                // Muted on purpose: ACTIVE (and the health badge) are the only
+                // accent badges, so rows stay scannable.
+                <span
+                  data-testid={`off-default-${config.name}`}
+                  className="chip"
+                  style={{ ...summaryChip, border: '1px solid var(--border)' }}
+                >
                   {offCount} off default
                 </span>
               )}

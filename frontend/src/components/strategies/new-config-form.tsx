@@ -3,6 +3,7 @@ import { useCreateConfig, useDuplicateConfig, usePresets } from '@/hooks/useConf
 import { HelpTooltip } from '@/components/help-tooltip'
 import { SectionTitle, cardSection } from '@/components/section-title'
 import { FieldLabel, inputStyle } from './field'
+import { configDiffChips, knobsFromConfig } from '@/lib/config-knobs'
 import type { Config, ConfigSource } from '@/api/types'
 
 // "New config" section of the strategy page (2026-06-05 redesign). Creation
@@ -66,8 +67,10 @@ export function NewConfigSection({
       >
         <HelpTooltip helpKey="duplicate_vs_edit" />
       </SectionTitle>
+      {/* Balanced creator row (prototype: 1.4fr 1fr 1fr auto) — the name cell
+          must not absorb the whole card while the selects shrink. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', marginTop: 12 }}>
-        <div style={{ flex: '1 1 180px' }}>
+        <div style={{ flex: '1.4 1 200px' }}>
           <FieldLabel>Name</FieldLabel>
           <input
             aria-label="new config name"
@@ -77,13 +80,13 @@ export function NewConfigSection({
             style={{ ...inputStyle, width: '100%' }}
           />
         </div>
-        <div>
+        <div style={{ flex: '1 1 170px' }}>
           <FieldLabel>Source</FieldLabel>
           <select
             aria-label="source"
             value={source}
             onChange={e => setSource(e.target.value as ConfigSource)}
-            style={inputStyle}
+            style={{ ...inputStyle, width: '100%' }}
           >
             <option value="preset">From preset</option>
             <option value="duplicate">Duplicate existing</option>
@@ -91,30 +94,30 @@ export function NewConfigSection({
           </select>
         </div>
         {source === 'preset' && (
-          <div>
+          <div style={{ flex: '1 1 170px' }}>
             <FieldLabel>Preset</FieldLabel>
             <select
               aria-label="preset"
               value={presetName}
               onChange={e => setPresetName(e.target.value)}
-              style={inputStyle}
+              style={{ ...inputStyle, width: '100%' }}
             >
               {presets.map(p => (
                 <option key={p.name} value={p.name}>
-                  {p.name}
+                  {p.label || p.name}
                 </option>
               ))}
             </select>
           </div>
         )}
         {source === 'duplicate' && (
-          <div>
+          <div style={{ flex: '1 1 170px' }}>
             <FieldLabel>Copy from</FieldLabel>
             <select
               aria-label="duplicate from"
               value={dupFromId}
               onChange={e => setDupFromId(e.target.value)}
-              style={inputStyle}
+              style={{ ...inputStyle, width: '100%' }}
             >
               {configs.map(c => (
                 <option key={c.id} value={c.id}>
@@ -141,10 +144,19 @@ export function NewConfigSection({
       {source === 'preset' && selectedPreset && (
         <p
           data-testid="preset-desc"
-          style={{ margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}
+          style={{ margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
         >
-          <span className="chip chip-accent">{selectedPreset.name}</span>
+          <span className="chip chip-accent">{selectedPreset.label || selectedPreset.name}</span>
           {selectedPreset.description}
+          {/* What the preset actually changes — same chip language as config rows. */}
+          {configDiffChips(knobsFromConfig({ params: selectedPreset.params } as Config))
+            .filter(chip => chip.diff)
+            .map(chip => (
+              <span key={chip.label} className="chip chip-accent">
+                {chip.label}&nbsp;
+                <span style={{ fontFamily: 'var(--mono)' }}>{chip.value}</span>
+              </span>
+            ))}
         </p>
       )}
     </section>

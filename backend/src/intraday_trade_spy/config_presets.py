@@ -1,10 +1,13 @@
 """Built-in config presets (Feature 012).
 
 Loads the YAML presets in ``backend/config/presets/*.yaml`` into
-``{name, description, params}`` records so the operator can create a new named
-config from a preset. The full preset YAML is a complete config; a config's
-``params`` is the nested ``{risk, strategy, market}`` subset (matching what the
-``configs.params`` JSONB stores and ``build_effective_config`` expects).
+``{name, label, description, params}`` records so the operator can create a new
+named config from a preset. ``name`` is the canonical file-stem identifier
+(stable for API requests); ``label`` is the human-readable display name from
+the ``# LABEL:`` header comment. The full preset YAML is a complete config; a
+config's ``params`` is the nested ``{risk, strategy, market}`` subset (matching
+what the ``configs.params`` JSONB stores and ``build_effective_config``
+expects).
 
 Presets are read-only templates — instantiating one copies its params into a
 new, editable named config.
@@ -20,6 +23,16 @@ PRESETS_DIR = Path(__file__).resolve().parents[2] / "config" / "presets"
 
 # Keys of a full config YAML that belong in a per-user config's params.
 _PARAM_KEYS = ("risk", "strategy", "market")
+
+
+def _label(raw: str, name: str) -> str:
+    """Pull the human-readable display name from the leading `# LABEL: <text>`
+    comment; fall back to the canonical name."""
+    for line in raw.splitlines():
+        s = line.strip()
+        if s.startswith("# LABEL:"):
+            return s[len("# LABEL:"):].strip() or name
+    return name
 
 
 def _description(raw: str, name: str) -> str:
@@ -39,8 +52,8 @@ def _description(raw: str, name: str) -> str:
 
 
 def load_presets() -> list[dict]:
-    """Return the built-in presets as ``[{name, description, params}]``, sorted
-    by name. Skips the directory's README/non-config files."""
+    """Return the built-in presets as ``[{name, label, description, params}]``,
+    sorted by name. Skips the directory's README/non-config files."""
     if not PRESETS_DIR.is_dir():
         return []
     out: list[dict] = []
@@ -53,6 +66,7 @@ def load_presets() -> list[dict]:
         out.append(
             {
                 "name": path.stem,
+                "label": _label(raw, path.stem),
                 "description": _description(raw, path.stem),
                 "params": params,
             }

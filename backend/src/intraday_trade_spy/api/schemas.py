@@ -514,6 +514,7 @@ class ConfigMutateRequest(_Base):
 
 class PresetView(_ResponseBase):
     name: str
+    label: str
     description: str
     params: dict
 

@@ -47,6 +47,32 @@ export function knobChips(knobs: KnobValues): { label: string; value: string }[]
   ]
 }
 
+/** Collapsed-row chips with diff awareness (strategy-page cleanup, prototype
+ *  kchip.diff): the four fixed summary chips each tagged off-default, PLUS a
+ *  chip per off-default knob outside the fixed four — without these, configs
+ *  differing only in e.g. stop buffer are indistinguishable collapsed. */
+export function configDiffChips(
+  knobs: KnobValues,
+): { label: string; value: string; diff: boolean }[] {
+  const summaryKeys: (keyof KnobValues)[] = [
+    'max_risk_per_trade_pct', 'max_position_value_pct', 'risk_reward', 'max_consecutive_losses',
+  ]
+  const chips = knobChips(knobs).map((chip, i) => ({
+    ...chip,
+    diff: knobs[summaryKeys[i]] !== KNOB_DEFAULTS[summaryKeys[i]],
+  }))
+  const extras: { key: keyof KnobValues; label: string; value: string }[] = [
+    { key: 'account_value', label: 'acct', value: `$${knobs.account_value.toLocaleString('en-US')}` },
+    { key: 'opening_range_minutes', label: 'OR', value: `${knobs.opening_range_minutes}min` },
+    { key: 'stop_buffer_pct', label: 'stop', value: `${knobs.stop_buffer_pct}%` },
+    { key: 'max_distance_from_vwap_pct', label: 'vwap', value: `${knobs.max_distance_from_vwap_pct}%` },
+  ]
+  for (const e of extras) {
+    if (knobs[e.key] !== KNOB_DEFAULTS[e.key]) chips.push({ label: e.label, value: e.value, diff: true })
+  }
+  return chips
+}
+
 /** Read a nested key path, defaulting to undefined. */
 export function get(obj: unknown, path: string[]): unknown {
   let cur: unknown = obj

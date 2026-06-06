@@ -180,11 +180,17 @@ def test_delete_last_config_409(unit_client, stub_storage_client):
 
 def test_list_presets(unit_client, stub_storage_client):
     stub_storage_client.list_presets.return_value = [
-        {"name": "aggressive", "description": "bigger risk", "params": {"risk": {}, "strategy": {}}}
+        {
+            "name": "aggressive",
+            "label": "Aggressive — bigger swings",
+            "description": "bigger risk",
+            "params": {"risk": {}, "strategy": {}},
+        }
     ]
     r = unit_client.get("/api/configs/presets")
     assert r.status_code == 200
     assert r.json()["presets"][0]["name"] == "aggressive"
+    assert r.json()["presets"][0]["label"] == "Aggressive — bigger swings"
 
 
 # ---- Feature 018 (T032 US3): provenance writes the trial ledger ---------------
