@@ -11,10 +11,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from intraday_trade_spy.api import errors
 from intraday_trade_spy.api.claude_analyst import DEFAULT_CONFIG_PATH
 from intraday_trade_spy.api.deps import auth_user_id, get_storage_client
-from intraday_trade_spy.api.schemas import RecommendHealthResponse
+from intraday_trade_spy.api.schemas import RecommendHealthResponse, RecommendPackResponse
 from intraday_trade_spy.config import load_config
+from intraday_trade_spy.recommend.candidates import assemble_recommendation
 from intraday_trade_spy.recommend.health import health_for_configs
 
 router = APIRouter(prefix="/recommend")
@@ -38,3 +40,44 @@ def recommend_health(
         thresholds=cfg.insights.health,
     )
     return RecommendHealthResponse.model_validate({"verdicts": verdicts})
+
+
+@router.get("/pack", response_model=RecommendPackResponse)
+def recommend_pack(
+    config_id: str,
+    user_id: UUID = Depends(auth_user_id),
+    storage_client=Depends(get_storage_client),
+) -> RecommendPackResponse:
+    """Evidence pack + deterministic ranked candidates for one config —
+    assembled exclusively from persisted artifacts (FR-005), no backtests,
+    no LLM (FR-009). Recommendations are hypotheses for the validation
+    machinery, not results."""
+    config = storage_client.get_config_by_id(config_id=config_id, user_id=user_id)
+    if config is None:
+        errors.raise_not_found(f"config {config_id} not found")
+    cfg = load_config(DEFAULT_CONFIG_PATH)
+    trial_counts = storage_client.recommendation_trial_counts(
+        strategy_id=config.get("strategy_id")
+    )
+    pack, candidates = assemble_recommendation(
+        config=config,
+        configs=storage_client.list_configs(user_id=user_id),
+        points=(storage_client.insights_edge_timeseries().get("points") or []),
+        dist_rows=(storage_client.insights_config_distribution().get("rows") or []),
+        surfaces=storage_client.list_sensitivity_surfaces(),
+        regimes=[
+            {"name": rw.name, "start": rw.start.isoformat(), "end": rw.end.isoformat()}
+            for rw in cfg.data.regimes
+        ],
+        health_thresholds=cfg.insights.health,
+        recommend_thresholds=cfg.insights.recommend,
+        trial_counts=trial_counts,
+    )
+    return RecommendPackResponse.model_validate(
+        {
+            "pack": pack,
+            "candidates": candidates,
+            "trial_counts": pack["trial_counts"],
+            "snapshot_fingerprint": pack["snapshot_fingerprint"],
+        }
+    )

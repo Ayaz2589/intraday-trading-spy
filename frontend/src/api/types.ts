@@ -527,3 +527,34 @@ export type HealthVerdictView = {
 }
 
 export type RecommendHealthResponse = { verdicts: HealthVerdictView[] }
+
+export type KnobChangeView = { knob_path: string; value: number }
+
+export type EvidenceRefView = {
+  metric_path: string
+  value: number | string | boolean | null
+}
+
+export type CandidateView = {
+  klass: 'knob_delta' | 'gather_evidence' | 'stop_tuning'
+  rank: number
+  score: number
+  changes: KnobChangeView[]
+  evidence: EvidenceRefView[]
+  already_tried: { config_id?: string | null; config_name?: string | null } | null
+  narrative_hint: string
+}
+
+export type TrialCountsView = { drafted: number; validated: number }
+
+export type RecommendPackResponse = {
+  pack: Record<string, unknown> & {
+    config_id: string
+    config_name: string
+    snapshot_fingerprint: string
+    trial_counts: TrialCountsView
+  }
+  candidates: CandidateView[]
+  trial_counts: TrialCountsView
+  snapshot_fingerprint: string
+}

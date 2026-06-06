@@ -1667,6 +1667,46 @@ class SupabaseStorageClient:
             "snapshot_fingerprint": self._insights_fingerprint([list(map(str, r)) for r in rows]),
         }
 
+    # ---------- Feature 018: recommendation engine ----------
+
+    def list_sensitivity_surfaces(self) -> list[dict]:
+        """Finished sensitivity studies' surfaces (SensitivitySurface dumps),
+        newest-first with id as the total-order tiebreaker — evidence-pack
+        input (FR-005); user-scoped in SQL."""
+        sql = (
+            "SELECT s.id, s.params->>'config_name' AS config_name, s.result, s.created_at "
+            "FROM public.validation_studies s "
+            "WHERE s.user_id = %s AND s.kind = 'sensitivity' "
+            "  AND s.status = 'finished' AND s.result IS NOT NULL "
+            "ORDER BY s.created_at DESC, s.id DESC"
+        )
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, [self.user_id])
+                rows = cur.fetchall()
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"list_sensitivity_surfaces failed: {exc}") from exc
+
+        import json
+
+        out = []
+        for r in rows:
+            surface = r[2]
+            if isinstance(surface, str):
+                surface = json.loads(surface)
+            out.append(
+                {
+                    "study_id": str(r[0]),
+                    "config_name": r[1],
+                    "surface": surface or {},
+                }
+            )
+        return out
+
     # ---------- Feature 016: Claude analyses + settings (PostgREST) ----------
 
     def insert_insight_analysis(

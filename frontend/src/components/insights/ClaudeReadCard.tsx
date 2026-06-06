@@ -103,7 +103,7 @@ export function ClaudeReadCard({
   currentFingerprints,
   metricValues = {},
 }: {
-  scope: 'study' | 'insights'
+  scope: 'study' | 'insights' | 'recommend'
   scopeId?: string
   banner?: VerdictBanner
   // Feature 017: the config name a drafted experiment should base itself on

@@ -543,3 +543,42 @@ class HealthVerdictView(_ResponseBase):
 
 class RecommendHealthResponse(_ResponseBase):
     verdicts: list[HealthVerdictView]
+
+
+class KnobChangeView(_ResponseBase):
+    knob_path: str
+    value: float
+
+
+class EvidenceRefView(_ResponseBase):
+    """A citation into the evidence pack — resolvable, never invented (SC-003)."""
+
+    metric_path: str
+    value: Optional[float | str | bool] = None
+
+
+class AlreadyTriedView(_ResponseBase):
+    config_id: Optional[str] = None
+    config_name: Optional[str] = None
+
+
+class CandidateView(_ResponseBase):
+    klass: Literal["knob_delta", "gather_evidence", "stop_tuning"]
+    rank: int
+    score: float
+    changes: list[KnobChangeView]
+    evidence: list[EvidenceRefView]
+    already_tried: Optional[AlreadyTriedView] = None
+    narrative_hint: str
+
+
+class TrialCountsView(_ResponseBase):
+    drafted: int
+    validated: int
+
+
+class RecommendPackResponse(_ResponseBase):
+    pack: dict
+    candidates: list[CandidateView]
+    trial_counts: TrialCountsView
+    snapshot_fingerprint: str

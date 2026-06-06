@@ -337,3 +337,110 @@ def test_generation_path_never_mutates_configs(monkeypatch):
     storage.create_config.assert_not_called()
     storage.update_config.assert_not_called()
     storage.set_active_config.assert_not_called()
+
+
+# ---- Feature 018 (T019): scope='recommend' over the evidence pack -------------
+
+
+def _recommend_storage():
+    s = _storage()
+    s.get_config_by_id.return_value = {
+        "id": "c1", "name": "wf-rr3", "strategy_id": "strat-1",
+        "params": {"risk": {"account_value": 1000},
+                   "strategy": {"vwap_pullback": {"target": {"risk_reward": 3.0}}}},
+    }
+    s.list_configs.return_value = [s.get_config_by_id.return_value]
+    s.insights_edge_timeseries.return_value = {
+        "points": [
+            {"run_id": f"r{i}", "config_name": "wf-rr3",
+             "range_start": f"{2019 + i}-01-01", "range_end": f"{2019 + i}-06-28",
+             "trades": 100, "net_pnl": 10.0, "expectancy_r": 0.01}
+            for i in range(8)
+        ],
+        "snapshot_fingerprint": "fp-edge",
+    }
+    s.insights_config_distribution.return_value = {
+        "rows": [{"config_name": "wf-rr3", "gate_passed": False,
+                  "gate_ci_low": -0.71, "gate_ci_high": 2.6}],
+        "snapshot_fingerprint": "fp-dist",
+    }
+    s.list_sensitivity_surfaces.return_value = []
+    s.recommendation_trial_counts.return_value = {"drafted": 2, "validated": 1}
+    return s
+
+
+def test_recommend_scope_requires_scope_id(monkeypatch):
+    storage = _recommend_storage()
+    with pytest.raises(ca.ClaudeBadRequest):
+        _run(storage, _mock_client(), scope="recommend", scope_id=None, monkeypatch=monkeypatch)
+
+
+def test_recommend_scope_builds_pack_payload_with_candidates_and_trials(monkeypatch):
+    storage = _recommend_storage()
+    client = _mock_client()
+    out = _run(storage, client, scope="recommend", scope_id="c1", monkeypatch=monkeypatch)
+    assert out["scope"] == "recommend"
+    # the user message carries the pack: candidates + trial counts ride along
+    sent = client.messages.parse.call_args.kwargs["messages"][0]["content"]
+    assert '"candidates"' in sent
+    assert '"trial_counts"' in sent
+    assert '"drafted": 2' in sent or '"drafted":2' in sent.replace(" ", "")
+
+
+def test_recommend_scope_pins_by_payload_hash(monkeypatch):
+    storage = _recommend_storage()
+    client = _mock_client()
+    first = _run(storage, client, scope="recommend", scope_id="c1", monkeypatch=monkeypatch)
+    storage.get_latest_insight_analysis.return_value = {
+        "id": "ia1", "payload_hash": first["payload_hash"], "analysis": {},
+    }
+    again = _run(storage, client, scope="recommend", scope_id="c1", monkeypatch=monkeypatch)
+    assert again["id"] == "ia1"
+    assert client.messages.parse.call_count == 1  # no second provider call
+
+
+def test_recommend_scope_sanitizes_suggestions_before_storage(monkeypatch):
+    from intraday_trade_spy.models import (
+        ClaudeAnalysis,
+        ClaudeExperiment,
+        ConfigChange,
+    )
+
+    dirty = ClaudeAnalysis(
+        summary="s",
+        findings=[],
+        risks=[],
+        suggested_experiments=[
+            ClaudeExperiment(
+                hypothesis="h", how_to_test="t",
+                suggested_config_changes=[
+                    ConfigChange(knob_path="strategy.vwap_pullback.target.risk_reward", value=2.5),
+                    ConfigChange(knob_path="evil.off_registry", value=1.0),
+                ],
+            )
+        ],
+    )
+    storage = _recommend_storage()
+    _run(storage, _mock_client(parsed=dirty), scope="recommend", scope_id="c1",
+         monkeypatch=monkeypatch)
+    stored = storage.insert_insight_analysis.call_args.kwargs["analysis"]
+    changes = stored["suggested_experiments"][0]["suggested_config_changes"]
+    assert changes == [
+        {"knob_path": "strategy.vwap_pullback.target.risk_reward", "value": 2.5}
+    ]
+
+
+def test_recommend_scope_unknown_config_is_bad_request(monkeypatch):
+    storage = _recommend_storage()
+    storage.get_config_by_id.return_value = None
+    with pytest.raises(ca.ClaudeBadRequest):
+        _run(storage, _mock_client(), scope="recommend", scope_id="nope", monkeypatch=monkeypatch)
+
+
+def test_recommend_scope_respects_billing_pause(monkeypatch):
+    storage = _recommend_storage()
+    storage.get_insight_settings.return_value = {
+        "claude_enabled": False, "disabled_reason": "billing",
+    }
+    with pytest.raises(ca.ClaudePaused):
+        _run(storage, _mock_client(), scope="recommend", scope_id="c1", monkeypatch=monkeypatch)

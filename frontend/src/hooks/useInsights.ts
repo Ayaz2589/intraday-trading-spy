@@ -35,14 +35,14 @@ export const claudeAnalysisQueryKey = (scope: string, scopeId?: string) =>
 
 export const claudeSettingsQueryKey = () => ['insights', 'claude-settings'] as const
 
-export function useClaudeAnalysis(scope: 'study' | 'insights', scopeId?: string) {
+export function useClaudeAnalysis(scope: 'study' | 'insights' | 'recommend', scopeId?: string) {
   return useQuery({
     queryKey: claudeAnalysisQueryKey(scope, scopeId),
     queryFn: () => getClaudeAnalysis(scope, scopeId),
   })
 }
 
-export function useGenerateClaudeAnalysis(scope: 'study' | 'insights', scopeId?: string) {
+export function useGenerateClaudeAnalysis(scope: 'study' | 'insights' | 'recommend', scopeId?: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (force: boolean) =>

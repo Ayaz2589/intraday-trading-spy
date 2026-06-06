@@ -3,6 +3,7 @@ import { useConfigDistribution, useEdgeTimeseries } from '@/hooks/useInsights'
 import { EdgeTimeseries } from './EdgeTimeseries'
 import { ConfigDistribution } from './ConfigDistribution'
 import { ClaudeReadCard, flattenMetrics, type VerdictBanner } from './ClaudeReadCard'
+import { RecommendationsPanel } from '../recommend/RecommendationsPanel'
 import type { ConfigDistributionRow, EdgeTimeseriesPoint } from '@/api/types'
 
 // Feature 016: the Insights page. Redesigned 2026-06-05 (design handoff,
@@ -198,6 +199,10 @@ export function InsightsPage() {
             distribution: { rows: dist.data?.rows ?? [] },
           })}
         />
+
+        {/* 018 US2: evidence-backed recommendations close the loop the page
+            opens — verdicts, deterministic candidates, advisory narrative. */}
+        <RecommendationsPanel />
       </div>
     </div>
   )

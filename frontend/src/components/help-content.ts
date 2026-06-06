@@ -94,7 +94,9 @@ export type HelpContentKey =
   // Feature 017 (claude experiment drafts) concepts
   | "claude_experiment_draft"
   // Feature 018 (recommendation engine) concepts
-  | "health_verdict";
+  | "health_verdict"
+  | "recommendation_classes"
+  | "evidence_pack";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -447,6 +449,16 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Config health verdict",
     description:
       "A deterministic judgment of whether this config is still earning its keep out-of-sample: ok, degrading (recent validation windows fell below the config's own archive baseline), failing (the pooled gate failed AND recent windows are non-positive), or insufficient evidence (too few windows to say anything). It is computed purely from stored results with published thresholds — no AI involved — and recomputing against unchanged data always yields the same verdict. Hover the badge for the exact numbers behind it.",
+  },
+  recommendation_classes: {
+    title: "Recommendation classes",
+    description:
+      "Recommendations come in three honest flavors. A knob change is a setting the archive has actually measured (a sensitivity plateau or another config's matched-window result) — never an untested invention. Gather evidence means the data to justify a change doesn't exist yet, and names the study to run. Stop tuning fires when every config in the family failed its pooled gate: more knob-turning won't conjure an edge that isn't there. Every recommendation is a hypothesis for the validation machinery — nothing is ever applied automatically.",
+  },
+  evidence_pack: {
+    title: "Evidence pack",
+    description:
+      "The bundle of already-stored results a recommendation is computed from: this config's out-of-sample windows, matched-window comparisons against sibling configs, sensitivity-sweep neighborhoods, per-regime results, pooled-gate intervals, and how many variants were already tried. It is assembled read-only — no new backtests run — and pinned to a snapshot fingerprint so you always know which data a recommendation (or Claude's narrative about it) described.",
   },
   lockbox: {
     title: "Lockbox",
