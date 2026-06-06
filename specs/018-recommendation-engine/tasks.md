@@ -125,9 +125,9 @@ implementable and testable (US1 alone is the MVP).
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T039 [P] Update the /docs page for the new surface: Insights page-card copy + research-pipeline step mention recommendations in `frontend/src/components/docs/DocsPage.tsx` (extend `frontend/src/components/docs/DocsPage.test.tsx` first; glossary inherits the four new help keys automatically — assert count still tracks `HELP_CONTENT`)
-- [ ] T040 [P] Run quickstart.md end-to-end against the dev stack and record outcomes: verdict determinism (SC-002), Claude-off rendering (SC-005), stop-tuning presence on the all-fail archive (SC-006), draft→ledger→deletion-survival, verdict→draft in under 2 minutes (SC-007)
-- [ ] T041 Full verification: backend `python -m pytest` green, frontend `npx vitest run` green (3 price-chart baseline failures excepted), `npm run typecheck` + build clean; update `CLAUDE.md` prior-plans entry for 018 on completion
+- [X] T039 [P] Update the /docs page for the new surface: Insights page-card copy + research-pipeline step mention recommendations in `frontend/src/components/docs/DocsPage.tsx` (extend `frontend/src/components/docs/DocsPage.test.tsx` first; glossary inherits the four new help keys automatically — assert count still tracks `HELP_CONTENT`)
+- [X] T040 [P] Run quickstart.md end-to-end against the dev stack and record outcomes: verdict determinism (SC-002), Claude-off rendering (SC-005), stop-tuning presence on the all-fail archive (SC-006), draft→ledger→deletion-survival, verdict→draft in under 2 minutes (SC-007)
+- [X] T041 Full verification: backend `python -m pytest` green, frontend `npx vitest run` green (3 price-chart baseline failures excepted), `npm run typecheck` + build clean; update `CLAUDE.md` prior-plans entry for 018 on completion
 
 ---
 

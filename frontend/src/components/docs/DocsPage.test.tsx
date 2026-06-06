@@ -101,6 +101,12 @@ describe("DocsPage", () => {
     expect(screen.getByText(/no terms match/i)).toBeInTheDocument();
   });
 
+  it("documents the recommendation loop (018) on the Insights card and pipeline", () => {
+    render(<DocsPage />);
+    expect(screen.getByTestId("docs-pages")).toHaveTextContent(/recommendation/i);
+    expect(screen.getByTestId("docs-research-flow")).toHaveTextContent(/recommendation/i);
+  });
+
   it("states the hard guardrails: SPY-only, long-only, paper-first", () => {
     render(<DocsPage />);
     const intro = screen.getByTestId("docs-intro");

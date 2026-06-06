@@ -117,8 +117,9 @@ const PAGES: {
     what: 'The cross-run out-of-sample archive.',
     details:
       'Every OOS validation window across all studies, pooled: the edge time-series over market ' +
-      "regimes, the per-config window distribution, gate verdicts, and Claude's advisory read of " +
-      'the evidence.',
+      "regimes, the per-config window distribution, gate verdicts, Claude's advisory read of " +
+      'the evidence, and evidence-backed recommendations (health verdicts, candidate knob ' +
+      'changes, the trial ledger) for what to try next.',
   },
   {
     name: 'Data',
@@ -258,9 +259,11 @@ export function DocsPage() {
               A final slice of history nothing was ever tuned on. It opens once per strategy —
               after that it's burned, and the result stands.
             </FlowStep>
-            <FlowStep n={6} name="Insights" color="var(--profit)">
+            <FlowStep n={6} name="Insights & recommendations" color="var(--profit)">
               The whole OOS archive pooled across studies and configs — where you ask whether the
-              edge is stable or regime-bound. Claude reads the evidence there, advisory only.
+              edge is stable or regime-bound. Health verdicts and evidence-backed recommendations
+              suggest what to try next (Claude narrates, advisory only); every accepted suggestion
+              goes back through steps 3–5.
             </FlowStep>
           </div>
         </Card>
