@@ -8,6 +8,15 @@
 
 **Input**: User description: "Automated strategy research: authenticated research CLI for every pipeline step, a server-side auto-research loop with honest stopping rules, and a dashboard panel to launch and monitor it. The loop goes through the full flow (data freshness → walk-forward → pooled gate → recommendations → next candidate) until it finds an effective strategy or honestly concludes there is none — and it never spends the lockbox itself."
 
+## Clarifications
+
+### Session 2026-06-06
+
+- Q: How should the research CLI establish the operator's session on first run? → A: One-time email-code sign-in (the same OTP path the web app uses); the session is persisted locally and auto-renewed.
+- Q: When a campaign finds the bar cache stale or empty, what should it do? → A: Auto-backfill as the first step of the cycle (full span if empty, incremental if stale); halt with failed(no-data) only if the backfill itself fails.
+- Q: Where should the campaign launch/monitor surface live? → A: An Auto-research section on the Validation page (alongside studies and the lockbox), with a per-campaign drill-down detail page; no new navigation item.
+- Q: How should the trial budget be scoped? → A: Per campaign — one cap on total candidates tried; family-level honesty comes from the trial-count-tightened bar and the engine's stop-tuning verdict, not per-family sub-budgets.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run the whole research pipeline from the terminal (Priority: P1)
@@ -115,8 +124,9 @@ after is identical.
 
 ### User Story 3 - Launch and monitor campaigns from the dashboard (Priority: P3)
 
-As the operator, I can start a campaign from a dashboard panel (pick the
-starting config, set the budget), watch it progress cycle by cycle — current
+As the operator, I can start a campaign from the Auto-research section on
+the Validation page (pick the starting config, set the budget), watch it
+progress cycle by cycle — current
 stage, gate verdicts so far, candidates tried, trial-ledger growth — and see
 the terminal verdict prominently, with guidance on the next human step
 (e.g., "candidate ready — run your one-shot lockbox test from the
@@ -149,9 +159,10 @@ all reachable from the campaign's detail view.
 
 ### Edge Cases
 
-- Empty bar cache (fresh world): the campaign's first cycle surfaces the
-  data gap and either runs the data refresh as its first step or halts with
-  an explicit "no research data" verdict — it does not run studies on
+- Empty or stale bar cache (fresh world): the campaign auto-backfills as
+  the first step of the cycle — the full research span when empty,
+  incremental when stale — and halts with **failed** (reason: no research
+  data) only if that backfill itself fails. It never runs studies on
   nothing.
 - Starting config already passes the gate: the campaign halts on cycle 1
   with **ready-for-lockbox** without consuming budget on candidates.
@@ -190,8 +201,10 @@ all reachable from the campaign's detail view.
   the same identity and data scope as the web app. Commands MUST NOT use
   privileged server credentials as the acting identity, and a missing or
   expired session MUST produce a clear re-sign-in instruction, never a
-  silent privilege fallback. A one-time interactive sign-in MAY establish a
-  persisted, renewable session on the operator's machine.
+  silent privilege fallback. First-run sign-in is a one-time email-code
+  flow (the same one-time-passcode path the web app uses); the resulting
+  session is persisted on the operator's machine and renewed automatically
+  thereafter.
 - **FR-003**: Each command MUST report its outcome both human-readably and
   machine-readably (ids, status, and where to see the artifact in the UI),
   so scripts and the campaign runner can compose commands.
@@ -206,10 +219,13 @@ all reachable from the campaign's detail view.
 **Auto-research campaign (US2)**
 
 - **FR-006**: The operator MUST be able to start a campaign by naming a
-  starting config and a trial budget; defaults for the budget and stopping
-  thresholds live in the application's configuration file (no hardcoded
-  numbers).
-- **FR-007**: Each campaign cycle MUST: verify research data currency, run
+  starting config and a campaign-level trial budget (one cap on the total
+  candidates the campaign may try — there are no per-family sub-budgets);
+  defaults for the budget and stopping thresholds live in the
+  application's configuration file (no hardcoded numbers).
+- **FR-007**: Each campaign cycle MUST: verify research data currency and
+  auto-backfill any gap (full span when the cache is empty, incremental
+  when stale; halt as **failed** only if the backfill itself fails), run
   a walk-forward study on the current candidate, compute the pooled gate,
   and on failure act on the deterministic recommendation engine's
   top-ranked next step — knob-delta → create a draft config; gather-evidence
@@ -242,10 +258,12 @@ all reachable from the campaign's detail view.
 
 **Dashboard panel (US3)**
 
-- **FR-015**: A dashboard surface MUST let the operator launch a campaign
-  (starting config, budget), observe live progress cycle by cycle, cancel a
-  running campaign, and review past campaigns with links to every produced
-  study, config, and ledger row.
+- **FR-015**: An Auto-research section on the Validation page MUST let the
+  operator launch a campaign (starting config, budget), observe live
+  progress cycle by cycle, and cancel a running campaign; each campaign
+  MUST have a drill-down detail page reviewing every cycle with links to
+  every produced study, config, and ledger row. No new top-level
+  navigation item is introduced.
 - **FR-016**: The terminal verdict MUST be displayed prominently with the
   recommended next human action; **ready-for-lockbox** MUST direct the
   operator to the existing lockbox decision (never offer to spend it from
@@ -313,9 +331,10 @@ all reachable from the campaign's detail view.
 - The campaign composes *existing* validation machinery (walk-forward
   studies, pooled gate, recommendation engine, trial ledger); it introduces
   orchestration and the multiplicity schedule, not new statistical methods.
-- The CLI's one-time sign-in may be interactive (e.g., the operator
-  completes the same kind of sign-in the web app uses once, and the session
-  is stored locally and renewed automatically thereafter).
+- The CLI's one-time sign-in is interactive: the operator requests an
+  email one-time code (the web app's existing sign-in method), enters it
+  once, and the stored session renews automatically thereafter (clarified
+  2026-06-06).
 - Mid-cycle advisory narration is off by default to control cost; an
   optional end-of-campaign advisory summary may be requested explicitly.
 - Whole-database deletion (factory reset) stays UI-only.
