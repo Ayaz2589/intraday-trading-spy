@@ -1,4 +1,5 @@
 # PRESET: low-risk — risk per trade halved from default 0.1% to 0.05%.
+# LABEL: Low risk — half-size trades
 #
 # Hypothesis (Experiment 003 in EXPERIMENTS.md): the position cap
 # acts as a minimum-stop-distance filter. Lowering risk per trade

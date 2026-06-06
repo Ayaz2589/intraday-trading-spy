@@ -3,6 +3,7 @@ import { useCreateConfig, useDuplicateConfig, usePresets } from '@/hooks/useConf
 import { HelpTooltip } from '@/components/help-tooltip'
 import { SectionTitle, cardSection } from '@/components/section-title'
 import { FieldLabel, inputStyle } from './field'
+import { configDiffChips, knobsFromConfig } from '@/lib/config-knobs'
 import type { Config, ConfigSource } from '@/api/types'
 
 // "New config" section of the strategy page (2026-06-05 redesign). Creation
@@ -103,7 +104,7 @@ export function NewConfigSection({
             >
               {presets.map(p => (
                 <option key={p.name} value={p.name}>
-                  {p.name}
+                  {p.label || p.name}
                 </option>
               ))}
             </select>
@@ -143,10 +144,19 @@ export function NewConfigSection({
       {source === 'preset' && selectedPreset && (
         <p
           data-testid="preset-desc"
-          style={{ margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}
+          style={{ margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
         >
-          <span className="chip chip-accent">{selectedPreset.name}</span>
+          <span className="chip chip-accent">{selectedPreset.label || selectedPreset.name}</span>
           {selectedPreset.description}
+          {/* What the preset actually changes — same chip language as config rows. */}
+          {configDiffChips(knobsFromConfig({ params: selectedPreset.params } as Config))
+            .filter(chip => chip.diff)
+            .map(chip => (
+              <span key={chip.label} className="chip chip-accent">
+                {chip.label}&nbsp;
+                <span style={{ fontFamily: 'var(--mono)' }}>{chip.value}</span>
+              </span>
+            ))}
         </p>
       )}
     </section>

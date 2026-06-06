@@ -38,8 +38,12 @@ beforeEach(() => {
     presets: [
       {
         name: 'aggressive',
+        label: 'Aggressive — bigger swings',
         description: 'Bigger risk per trade, looser loss lockout, wider VWAP band.',
-        params: {},
+        params: {
+          risk: { max_risk_per_trade_pct: 1.0, max_position_value_pct: 1200, max_consecutive_losses: 4 },
+          strategy: { vwap_pullback: { target: { risk_reward: 3 } } },
+        },
       },
     ],
   })
@@ -49,8 +53,9 @@ async function mount(onCreated = vi.fn()) {
   wrap(
     <NewConfigSection configs={[cfg('1', 'default')]} activeConfigId="1" onCreated={onCreated} />,
   )
+  // Options carry the human-readable label; the value stays the canonical name.
   await waitFor(() =>
-    expect(screen.getByRole('option', { name: 'aggressive' })).toBeInTheDocument(),
+    expect(screen.getByRole('option', { name: 'Aggressive — bigger swings' })).toBeInTheDocument(),
   )
   return onCreated
 }
@@ -84,13 +89,28 @@ describe('NewConfigSection', () => {
     expect(screen.getByRole('button', { name: '+ Create config' })).toBeDisabled()
   })
 
-  it('shows the selected preset as a chip with its description', async () => {
+  it('shows the selected preset as a labeled chip with its description', async () => {
     await mount()
     const desc = screen.getByTestId('preset-desc')
-    expect(within(desc).getByText('aggressive')).toBeInTheDocument()
+    expect(within(desc).getByText('Aggressive — bigger swings')).toBeInTheDocument()
     expect(
       within(desc).getByText('Bigger risk per trade, looser loss lockout, wider VWAP band.'),
     ).toBeInTheDocument()
+  })
+
+  it("shows the selected preset's changed knob values as accent chips", async () => {
+    await mount()
+    const desc = screen.getByTestId('preset-desc')
+    // The aggressive preset's off-default knobs, same chip language as config rows.
+    expect(within(desc).getByText('risk')).toBeInTheDocument()
+    expect(within(desc).getByText('1%')).toBeInTheDocument()
+    expect(within(desc).getByText('1200%')).toBeInTheDocument()
+    expect(within(desc).getByText('R:R')).toBeInTheDocument()
+    expect(within(desc).getByText('3')).toBeInTheDocument()
+    expect(within(desc).getByText('lockout')).toBeInTheDocument()
+    expect(within(desc).getByText('risk').closest('.chip')?.className).toContain('chip-accent')
+    // Unchanged knobs (e.g. stop buffer) get no chip.
+    expect(within(desc).queryByText('stop')).toBeNull()
   })
 
   it('renders the duplicate_vs_edit tooltip', async () => {

@@ -148,8 +148,11 @@ export type Config = {
 
 // Feature 012 — built-in preset a config can be created from. Read-only
 // templates surfaced by GET /api/configs/presets; not user-editable themselves.
+// `name` is the canonical identifier (sent as preset_name); `label` is the
+// human-readable display name.
 export type Preset = {
   name: string
+  label: string
   description: string
   params: Record<string, unknown>
 }

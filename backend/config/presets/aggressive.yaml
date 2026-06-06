@@ -1,5 +1,6 @@
 # PRESET: aggressive — bigger risk per trade, looser loss lockout,
 # 3:1 R/R targets.
+# LABEL: Aggressive — bigger swings
 #
 # Tests the hypothesis "what if I want bigger winners and tolerate
 # longer loss streaks?" The position-value cap is set high enough to be

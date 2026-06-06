@@ -1,4 +1,5 @@
 # PRESET: demo — permissive cap so the strategy fires reliably.
+# LABEL: Demo — pipeline smoke test
 #
 # Use this to see the engine + UI end-to-end without the position
 # cap blocking every signal. The 1500% max_position_value_pct is
