@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/018-recommendation-engine/plan.md](specs/018-recommendation-engine/plan.md) — recommendation engine closing the 016/017 loop: deterministic per-config OOS health verdicts (ok/degrading/failing/insufficient-evidence, thresholds in config.yaml), evidence packs mined from persisted 011/014/016 artifacts (no new backtests), ranked whitelisted knob-delta candidates + gather-evidence/stop-tuning classes, Claude scope='recommend' on the existing analyst, 017 Draft-config actuation, and a deletion-surviving trial ledger (migration 0125). New backend package `recommend/`; zero new deps; deterministic core works with Claude off.
+**Active plan**: [specs/018-recommendation-engine/plan.md](specs/018-recommendation-engine/plan.md) — **implemented & merged to main** (recommendation engine closing the 016/017 loop: deterministic per-config OOS health verdicts w/ config.yaml thresholds + Strategies badge, evidence packs mined from persisted 011/014/016 artifacts — no new backtests, ranked whitelisted knob-delta candidates + gather-evidence/stop-tuning classes, Claude scope='recommend' on the existing analyst, 017 Draft-config actuation, deletion-surviving trial ledger; migration 0125 applied; new backend package `recommend/`; zero new deps; deterministic core works with Claude off; live-verified incl. real Opus recommend analysis — SC-002 recompute-identical, SC-006 stop-tuning fired on the real all-gates-fail archive).
 
 **Most recent spec**: [specs/018-recommendation-engine/spec.md](specs/018-recommendation-engine/spec.md)
 
