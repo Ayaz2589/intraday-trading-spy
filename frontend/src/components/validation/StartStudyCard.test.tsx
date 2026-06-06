@@ -79,6 +79,87 @@ describe('StartStudyCard', () => {
     )
   })
 
+  it('renders every registry knob as a toggle pill — risk:reward pre-selected', async () => {
+    listConfigsMock.mockResolvedValue({ configs: [cfg('default', true)] })
+    const { StartStudyCard } = await import('./StartStudyCard')
+    wrap(createElement(StartStudyCard))
+    fireEvent.click(screen.getByTestId('kind-sensitivity'))
+    for (const label of [
+      'account value ($)',
+      'max risk per trade (%)',
+      'max position value (% of account)',
+      'max consecutive losses',
+      'opening range (minutes)',
+      'risk:reward target',
+      'stop buffer (%)',
+      'max distance from VWAP (%)',
+    ]) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    }
+    expect(screen.getByRole('button', { name: 'risk:reward target', pressed: true })).toBeInTheDocument()
+    expect(screen.queryByLabelText('knob')).not.toBeInTheDocument() // the free-text path input is gone
+  })
+
+  it('switching the knob pill reseeds the value inputs with that knob defaults and launches them', async () => {
+    listConfigsMock.mockResolvedValue({ configs: [cfg('default', true)] })
+    startStudyMock.mockResolvedValue({ study_id: 'x', status: 'queued', planned_evaluations: 8 })
+    getStudyStatusMock.mockResolvedValue({ id: 'x', status: 'running', progress_completed: 0, progress_total: 8, failure_reason: null })
+    const { StartStudyCard } = await import('./StartStudyCard')
+    wrap(createElement(StartStudyCard))
+    fireEvent.click(screen.getByTestId('kind-sensitivity'))
+    fireEvent.click(screen.getByRole('button', { name: 'opening range (minutes)' }))
+    expect(screen.getByRole('button', { name: 'opening range (minutes)', pressed: true })).toBeInTheDocument()
+    const inputs = screen.getAllByRole('spinbutton', { name: /^value \d+$/ })
+    expect(inputs.map(i => (i as HTMLInputElement).value)).toEqual(['10', '15', '20', '30'])
+    fireEvent.click(screen.getByRole('button', { name: /launch study/i }))
+    await waitFor(() =>
+      expect(startStudyMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          grid: [{ knob: 'strategy.opening_range.minutes', values: [10, 15, 20, 30] }],
+        }),
+      ),
+    )
+  })
+
+  it('values are one input each — editable, addable, removable; no comma parsing', async () => {
+    listConfigsMock.mockResolvedValue({ configs: [cfg('default', true)] })
+    startStudyMock.mockResolvedValue({ study_id: 'x', status: 'queued', planned_evaluations: 8 })
+    getStudyStatusMock.mockResolvedValue({ id: 'x', status: 'running', progress_completed: 0, progress_total: 8, failure_reason: null })
+    const { StartStudyCard } = await import('./StartStudyCard')
+    wrap(createElement(StartStudyCard))
+    fireEvent.click(screen.getByTestId('kind-sensitivity'))
+
+    let inputs = screen.getAllByRole('spinbutton', { name: /^value \d+$/ })
+    expect(inputs.map(i => (i as HTMLInputElement).value)).toEqual(['1.5', '2', '2.5', '3'])
+
+    fireEvent.change(inputs[1], { target: { value: '2.2' } })
+    fireEvent.click(screen.getByRole('button', { name: /add value/i }))
+    inputs = screen.getAllByRole('spinbutton', { name: /^value \d+$/ })
+    expect(inputs).toHaveLength(5)
+    fireEvent.change(inputs[4], { target: { value: '4' } })
+    fireEvent.click(screen.getByRole('button', { name: 'remove value 1' }))
+    expect(screen.getAllByRole('spinbutton', { name: /^value \d+$/ })).toHaveLength(4)
+
+    fireEvent.click(screen.getByRole('button', { name: /launch study/i }))
+    await waitFor(() =>
+      expect(startStudyMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          grid: [{ knob: 'strategy.vwap_pullback.target.risk_reward', values: [2.2, 2.5, 3, 4] }],
+        }),
+      ),
+    )
+  })
+
+  it('Manage configs is a button-styled link to the configs page; config select is wide', async () => {
+    listConfigsMock.mockResolvedValue({ configs: [cfg('default', true)] })
+    const { StartStudyCard } = await import('./StartStudyCard')
+    wrap(createElement(StartStudyCard))
+    const manage = await screen.findByRole('link', { name: /manage configs/i })
+    expect(manage).toHaveAttribute('href', '/strategies')
+    expect(manage.className).toContain('btn')
+    expect(screen.getByLabelText('config')).toHaveStyle({ minWidth: '260px' })
+  })
+
   it('shows the animated status panel for the launched study', async () => {
     listConfigsMock.mockResolvedValue({ configs: [cfg('default', true)] })
     startStudyMock.mockResolvedValue({ study_id: 'study-9', status: 'queued', planned_evaluations: 24 })
