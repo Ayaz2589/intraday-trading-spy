@@ -40,6 +40,9 @@ export function SideNav() {
   const [resetError, setResetError] = useState<string | null>(null)
 
   async function runFactoryReset() {
+    // The wipe can take a while (the whole bar cache goes) — swap the confirm
+    // dialog for the blocking progress overlay below until it resolves.
+    setConfirmOpen(false)
     setResetting(true)
     setResetError(null)
     try {
@@ -47,7 +50,6 @@ export function SideNav() {
       window.location.assign('/data')
     } catch (e) {
       setResetError((e as Error)?.message ?? 'reset failed')
-      setConfirmOpen(false)
       setResetting(false)
     }
   }
@@ -184,11 +186,53 @@ export function SideNav() {
           "undone. A fresh 'default' config is re-seeded and you'll land on " +
           'the Data page to backfill from scratch.'
         }
-        confirmLabel={resetting ? 'Deleting…' : 'Delete everything'}
+        confirmLabel="Delete everything"
         cancelLabel="Cancel"
         onConfirm={runFactoryReset}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      {/* Blocking progress overlay: the wipe is global and irreversible, so no
+          interaction with soon-to-be-stale pages while it runs. Stays up until
+          the hard reload onto /data (success) or the error lands (failure). */}
+      {resetting && (
+        <div
+          data-testid="factory-reset-overlay"
+          role="alert"
+          aria-busy="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'color-mix(in srgb, var(--surface, #fff) 72%, transparent)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              padding: '18px 22px',
+              maxWidth: 420,
+              boxShadow: 'var(--shadow-lg, 0 8px 30px rgba(0,0,0,0.18))',
+            }}
+          >
+            <span className="spinner" aria-hidden />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 'var(--fs-sm, 13px)' }}>Deleting all data…</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs, 11px)', marginTop: 2 }}>
+                Wiping runs, studies, configs, ledgers and the SPY bar cache — this can
+                take a little while. You&apos;ll land on the Data page when it&apos;s done.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
