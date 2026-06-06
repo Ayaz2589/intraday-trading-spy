@@ -2,16 +2,33 @@ import { useState } from 'react'
 import { useConfigs } from '@/hooks/useConfigs'
 import { useStartStudy, useStudyStatus } from '@/hooks/useStudies'
 import { HelpTooltip } from '@/components/help-tooltip'
+import { SENSITIVITY_KNOBS } from '@/lib/config-knobs'
 import type { StartStudyRequest, StudyKind } from '@/api/types'
 
 // Validation-page redesign: the study launcher — kind chips, config picker
-// (pre-selects the ACTIVE config, SC-007), and a prominent animated status
-// panel that follows the launched study to completion.
+// (pre-selects the ACTIVE config, SC-007), registry-backed knob toggles +
+// per-value grid inputs for sensitivity sweeps, and a prominent animated
+// status panel that follows the launched study to completion.
 
 const KINDS: Array<{ key: StudyKind; label: string; helpKey: 'walk_forward' | 'parameter_sensitivity' }> = [
   { key: 'walk_forward', label: 'Walk-forward', helpKey: 'walk_forward' },
   { key: 'sensitivity', label: 'Sensitivity', helpKey: 'parameter_sensitivity' },
 ]
+
+const DEFAULT_KNOB = SENSITIVITY_KNOBS[0]
+
+function pillStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '3px 12px',
+    borderRadius: 999,
+    fontSize: 'var(--fs-xs, 11px)',
+    fontWeight: 600,
+    cursor: 'pointer',
+    border: `1px solid ${active ? 'var(--accent, #2563eb)' : 'var(--border)'}`,
+    background: active ? 'var(--accent-bg, #e8effd)' : 'var(--surface, #fff)',
+    color: active ? 'var(--accent, #2563eb)' : 'var(--text-muted)',
+  }
+}
 
 const inputStyle: React.CSSProperties = {
   padding: '6px 8px',
@@ -104,15 +121,23 @@ export function StartStudyCard({ defaultConfig = 'default' }: { defaultConfig?: 
   const configName = picked ?? activeName ?? defaultConfig
 
   const [kind, setKind] = useState<StudyKind>('walk_forward')
-  const [knob, setKnob] = useState('strategy.vwap_pullback.target.risk_reward')
-  const [values, setValues] = useState('1.5, 2.0, 2.5, 3.0')
+  const [knob, setKnob] = useState(DEFAULT_KNOB.path)
+  // One string per grid value (kept as text so "1." survives typing); picking
+  // a knob reseeds them with that knob's default grid.
+  const [values, setValues] = useState<string[]>(DEFAULT_KNOB.defaults.map(String))
   const start = useStartStudy()
   const [launched, setLaunched] = useState<{ id: string; kind: StudyKind; config: string } | null>(null)
+
+  function pickKnob(path: string) {
+    setKnob(path)
+    const spec = SENSITIVITY_KNOBS.find((k) => k.path === path)
+    if (spec) setValues(spec.defaults.map(String))
+  }
 
   function launch() {
     const body: StartStudyRequest = { kind, config_name: configName }
     if (kind === 'sensitivity') {
-      const parsed = values.split(',').map((v) => Number(v.trim())).filter((v) => !Number.isNaN(v))
+      const parsed = values.filter((v) => v.trim() !== '').map(Number).filter((v) => Number.isFinite(v))
       body.grid = [{ knob, values: parsed }]
       body.segment = 'train'
     }
@@ -126,64 +151,96 @@ export function StartStudyCard({ defaultConfig = 'default' }: { defaultConfig?: 
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-        {KINDS.map((k) => {
-          const active = kind === k.key
-          return (
-            <button
-              key={k.key}
-              type="button"
-              data-testid={`kind-${k.key}`}
-              onClick={() => setKind(k.key)}
-              style={{
-                padding: '3px 12px',
-                borderRadius: 999,
-                fontSize: 'var(--fs-xs, 11px)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: `1px solid ${active ? 'var(--accent, #2563eb)' : 'var(--border)'}`,
-                background: active ? 'var(--accent-bg, #e8effd)' : 'var(--surface, #fff)',
-                color: active ? 'var(--accent, #2563eb)' : 'var(--text-muted)',
-              }}
-            >
-              {k.label}
-            </button>
-          )
-        })}
+        {KINDS.map((k) => (
+          <button
+            key={k.key}
+            type="button"
+            data-testid={`kind-${k.key}`}
+            onClick={() => setKind(k.key)}
+            style={pillStyle(kind === k.key)}
+          >
+            {k.label}
+          </button>
+        ))}
         <HelpTooltip helpKey={kind === 'walk_forward' ? 'walk_forward' : 'parameter_sensitivity'} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
-        <div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, maxWidth: 420 }}>
           <FieldLabel>Config</FieldLabel>
-          <select aria-label="config" value={configName} onChange={(e) => setPicked(e.target.value)} style={inputStyle}>
+          <select aria-label="config" value={configName} onChange={(e) => setPicked(e.target.value)} style={{ ...inputStyle, minWidth: 260, width: '100%' }}>
             {options.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
         </div>
-        <a href="/strategies" style={{ color: 'var(--accent, #2563eb)', fontSize: 'var(--fs-xs, 11px)', paddingBottom: 8 }}>
-          Manage configs →
+        <a href="/strategies" className="btn btn-sm">
+          Manage configs
         </a>
+      </div>
 
-        {kind === 'sensitivity' && (
-          <>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <FieldLabel>Knob</FieldLabel>
-              <input aria-label="knob" value={knob} onChange={(e) => setKnob(e.target.value)} style={{ ...inputStyle, width: '100%', fontFamily: 'var(--mono)' }} />
+      {kind === 'sensitivity' && (
+        <>
+          <div style={{ marginTop: 12 }}>
+            <FieldLabel>Knob</FieldLabel>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {SENSITIVITY_KNOBS.map((k) => {
+                const active = knob === k.path
+                return (
+                  <button
+                    key={k.path}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => pickKnob(k.path)}
+                    style={pillStyle(active)}
+                  >
+                    {k.label}
+                  </button>
+                )
+              })}
             </div>
-            <div style={{ minWidth: 160 }}>
-              <FieldLabel>Values</FieldLabel>
-              <input aria-label="values" value={values} onChange={(e) => setValues(e.target.value)} style={{ ...inputStyle, width: '100%', fontFamily: 'var(--mono)' }} />
-            </div>
-          </>
-        )}
+          </div>
 
+          <div style={{ marginTop: 12 }}>
+            <FieldLabel>Values</FieldLabel>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {values.map((v, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                  <input
+                    type="number"
+                    aria-label={`value ${i + 1}`}
+                    value={v}
+                    onChange={(e) => setValues(values.map((x, j) => (j === i ? e.target.value : x)))}
+                    style={{ ...inputStyle, width: 84, fontFamily: 'var(--mono)' }}
+                  />
+                  <button
+                    type="button"
+                    aria-label={`remove value ${i + 1}`}
+                    onClick={() => setValues(values.filter((_, j) => j !== i))}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 'var(--fs-sm, 13px)', lineHeight: 1, padding: 2 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setValues([...values, ''])}
+                style={{ ...pillStyle(false), borderStyle: 'dashed', background: 'transparent' }}
+              >
+                + Add value
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
         <button
           type="button"
           disabled={start.isPending}
           onClick={launch}
           style={{
-            marginLeft: 'auto',
             padding: '7px 16px',
             borderRadius: 'var(--r-md, 8px)',
             border: '1px solid var(--border-strong, #ccc)',

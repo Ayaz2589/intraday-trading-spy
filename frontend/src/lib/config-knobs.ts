@@ -119,3 +119,24 @@ export const KNOB_PATH_LABELS: Record<string, string> = {
 export function knobLabel(path: string): string {
   return KNOB_PATH_LABELS[path] ?? path.split('.').pop() ?? path
 }
+
+// Sensitivity-study launcher: every registry knob with the default value grid
+// the study seeds when the knob is picked. Grids ascend, stay inside the
+// backend registry bounds (validation/knobs.py), and sweep across the knob's
+// config default so "default vs neighbors" is always part of the answer.
+export interface SensitivityKnob {
+  path: string
+  label: string
+  defaults: number[]
+}
+
+export const SENSITIVITY_KNOBS: SensitivityKnob[] = [
+  { path: 'strategy.vwap_pullback.target.risk_reward', defaults: [1.5, 2.0, 2.5, 3.0] },
+  { path: 'strategy.vwap_pullback.stop.buffer_pct', defaults: [0.0, 0.05, 0.1, 0.2] },
+  { path: 'strategy.vwap_pullback.max_distance_from_vwap_pct', defaults: [0.1, 0.25, 0.5, 1.0] },
+  { path: 'strategy.opening_range.minutes', defaults: [10, 15, 20, 30] },
+  { path: 'risk.max_risk_per_trade_pct', defaults: [0.05, 0.1, 0.2, 0.5] },
+  { path: 'risk.max_position_value_pct', defaults: [100, 200, 400, 800] },
+  { path: 'risk.max_consecutive_losses', defaults: [1, 2, 3, 4] },
+  { path: 'risk.account_value', defaults: [10_000, 25_000, 50_000, 100_000] },
+].map(k => ({ ...k, label: knobLabel(k.path) }))
