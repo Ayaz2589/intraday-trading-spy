@@ -97,7 +97,8 @@ export type HelpContentKey =
   | "health_verdict"
   | "recommendation_classes"
   | "evidence_pack"
-  | "trial_count";
+  | "trial_count"
+  | "delete_all_data";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -465,6 +466,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Trial count (data snooping)",
     description:
       "How many recommendation-originated config variants have already been tried against this same out-of-sample archive. Why it matters: every time you tune, test, and re-tune against the same data, the 'out-of-sample' label quietly stops being true — with enough tries, something will look good by luck alone. The ledger survives config deletion, feeds back into the evidence Claude reads, and the lockbox stays sealed as the final arbiter no recommendation can touch.",
+  },
+  delete_all_data: {
+    title: "Delete all data (factory reset)",
+    description:
+      "Permanently wipes everything this app has produced or cached: every run, trade, signal, walk-forward and sensitivity study, Claude analysis, the recommendation trial ledger, the lockbox ledger (un-burning the lockbox), all named configs, job history, the journal, AND the entire SPY bar cache. A fresh 'default' config is re-seeded and you land on the Data page to backfill from scratch. Use it to watch the full research pipeline run end to end — or to genuinely start over. This cannot be undone.",
   },
   lockbox: {
     title: "Lockbox",

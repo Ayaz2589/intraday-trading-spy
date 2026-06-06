@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useSidebarMode } from '@/lib/sidebar-mode'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { HelpTooltip } from '@/components/help-tooltip'
+import { postFactoryReset } from '@/api/reset'
 import {
   BacktestsIcon,
   DataIcon,
@@ -27,6 +31,26 @@ const NAV_ITEMS = [
 export function SideNav() {
   const { mode, toggle } = useSidebarMode()
   const collapsed = mode === 'collapsed'
+
+  // Feature 018.1: the full factory reset — confirm-gated, journaled
+  // server-side, then a hard reload onto the Data page so every cache
+  // (react-query included) starts as fresh as the database.
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
+  async function runFactoryReset() {
+    setResetting(true)
+    setResetError(null)
+    try {
+      await postFactoryReset()
+      window.location.assign('/data')
+    } catch (e) {
+      setResetError((e as Error)?.message ?? 'reset failed')
+      setConfirmOpen(false)
+      setResetting(false)
+    }
+  }
 
   return (
     <aside
@@ -116,6 +140,55 @@ export function SideNav() {
           </Link>
         ))}
       </nav>
+
+      {/* 018.1: Delete all data — pinned to the bottom of the rail. */}
+      <div style={{ borderTop: '1px solid var(--border)', padding: '8px 6px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: 4,
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-danger-ghost btn-sm"
+            data-testid="side-nav-delete-all"
+            aria-label="Delete all data"
+            title="Delete all data (factory reset)"
+            disabled={resetting}
+            onClick={() => setConfirmOpen(true)}
+            style={{ flex: collapsed ? undefined : 1, justifyContent: 'flex-start' }}
+          >
+            <span aria-hidden>🗑</span>
+            {!collapsed && <span>Delete all data</span>}
+          </button>
+          {!collapsed && <HelpTooltip helpKey="delete_all_data" />}
+        </div>
+        {resetError && (
+          <div style={{ color: 'var(--loss)', fontSize: 'var(--fs-xs)', padding: '4px 6px' }}>
+            {resetError}
+          </div>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        variant="destructive"
+        title="Delete ALL data?"
+        message={
+          'Every run, trade, study, Claude analysis, the trial ledger, the ' +
+          'lockbox ledger, all configs, job history, the journal, AND the ' +
+          'entire SPY bar cache will be permanently deleted. This cannot be ' +
+          "undone. A fresh 'default' config is re-seeded and you'll land on " +
+          'the Data page to backfill from scratch.'
+        }
+        confirmLabel={resetting ? 'Deleting…' : 'Delete everything'}
+        cancelLabel="Cancel"
+        onConfirm={runFactoryReset}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </aside>
   )
 }
