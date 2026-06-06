@@ -139,6 +139,21 @@ def build_insights_payload(*, timeseries: dict, distribution: dict, max_windows:
     }
 
 
+def build_recommend_payload(*, pack: dict, candidates: list[dict]) -> dict:
+    """Feature 018: the evidence pack + the DETERMINISTIC ranked candidates.
+    Claude comments on and ranks provided candidates — it never invents
+    settings; sanitation (FR-010) still never relies on compliance."""
+    return {
+        "scope": "recommend",
+        "analysis_schema_version": 2,
+        "pack": pack,
+        "candidates": candidates,
+        "trial_counts": pack.get("trial_counts"),
+        "fingerprints": {"pack": pack.get("snapshot_fingerprint")},
+        "truncated": False,
+    }
+
+
 def build_study_payload(*, study: dict) -> dict:
     """Study scope: the computed gate + per-window table + params. Refuses
     studies whose gate hasn't been computed (nothing to analyze)."""
@@ -231,6 +246,33 @@ def run_claude_analysis(
         if study is None:
             raise ClaudeBadRequest("validation study not found")
         payload = build_study_payload(study=study)
+    elif scope == "recommend":
+        # Feature 018: the evidence pack for one config (scope_id = config id).
+        from intraday_trade_spy.recommend.candidates import assemble_recommendation
+
+        if scope_id is None:
+            raise ClaudeBadRequest("recommend scope requires a scope_id (config id)")
+        config = storage.get_config_by_id(config_id=scope_id, user_id=user_id)
+        if config is None:
+            raise ClaudeBadRequest("config not found")
+        trial_counts = storage.recommendation_trial_counts(
+            strategy_id=config.get("strategy_id")
+        )
+        pack, candidates = assemble_recommendation(
+            config=config,
+            configs=storage.list_configs(user_id=user_id),
+            points=(storage.insights_edge_timeseries().get("points") or []),
+            dist_rows=(storage.insights_config_distribution().get("rows") or []),
+            surfaces=storage.list_sensitivity_surfaces(),
+            regimes=[
+                {"name": rw.name, "start": rw.start.isoformat(), "end": rw.end.isoformat()}
+                for rw in cfg.data.regimes
+            ],
+            health_thresholds=cfg.insights.health,
+            recommend_thresholds=cfg.insights.recommend,
+            trial_counts=trial_counts,
+        )
+        payload = build_recommend_payload(pack=pack, candidates=candidates)
     else:
         raise ClaudeBadRequest(f"unknown scope '{scope}'")
 

@@ -101,6 +101,32 @@ describe("DocsPage", () => {
     expect(screen.getByText(/no terms match/i)).toBeInTheDocument();
   });
 
+  it("documents the recommendation loop (018) on the Insights card and pipeline", () => {
+    render(<DocsPage />);
+    expect(screen.getByTestId("docs-pages")).toHaveTextContent(/recommendation/i);
+    expect(screen.getByTestId("docs-research-flow")).toHaveTextContent(/recommendation/i);
+  });
+
+  it("explains the recommendation engine in its own section (018)", () => {
+    render(<DocsPage />);
+    const section = screen.getByTestId("docs-recommendations");
+    // the four verdict states
+    expect(section).toHaveTextContent(/degrading/i);
+    expect(section).toHaveTextContent(/failing/i);
+    expect(section).toHaveTextContent(/insufficient evidence/i);
+    // the three recommendation classes
+    expect(section).toHaveTextContent(/knob change/i);
+    expect(section).toHaveTextContent(/gather evidence/i);
+    expect(section).toHaveTextContent(/stop tuning/i);
+    // governance: human-gated, never auto-applied; the honesty ledger
+    expect(section).toHaveTextContent(/never .*auto/i);
+    expect(section).toHaveTextContent(/trial ledger/i);
+    expect(section).toHaveTextContent(/lockbox/i);
+    // the determinism split: code computes, Claude narrates
+    expect(section).toHaveTextContent(/deterministic/i);
+    expect(section).toHaveTextContent(/advisory/i);
+  });
+
   it("states the hard guardrails: SPY-only, long-only, paper-first", () => {
     render(<DocsPage />);
     const intro = screen.getByTestId("docs-intro");

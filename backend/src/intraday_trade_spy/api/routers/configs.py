@@ -88,6 +88,16 @@ def create_config(
         errors.raise_validation_error(str(exc))
     except SchemaError as exc:
         errors.raise_not_found(str(exc))
+    # Feature 018 (US3, analyze A1): recommendation provenance writes the
+    # deletion-surviving trial-ledger row alongside the creation (FR-011).
+    if body.provenance is not None:
+        storage_client.insert_recommendation_trial(
+            strategy_id=row.get("strategy_id"),
+            config_id=row.get("id"),
+            config_name=row.get("name"),
+            analysis_id=body.provenance.analysis_id,
+            source=body.provenance.source,
+        )
     return ConfigView.model_validate(row)
 
 

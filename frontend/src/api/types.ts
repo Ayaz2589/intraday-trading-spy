@@ -499,3 +499,62 @@ export type ApiErrorBody = {
   message: string
   [key: string]: unknown
 }
+
+// ---- Feature 018: recommendation engine ----
+
+export type HealthInputsView = {
+  window_count: number
+  recent_median_r: number | null
+  baseline_median_r: number | null
+  gate_passed: boolean | null
+  gate_ci_low: number | null
+  gate_ci_high: number | null
+}
+
+export type HealthThresholdsView = {
+  min_windows: number
+  recent_windows: number
+  degradation_margin_r: number
+}
+
+export type HealthVerdictView = {
+  config_id: string
+  config_name: string
+  strategy_id: string | null
+  verdict: 'ok' | 'degrading' | 'failing' | 'insufficient_evidence'
+  inputs: HealthInputsView
+  thresholds: HealthThresholdsView
+}
+
+export type RecommendHealthResponse = { verdicts: HealthVerdictView[] }
+
+export type KnobChangeView = { knob_path: string; value: number }
+
+export type EvidenceRefView = {
+  metric_path: string
+  value: number | string | boolean | null
+}
+
+export type CandidateView = {
+  klass: 'knob_delta' | 'gather_evidence' | 'stop_tuning'
+  rank: number
+  score: number
+  changes: KnobChangeView[]
+  evidence: EvidenceRefView[]
+  already_tried: { config_id?: string | null; config_name?: string | null } | null
+  narrative_hint: string
+}
+
+export type TrialCountsView = { drafted: number; validated: number }
+
+export type RecommendPackResponse = {
+  pack: Record<string, unknown> & {
+    config_id: string
+    config_name: string
+    snapshot_fingerprint: string
+    trial_counts: TrialCountsView
+  }
+  candidates: CandidateView[]
+  trial_counts: TrialCountsView
+  snapshot_fingerprint: string
+}

@@ -219,8 +219,28 @@ class InsightsClaudeConfig(BaseModel):
     max_timeseries_windows: int = 200
 
 
+class InsightsHealthConfig(BaseModel):
+    """Feature 018 (FR-003): config health verdict thresholds. The verdict is
+    a pure function of the OOS archive + these published values — the engine
+    reads them here, never literals."""
+
+    min_windows: int = 6              # evidence floor — below: insufficient_evidence
+    recent_windows: int = 4           # the "recent" comparison window count
+    degradation_margin_r: float = 0.02  # R-units margin before degrading fires
+
+
+class InsightsRecommendConfig(BaseModel):
+    """Feature 018: deterministic candidate-generation knobs."""
+
+    min_improvement_r: float = 0.01  # improvement required to suggest a delta
+    min_shared_windows: int = 4      # matched windows for cross-config transfer
+    max_candidates: int = 5          # ranked knob-delta candidates surfaced
+
+
 class InsightsConfig(BaseModel):
     claude: InsightsClaudeConfig = Field(default_factory=InsightsClaudeConfig)
+    health: InsightsHealthConfig = Field(default_factory=InsightsHealthConfig)
+    recommend: InsightsRecommendConfig = Field(default_factory=InsightsRecommendConfig)
 
 
 class Config(BaseModel):

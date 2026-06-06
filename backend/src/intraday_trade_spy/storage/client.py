@@ -1667,6 +1667,104 @@ class SupabaseStorageClient:
             "snapshot_fingerprint": self._insights_fingerprint([list(map(str, r)) for r in rows]),
         }
 
+    # ---------- Feature 018: recommendation engine ----------
+
+    def list_sensitivity_surfaces(self) -> list[dict]:
+        """Finished sensitivity studies' surfaces (SensitivitySurface dumps),
+        newest-first with id as the total-order tiebreaker — evidence-pack
+        input (FR-005); user-scoped in SQL."""
+        sql = (
+            "SELECT s.id, s.params->>'config_name' AS config_name, s.result, s.created_at "
+            "FROM public.validation_studies s "
+            "WHERE s.user_id = %s AND s.kind = 'sensitivity' "
+            "  AND s.status = 'finished' AND s.result IS NOT NULL "
+            "ORDER BY s.created_at DESC, s.id DESC"
+        )
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, [self.user_id])
+                rows = cur.fetchall()
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"list_sensitivity_surfaces failed: {exc}") from exc
+
+        import json
+
+        out = []
+        for r in rows:
+            surface = r[2]
+            if isinstance(surface, str):
+                surface = json.loads(surface)
+            out.append(
+                {
+                    "study_id": str(r[0]),
+                    "config_name": r[1],
+                    "surface": surface or {},
+                }
+            )
+        return out
+
+    def insert_recommendation_trial(
+        self, *, strategy_id, config_id, config_name: str, analysis_id, source: str
+    ) -> None:
+        """One ledger row per draft-flow config creation (FR-011, analyze A1:
+        any analysis-originated draft is a trial). Durable by design —
+        config_id nulls on config deletion, config_name keeps the trail."""
+        sql = (
+            "INSERT INTO public.recommendation_trials "
+            "(user_id, strategy_id, config_id, config_name, analysis_id, source) "
+            "VALUES (%s, %s, %s, %s, %s, %s)"
+        )
+        params = [
+            self.user_id,
+            str(strategy_id),
+            str(config_id) if config_id else None,
+            config_name,
+            str(analysis_id) if analysis_id else None,
+            source,
+        ]
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, params)
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"insert_recommendation_trial failed: {exc}") from exc
+
+    def recommendation_trial_counts(self, *, strategy_id) -> dict:
+        """Family trial counts: drafted = ledger rows; validated = rows whose
+        config (by denormalized name — survives deletion) has a finished
+        walk-forward study. Never joins configs (deletion-proof)."""
+        sql = (
+            "SELECT count(*) AS drafted, "
+            "       count(*) FILTER (WHERE EXISTS ("
+            "         SELECT 1 FROM public.validation_studies vs "
+            "         WHERE vs.user_id = t.user_id AND vs.kind = 'walk_forward' "
+            "           AND vs.status = 'finished' "
+            "           AND vs.params->>'config_name' = t.config_name"
+            "       )) AS validated "
+            "FROM public.recommendation_trials t "
+            "WHERE t.user_id = %s AND t.strategy_id = %s"
+        )
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, [self.user_id, str(strategy_id)])
+                rows = cur.fetchall()
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"recommendation_trial_counts failed: {exc}") from exc
+        if not rows:
+            return {"drafted": 0, "validated": 0}
+        return {"drafted": int(rows[0][0] or 0), "validated": int(rows[0][1] or 0)}
+
     # ---------- Feature 016: Claude analyses + settings (PostgREST) ----------
 
     def insert_insight_analysis(

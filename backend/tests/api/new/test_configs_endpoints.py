@@ -185,3 +185,66 @@ def test_list_presets(unit_client, stub_storage_client):
     r = unit_client.get("/api/configs/presets")
     assert r.status_code == 200
     assert r.json()["presets"][0]["name"] == "aggressive"
+
+
+# ---- Feature 018 (T032 US3): provenance writes the trial ledger ---------------
+
+
+def test_create_config_with_provenance_writes_trial_row(unit_client, stub_storage_client):
+    created = {**_make_config_row("default-exp-1"), "is_active": False}
+    stub_storage_client.create_config.return_value = created
+    r = unit_client.post(
+        "/api/configs",
+        json={
+            "name": "default-exp-1",
+            "source": "scratch",
+            "params": {"risk": {}, "strategy": {}},
+            "description": "Drafted from Claude analysis ia-1",
+            "provenance": {"analysis_id": "ia-1", "source": "claude"},
+        },
+    )
+    assert r.status_code == 201, r.text
+    kwargs = stub_storage_client.insert_recommendation_trial.call_args.kwargs
+    assert kwargs["config_id"] == created["id"]
+    assert kwargs["config_name"] == "default-exp-1"
+    assert kwargs["strategy_id"] == created["strategy_id"]
+    assert kwargs["analysis_id"] == "ia-1"
+    assert kwargs["source"] == "claude"
+
+
+def test_create_config_deterministic_provenance_allows_null_analysis(
+    unit_client, stub_storage_client
+):
+    created = {**_make_config_row("default-exp-2"), "is_active": False}
+    stub_storage_client.create_config.return_value = created
+    r = unit_client.post(
+        "/api/configs",
+        json={
+            "name": "default-exp-2",
+            "source": "scratch",
+            "provenance": {"analysis_id": None, "source": "deterministic"},
+        },
+    )
+    assert r.status_code == 201, r.text
+    kwargs = stub_storage_client.insert_recommendation_trial.call_args.kwargs
+    assert kwargs["analysis_id"] is None
+    assert kwargs["source"] == "deterministic"
+
+
+def test_create_config_without_provenance_writes_no_trial(unit_client, stub_storage_client):
+    created = {**_make_config_row("plain"), "is_active": False}
+    stub_storage_client.create_config.return_value = created
+    r = unit_client.post("/api/configs", json={"name": "plain", "source": "scratch"})
+    assert r.status_code == 201, r.text
+    stub_storage_client.insert_recommendation_trial.assert_not_called()
+
+
+def test_create_config_rejects_bad_provenance_source(unit_client, stub_storage_client):
+    r = unit_client.post(
+        "/api/configs",
+        json={
+            "name": "x", "source": "scratch",
+            "provenance": {"analysis_id": None, "source": "robot"},
+        },
+    )
+    assert r.status_code == 422

@@ -18,6 +18,12 @@ vi.mock('@/api/configs', () => ({
   deleteConfig: (id: string) => deleteConfigMock(id),
 }))
 
+// Feature 018 (US1): the active config row carries its health verdict badge.
+const getHealthMock = vi.fn()
+vi.mock('@/api/recommend', () => ({
+  getRecommendHealth: (...a: unknown[]) => getHealthMock(...a),
+}))
+
 function wrap(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
@@ -46,6 +52,8 @@ const offDefaultParams = {
 
 beforeEach(() => {
   for (const m of [activateConfigMock, patchConfigMock, deleteConfigMock]) m.mockReset()
+  getHealthMock.mockReset()
+  getHealthMock.mockResolvedValue({ verdicts: [] })
 })
 
 describe('ConfigsSection', () => {
@@ -63,6 +71,44 @@ describe('ConfigsSection', () => {
     expect(within(row).getByText('0.1%')).toBeInTheDocument()
     expect(within(row).getByText('400%')).toBeInTheDocument()
     expect(within(row).getByText('lockout')).toBeInTheDocument()
+  })
+
+  it('shows the health badge on the active config row only (018 US1)', async () => {
+    getHealthMock.mockResolvedValue({
+      verdicts: [
+        {
+          config_id: '1',
+          config_name: 'default',
+          strategy_id: 's',
+          verdict: 'degrading',
+          inputs: {
+            window_count: 8,
+            recent_median_r: 0.01,
+            baseline_median_r: 0.035,
+            gate_passed: null,
+            gate_ci_low: null,
+            gate_ci_high: null,
+          },
+          thresholds: { min_windows: 6, recent_windows: 4, degradation_margin_r: 0.02 },
+        },
+      ],
+    })
+    wrap(
+      <ConfigsSection
+        configs={[cfg('1', 'default', true), cfg('2', 'wf-rr3', false)]}
+        expandedId={null}
+        onToggle={() => {}}
+      />,
+    )
+    const active = screen.getByTestId('config-row-default')
+    await waitFor(() =>
+      expect(within(active).getByTestId('health-badge')).toBeInTheDocument(),
+    )
+    expect(within(active).getByTestId('health-badge')).toHaveTextContent(/degrading/i)
+    // inactive rows never fetch-render the badge
+    expect(
+      within(screen.getByTestId('config-row-wf-rr3')).queryByTestId('health-badge'),
+    ).toBeNull()
   })
 
   it('shows "N off default" only for rows that differ', () => {

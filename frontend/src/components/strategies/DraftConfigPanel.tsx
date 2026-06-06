@@ -151,6 +151,13 @@ export function DraftConfigPanel({
                 source: 'scratch',
                 params: mergedParams(),
                 description: provenance,
+                // 018 US3 (analyze A1): every draft-flow creation is a trial —
+                // analysis-bearing drafts are 'claude', candidate-card drafts
+                // (no analysis id) are 'deterministic'.
+                provenance: {
+                  analysis_id: draft.analysis_id || null,
+                  source: draft.analysis_id ? 'claude' : 'deterministic',
+                },
               },
               { onSuccess: () => onDismiss() },
             )

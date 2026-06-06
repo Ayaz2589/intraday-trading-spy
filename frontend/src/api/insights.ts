@@ -20,7 +20,7 @@ export function getConfigDistribution(): Promise<ConfigDistributionResponse> {
 }
 
 export function getClaudeAnalysis(
-  scope: 'study' | 'insights',
+  scope: 'study' | 'insights' | 'recommend',
   scopeId?: string,
 ): Promise<StoredAnalysisView | null> {
   return apiRequest<StoredAnalysisView | null>('/api/insights/claude-analysis', {
@@ -29,7 +29,7 @@ export function getClaudeAnalysis(
 }
 
 export function postClaudeAnalysis(body: {
-  scope: 'study' | 'insights'
+  scope: 'study' | 'insights' | 'recommend'
   scope_id?: string
   force?: boolean
 }): Promise<StoredAnalysisView> {

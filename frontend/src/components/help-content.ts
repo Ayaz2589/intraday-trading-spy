@@ -92,7 +92,12 @@ export type HelpContentKey =
   | "claude_advisory"
   | "snapshot_pin"
   // Feature 017 (claude experiment drafts) concepts
-  | "claude_experiment_draft";
+  | "claude_experiment_draft"
+  // Feature 018 (recommendation engine) concepts
+  | "health_verdict"
+  | "recommendation_classes"
+  | "evidence_pack"
+  | "trial_count";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -440,6 +445,26 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Drafted from Claude's experiment",
     description:
       "Claude suggested this experiment as concrete knob changes; the app validated every suggestion against the registered tunable knobs and their bounds BEFORE you ever saw it. Claude only suggests — nothing is created, activated, or run until YOU review the values and click Create, through the exact same form and validation as a hand-made config. The created config records where it came from.",
+  },
+  health_verdict: {
+    title: "Config health verdict",
+    description:
+      "A deterministic judgment of whether this config is still earning its keep out-of-sample: ok, degrading (recent validation windows fell below the config's own archive baseline), failing (the pooled gate failed AND recent windows are non-positive), or insufficient evidence (too few windows to say anything). It is computed purely from stored results with published thresholds — no AI involved — and recomputing against unchanged data always yields the same verdict. Hover the badge for the exact numbers behind it.",
+  },
+  recommendation_classes: {
+    title: "Recommendation classes",
+    description:
+      "Recommendations come in three honest flavors. A knob change is a setting the archive has actually measured (a sensitivity plateau or another config's matched-window result) — never an untested invention. Gather evidence means the data to justify a change doesn't exist yet, and names the study to run. Stop tuning fires when every config in the family failed its pooled gate: more knob-turning won't conjure an edge that isn't there. Every recommendation is a hypothesis for the validation machinery — nothing is ever applied automatically.",
+  },
+  evidence_pack: {
+    title: "Evidence pack",
+    description:
+      "The bundle of already-stored results a recommendation is computed from: this config's out-of-sample windows, matched-window comparisons against sibling configs, sensitivity-sweep neighborhoods, per-regime results, pooled-gate intervals, and how many variants were already tried. It is assembled read-only — no new backtests run — and pinned to a snapshot fingerprint so you always know which data a recommendation (or Claude's narrative about it) described.",
+  },
+  trial_count: {
+    title: "Trial count (data snooping)",
+    description:
+      "How many recommendation-originated config variants have already been tried against this same out-of-sample archive. Why it matters: every time you tune, test, and re-tune against the same data, the 'out-of-sample' label quietly stops being true — with enough tries, something will look good by luck alone. The ledger survives config deletion, feeds back into the evidence Claude reads, and the lockbox stays sealed as the final arbiter no recommendation can touch.",
   },
   lockbox: {
     title: "Lockbox",

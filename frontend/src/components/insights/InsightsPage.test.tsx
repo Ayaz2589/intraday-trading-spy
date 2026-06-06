@@ -16,6 +16,16 @@ vi.mock("@/api/insights", () => ({
 }));
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children, to, ...rest }: { children: ReactNode; to: string }) =>
+    createElement("a", { href: to, ...rest }, children),
+}));
+
+// Feature 018 (US2): the Recommendations panel mounts below Claude's read.
+const recommendHealthMock = vi.fn();
+const recommendPackMock = vi.fn();
+vi.mock("@/api/recommend", () => ({
+  getRecommendHealth: (...a: unknown[]) => recommendHealthMock(...a),
+  getRecommendPack: (...a: unknown[]) => recommendPackMock(...a),
 }));
 
 function wrap(ui: ReactNode) {
@@ -56,6 +66,21 @@ const DIST = {
   ],
   snapshot_fingerprint: "fp1",
 };
+
+describe("InsightsPage — recommendations panel (018 US2)", () => {
+  it("mounts the Recommendations panel below Claude's read", async () => {
+    edgeMock.mockResolvedValue(EDGE);
+    distMock.mockResolvedValue(DIST);
+    recommendHealthMock.mockResolvedValue({ verdicts: [] });
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    const panel = await screen.findByTestId("recommendations-panel");
+    const claude = await screen.findByTestId("claude-read");
+    expect(
+      claude.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
 
 describe("InsightsPage", () => {
   it("renders the stacked full-width layout: header, charts, then Claude's read", async () => {

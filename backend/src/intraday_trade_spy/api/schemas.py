@@ -364,7 +364,8 @@ class ConfigDistributionResponse(_ResponseBase):
 
 class ClaudeAnalysisRequest(_Base):
     # Feature 016 US3: advisory analysis over a scope's gathered statistics.
-    scope: Literal["study", "insights"]
+    # Feature 018: 'recommend' analyses an evidence pack (scope_id = config id).
+    scope: Literal["study", "insights", "recommend"]
     scope_id: Optional[UUID] = None
     force: bool = False
 
@@ -452,6 +453,14 @@ class StudyListResponse(_ResponseBase):
 # ---------- Feature 012: config management ----------
 
 
+class ProvenanceBody(_Base):
+    """Feature 018 (US3, analyze A1): recommendation provenance on config
+    create — writes the deletion-surviving trial ledger row."""
+
+    analysis_id: Optional[str] = None
+    source: Literal["claude", "deterministic"]
+
+
 class ConfigCreateRequest(_Base):
     name: str = Field(min_length=1, max_length=200)
     source: Literal["scratch", "preset", "duplicate"] = "scratch"
@@ -462,6 +471,9 @@ class ConfigCreateRequest(_Base):
     params: Optional[dict] = None
     # Feature 017: durable provenance ("Drafted from Claude analysis ...").
     description: Optional[str] = Field(default=None, max_length=500)
+    # Feature 018 (US3): when present, creation also writes the trial-ledger
+    # row (analyze A1 — any analysis-originated draft is a trial).
+    provenance: Optional[ProvenanceBody] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -508,3 +520,77 @@ class PresetView(_ResponseBase):
 
 class PresetListResponse(_ResponseBase):
     presets: list[PresetView]
+
+
+# ---------- Feature 018: recommendation engine ----------
+
+
+class HealthInputsView(_ResponseBase):
+    """The cited numbers that produced a verdict (FR-002)."""
+
+    window_count: int
+    recent_median_r: Optional[float] = None
+    baseline_median_r: Optional[float] = None
+    gate_passed: Optional[bool] = None
+    gate_ci_low: Optional[float] = None
+    gate_ci_high: Optional[float] = None
+
+
+class HealthThresholdsView(_ResponseBase):
+    """Echo of the config.yaml thresholds the verdict used (FR-003)."""
+
+    min_windows: int
+    recent_windows: int
+    degradation_margin_r: float
+
+
+class HealthVerdictView(_ResponseBase):
+    config_id: str
+    config_name: str
+    strategy_id: Optional[str] = None
+    verdict: Literal["ok", "degrading", "failing", "insufficient_evidence"]
+    inputs: HealthInputsView
+    thresholds: HealthThresholdsView
+
+
+class RecommendHealthResponse(_ResponseBase):
+    verdicts: list[HealthVerdictView]
+
+
+class KnobChangeView(_ResponseBase):
+    knob_path: str
+    value: float
+
+
+class EvidenceRefView(_ResponseBase):
+    """A citation into the evidence pack — resolvable, never invented (SC-003)."""
+
+    metric_path: str
+    value: Optional[float | str | bool] = None
+
+
+class AlreadyTriedView(_ResponseBase):
+    config_id: Optional[str] = None
+    config_name: Optional[str] = None
+
+
+class CandidateView(_ResponseBase):
+    klass: Literal["knob_delta", "gather_evidence", "stop_tuning"]
+    rank: int
+    score: float
+    changes: list[KnobChangeView]
+    evidence: list[EvidenceRefView]
+    already_tried: Optional[AlreadyTriedView] = None
+    narrative_hint: str
+
+
+class TrialCountsView(_ResponseBase):
+    drafted: int
+    validated: int
+
+
+class RecommendPackResponse(_ResponseBase):
+    pack: dict
+    candidates: list[CandidateView]
+    trial_counts: TrialCountsView
+    snapshot_fingerprint: str

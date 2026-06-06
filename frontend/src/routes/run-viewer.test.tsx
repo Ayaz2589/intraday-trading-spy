@@ -303,6 +303,13 @@ describe("RunViewer route", () => {
       "claude_advisory",
       "snapshot_pin",
       "claude_experiment_draft",
+      // Feature 018 recommendation-engine keys render on the Strategies
+      // health badge + Insights Recommendations panel; coverage lives in
+      // HealthBadge / RecommendationsPanel tests + help-content.test.ts.
+      "health_verdict",
+      "recommendation_classes",
+      "evidence_pack",
+      "trial_count",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;
