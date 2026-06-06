@@ -193,6 +193,17 @@ insights:
     model: claude-opus-4-8
     max_tokens: 8000
     max_timeseries_windows: 200
+  # Feature 018: config health verdict thresholds (FR-003 — published config
+  # values, never code constants).
+  health:
+    min_windows: 6              # evidence floor — below this: insufficient_evidence
+    recent_windows: 4           # the "recent" comparison window count
+    degradation_margin_r: 0.02  # R-units margin before degrading fires
+  # Feature 018: deterministic candidate-generation knobs.
+  recommend:
+    min_improvement_r: 0.01   # neighborhood/median improvement required to suggest
+    min_shared_windows: 4     # matched windows needed for cross-config transfer
+    max_candidates: 5         # ranked knob-delta candidates surfaced
 
 # Data-retention policy (Feature 006, clarification Q5).
 # DECLARED here; not enforced in this feature. Future feature or pg_cron job

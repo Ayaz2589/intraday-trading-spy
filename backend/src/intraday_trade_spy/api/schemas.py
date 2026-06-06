@@ -508,3 +508,38 @@ class PresetView(_ResponseBase):
 
 class PresetListResponse(_ResponseBase):
     presets: list[PresetView]
+
+
+# ---------- Feature 018: recommendation engine ----------
+
+
+class HealthInputsView(_ResponseBase):
+    """The cited numbers that produced a verdict (FR-002)."""
+
+    window_count: int
+    recent_median_r: Optional[float] = None
+    baseline_median_r: Optional[float] = None
+    gate_passed: Optional[bool] = None
+    gate_ci_low: Optional[float] = None
+    gate_ci_high: Optional[float] = None
+
+
+class HealthThresholdsView(_ResponseBase):
+    """Echo of the config.yaml thresholds the verdict used (FR-003)."""
+
+    min_windows: int
+    recent_windows: int
+    degradation_margin_r: float
+
+
+class HealthVerdictView(_ResponseBase):
+    config_id: str
+    config_name: str
+    strategy_id: Optional[str] = None
+    verdict: Literal["ok", "degrading", "failing", "insufficient_evidence"]
+    inputs: HealthInputsView
+    thresholds: HealthThresholdsView
+
+
+class RecommendHealthResponse(_ResponseBase):
+    verdicts: list[HealthVerdictView]

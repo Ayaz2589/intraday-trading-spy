@@ -499,3 +499,31 @@ export type ApiErrorBody = {
   message: string
   [key: string]: unknown
 }
+
+// ---- Feature 018: recommendation engine ----
+
+export type HealthInputsView = {
+  window_count: number
+  recent_median_r: number | null
+  baseline_median_r: number | null
+  gate_passed: boolean | null
+  gate_ci_low: number | null
+  gate_ci_high: number | null
+}
+
+export type HealthThresholdsView = {
+  min_windows: number
+  recent_windows: number
+  degradation_margin_r: number
+}
+
+export type HealthVerdictView = {
+  config_id: string
+  config_name: string
+  strategy_id: string | null
+  verdict: 'ok' | 'degrading' | 'failing' | 'insufficient_evidence'
+  inputs: HealthInputsView
+  thresholds: HealthThresholdsView
+}
+
+export type RecommendHealthResponse = { verdicts: HealthVerdictView[] }

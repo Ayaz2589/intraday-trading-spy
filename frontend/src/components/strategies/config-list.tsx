@@ -6,6 +6,7 @@ import { SectionTitle, cardSection } from '@/components/section-title'
 import { ConfigEditor } from './config-editor'
 import { inputStyle } from './field'
 import { knobChips, knobsFromConfig, offDefaultKeys } from '@/lib/config-knobs'
+import { ActiveConfigHealthBadge } from '@/components/recommend/HealthBadge'
 import type { Config } from '@/api/types'
 
 // "Configs" section of the strategy page (2026-06-05 redesign): single-expand
@@ -162,6 +163,8 @@ function ConfigRow({
                 ACTIVE
               </span>
             )}
+            {/* 018 US1: the active config's deterministic health verdict */}
+            {config.is_active && <ActiveConfigHealthBadge configId={config.id} />}
             <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {chips.map(chip => (
                 <span key={chip.label} className="chip" style={summaryChip}>

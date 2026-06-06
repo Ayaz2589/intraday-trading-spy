@@ -23,9 +23,9 @@ implementable and testable (US1 alone is the MVP).
 
 **Purpose**: Skeletons and TDD-exempt artifacts every story builds on.
 
-- [ ] T001 Create package skeletons: `backend/src/intraday_trade_spy/recommend/__init__.py` (≤5-line marker) and `backend/tests/recommend/__init__.py`
-- [ ] T002 [P] Write migration `backend/db/migrations/0125_recommendation_trials.sql` per data-model.md: `recommendation_trials` table (user_id/strategy_id/config_id ON DELETE SET NULL/config_name/analysis_id/source CHECK/created_at), family index, RLS policies mirroring 0123, and widen `insight_analyses.scope` CHECK to `('study','insights','recommend')` — use `DROP CONSTRAINT IF EXISTS insight_analyses_scope_check` (PG auto-name for 0123's inline column CHECK; verify actual name via pg_constraint at T006) (analyze U3)
-- [ ] T003 [P] Add threshold blocks to `backend/config/config.yaml` per research R1/R3: `insights.health {min_windows: 6, recent_windows: 4, degradation_margin_r: 0.02}` and `insights.recommend {min_improvement_r: 0.01, min_shared_windows: 4, max_candidates: 5}`
+- [X] T001 Create package skeletons: `backend/src/intraday_trade_spy/recommend/__init__.py` (≤5-line marker) and `backend/tests/recommend/__init__.py`
+- [X] T002 [P] Write migration `backend/db/migrations/0125_recommendation_trials.sql` per data-model.md: `recommendation_trials` table (user_id/strategy_id/config_id ON DELETE SET NULL/config_name/analysis_id/source CHECK/created_at), family index, RLS policies mirroring 0123, and widen `insight_analyses.scope` CHECK to `('study','insights','recommend')` — use `DROP CONSTRAINT IF EXISTS insight_analyses_scope_check` (PG auto-name for 0123's inline column CHECK; verify actual name via pg_constraint at T006) (analyze U3)
+- [X] T003 [P] Add threshold blocks to `backend/config/config.yaml` per research R1/R3: `insights.health {min_windows: 6, recent_windows: 4, degradation_margin_r: 0.02}` and `insights.recommend {min_improvement_r: 0.01, min_shared_windows: 4, max_candidates: 5}`
 
 ---
 
@@ -35,9 +35,9 @@ implementable and testable (US1 alone is the MVP).
 
 **⚠️ CRITICAL**: Complete before any user story phase.
 
-- [ ] T004 Failing tests: config loader exposes `insights.health` and `insights.recommend` thresholds (types, defaults, FR-003 no-hardcoding seam) in `backend/tests/recommend/test_thresholds.py`
-- [ ] T005 Implement threshold exposure in `backend/src/intraday_trade_spy/config.py` (mirror the existing `insights.claude` access pattern)
-- [ ] T006 Apply migration 0125 to the dev/cloud database and verify: `recommendation_trials` exists with RLS; `insight_analyses` accepts `scope='recommend'` (ops; record verification output in the PR)
+- [X] T004 Failing tests: config loader exposes `insights.health` and `insights.recommend` thresholds (types, defaults, FR-003 no-hardcoding seam) in `backend/tests/recommend/test_thresholds.py`
+- [X] T005 Implement threshold exposure in `backend/src/intraday_trade_spy/config.py` (mirror the existing `insights.claude` access pattern)
+- [X] T006 Apply migration 0125 to the dev/cloud database and verify: `recommendation_trials` exists with RLS; `insight_analyses` accepts `scope='recommend'` (ops; record verification output in the PR)
 
 **Checkpoint**: Thresholds readable; schema live — user stories can begin.
 
@@ -51,17 +51,17 @@ implementable and testable (US1 alone is the MVP).
 
 ### Tests for User Story 1 (write first, must fail)
 
-- [ ] T007 [P] [US1] Failing unit tests for the verdict rule in `backend/tests/recommend/test_health.py`: ordered rule matrix (insufficient when windows < min_windows; failing requires gate-failed AND recent median R ≤ 0; degrading when recent median < baseline median − margin; ok otherwise), determinism (double-call → byte-identical serialized verdict), cited inputs + thresholds echoed (FR-002/FR-003)
-- [ ] T008 [P] [US1] Failing API tests for `GET /api/recommend/health` in `backend/tests/api/new/test_recommend_api.py` (unit_client + stub_storage_client pattern): per-config verdict rows composed from edge-timeseries + distribution aggregates, zero-OOS-history configs omitted, thresholds echoed, endpoint never touches the Claude analyst
-- [ ] T009 [P] [US1] Failing frontend tests: `frontend/src/components/recommend/HealthBadge.test.tsx` (verdict→variant mapping ok=profit / degrading=warn / failing=loss / insufficient=faint; cited inputs rendered; `health_verdict` HelpTooltip present per FR-014) + `health_verdict` key coverage in `frontend/src/components/help-content.test.ts` + active-config row renders the badge in `frontend/src/components/strategies/config-list.test.tsx`
+- [X] T007 [P] [US1] Failing unit tests for the verdict rule in `backend/tests/recommend/test_health.py`: ordered rule matrix (insufficient when windows < min_windows; failing requires gate-failed AND recent median R ≤ 0; degrading when recent median < baseline median − margin; ok otherwise), determinism (double-call → byte-identical serialized verdict), cited inputs + thresholds echoed (FR-002/FR-003)
+- [X] T008 [P] [US1] Failing API tests for `GET /api/recommend/health` in `backend/tests/api/new/test_recommend_api.py` (unit_client + stub_storage_client pattern): per-config verdict rows composed from edge-timeseries + distribution aggregates, zero-OOS-history configs omitted, thresholds echoed, endpoint never touches the Claude analyst
+- [X] T009 [P] [US1] Failing frontend tests: `frontend/src/components/recommend/HealthBadge.test.tsx` (verdict→variant mapping ok=profit / degrading=warn / failing=loss / insufficient=faint; cited inputs rendered; `health_verdict` HelpTooltip present per FR-014) + `health_verdict` key coverage in `frontend/src/components/help-content.test.ts` + active-config row renders the badge in `frontend/src/components/strategies/config-list.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement `backend/src/intraday_trade_spy/recommend/health.py` (pure verdict function per research R1) + `HealthVerdict` view model in `backend/src/intraday_trade_spy/models.py` → T007 green
-- [ ] T011 [US1] Implement `backend/src/intraday_trade_spy/api/routers/recommend.py` with `GET /api/recommend/health` (composes existing `insights_edge_timeseries` + `insights_config_distribution` storage calls + configs list) and register the router in `backend/src/intraday_trade_spy/api/app.py` → T008 green
-- [ ] T012 [US1] Implement `frontend/src/api/recommend.ts` (`getRecommendHealth`) + `frontend/src/hooks/useRecommend.ts` (`useConfigHealth`) + view types in `frontend/src/api/types.ts`
-- [ ] T013 [US1] Implement `frontend/src/components/recommend/HealthBadge.tsx` + `health_verdict` copy in `frontend/src/components/help-content.ts` → HealthBadge/help tests green
-- [ ] T014 [US1] Mount HealthBadge on the active config row in `frontend/src/components/strategies/config-list.tsx` (data via `useConfigHealth` from `config-manager.tsx` composition) → config-list test green
+- [X] T010 [US1] Implement `backend/src/intraday_trade_spy/recommend/health.py` (pure verdict function per research R1) + `HealthVerdict` view model in `backend/src/intraday_trade_spy/models.py` → T007 green
+- [X] T011 [US1] Implement `backend/src/intraday_trade_spy/api/routers/recommend.py` with `GET /api/recommend/health` (composes existing `insights_edge_timeseries` + `insights_config_distribution` storage calls + configs list) and register the router in `backend/src/intraday_trade_spy/api/app.py` → T008 green
+- [X] T012 [US1] Implement `frontend/src/api/recommend.ts` (`getRecommendHealth`) + `frontend/src/hooks/useRecommend.ts` (`useConfigHealth`) + view types in `frontend/src/api/types.ts`
+- [X] T013 [US1] Implement `frontend/src/components/recommend/HealthBadge.tsx` + `health_verdict` copy in `frontend/src/components/help-content.ts` → HealthBadge/help tests green
+- [X] T014 [US1] Mount HealthBadge on the active config row in `frontend/src/components/strategies/config-list.tsx` (data via `useConfigHealth` from `config-manager.tsx` composition) → config-list test green
 
 **Checkpoint**: US1 fully functional — verdicts deterministic and visible. Stop, validate quickstart §1, demo.
 

@@ -92,7 +92,9 @@ export type HelpContentKey =
   | "claude_advisory"
   | "snapshot_pin"
   // Feature 017 (claude experiment drafts) concepts
-  | "claude_experiment_draft";
+  | "claude_experiment_draft"
+  // Feature 018 (recommendation engine) concepts
+  | "health_verdict";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -440,6 +442,11 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Drafted from Claude's experiment",
     description:
       "Claude suggested this experiment as concrete knob changes; the app validated every suggestion against the registered tunable knobs and their bounds BEFORE you ever saw it. Claude only suggests — nothing is created, activated, or run until YOU review the values and click Create, through the exact same form and validation as a hand-made config. The created config records where it came from.",
+  },
+  health_verdict: {
+    title: "Config health verdict",
+    description:
+      "A deterministic judgment of whether this config is still earning its keep out-of-sample: ok, degrading (recent validation windows fell below the config's own archive baseline), failing (the pooled gate failed AND recent windows are non-positive), or insufficient evidence (too few windows to say anything). It is computed purely from stored results with published thresholds — no AI involved — and recomputing against unchanged data always yields the same verdict. Hover the badge for the exact numbers behind it.",
   },
   lockbox: {
     title: "Lockbox",
