@@ -87,8 +87,9 @@ const PAGES: {
     what: 'The strategy logic and your named risk configs.',
     details:
       'Read how the VWAP-pullback entry, stop, and target work, then tune named configs — ' +
-      'create, duplicate, edit, and activate them. Exactly one config is active at a time; ' +
-      "drafts suggested by Claude's experiments land here for human review before anything is created.",
+      'create, duplicate, edit, and activate them. Exactly one config is active at a time, ' +
+      'and the active one wears its health verdict badge; drafts suggested by Claude or the ' +
+      'recommendation engine land here for human review before anything is created.',
   },
   {
     name: 'Backtests',
@@ -264,6 +265,48 @@ export function DocsPage() {
               edge is stable or regime-bound. Health verdicts and evidence-backed recommendations
               suggest what to try next (Claude narrates, advisory only); every accepted suggestion
               goes back through steps 3–5.
+            </FlowStep>
+          </div>
+        </Card>
+
+        <Card
+          title="How recommendations work"
+          sub="When a config stops performing, the archive's own evidence suggests what to try next — code computes, Claude narrates, you decide"
+          accent="var(--profit)"
+          testid="docs-recommendations"
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+              gap: 10,
+            }}
+          >
+            <FlowStep n={1} name="Health verdict" color="var(--loss)">
+              Every config with out-of-sample history gets a deterministic verdict — ok,
+              degrading (recent windows fell below the config's own baseline), failing (the
+              pooled gate failed and recent windows are non-positive), or insufficient evidence.
+              Computed from stored results with published thresholds; the exact numbers ride
+              along with the badge. No AI involved.
+            </FlowStep>
+            <FlowStep n={2} name="Evidence → candidates" color="var(--accent)">
+              An evidence pack is assembled read-only from what already exists — sensitivity
+              neighborhoods, matched-window comparisons against sibling configs, per-regime
+              results, gate intervals. Candidates come in three honest classes: a knob change
+              the archive has actually measured, gather evidence when the data doesn't exist
+              yet, and stop tuning when every gate in the family failed.
+            </FlowStep>
+            <FlowStep n={3} name="You decide" color="var(--info)">
+              Recommendations are never applied automatically — auto-tuning is how systems fool
+              their operators. The deterministic candidates render even with Claude paused;
+              Claude's narrative is advisory commentary on top. The only action is
+              Draft config →, which prefills the standard create form for your review.
+            </FlowStep>
+            <FlowStep n={4} name="The trial ledger" color="var(--warn)">
+              Every drafted variant is counted against the archive it was tuned on — the trial
+              ledger survives config deletion and is shown wherever recommendations are. Why:
+              enough tries against the same out-of-sample data and something looks good by luck
+              alone. The lockbox stays sealed as the final arbiter no recommendation can touch.
             </FlowStep>
           </div>
         </Card>
