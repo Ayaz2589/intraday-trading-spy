@@ -180,3 +180,39 @@ def test_claude_settings_patch_manual_disable_and_enable(unit_client, stub_stora
     kwargs = stub_storage_client.update_insight_settings.call_args.kwargs
     assert kwargs["claude_enabled"] is True
     assert kwargs["disabled_reason"] is None
+
+
+# ---- Feature 018: the request schema must accept scope='recommend' ------------
+# (live bug 2026-06-06: the Literal still pinned 016's two scopes, so the
+# Recommendations panel's generate button died with "Request validation
+# failed" before ever reaching the analyst.)
+
+
+def test_claude_analysis_post_accepts_recommend_scope(
+    unit_client, stub_storage_client, monkeypatch
+):
+    _arm_claude(stub_storage_client)
+    seen = {}
+
+    def _fake_run(**kw):
+        seen.update(kw)
+        return {**STORED, "scope": "recommend",
+                "scope_id": "9c5a6b1e-0000-4000-8000-000000000001", "truncated": False}
+
+    monkeypatch.setattr(
+        "intraday_trade_spy.api.routers.insights.run_claude_analysis", _fake_run
+    )
+    resp = unit_client.post(
+        "/api/insights/claude-analysis",
+        json={"scope": "recommend", "scope_id": "9c5a6b1e-0000-4000-8000-000000000001"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert seen["scope"] == "recommend"
+    assert str(seen["scope_id"]) == "9c5a6b1e-0000-4000-8000-000000000001"
+
+
+def test_claude_analysis_post_still_rejects_unknown_scope(unit_client, stub_storage_client):
+    resp = unit_client.post(
+        "/api/insights/claude-analysis", json={"scope": "definitely-not-a-scope"}
+    )
+    assert resp.status_code == 422

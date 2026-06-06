@@ -364,7 +364,8 @@ class ConfigDistributionResponse(_ResponseBase):
 
 class ClaudeAnalysisRequest(_Base):
     # Feature 016 US3: advisory analysis over a scope's gathered statistics.
-    scope: Literal["study", "insights"]
+    # Feature 018: 'recommend' analyses an evidence pack (scope_id = config id).
+    scope: Literal["study", "insights", "recommend"]
     scope_id: Optional[UUID] = None
     force: bool = False
 
