@@ -1,5 +1,7 @@
 import { Fragment, useState } from 'react'
 import { HelpTooltip } from '../help-tooltip'
+import { EmptyState } from '@/components/empty-state'
+import { ValidationIcon } from '@/components/nav-icons'
 import type { ValidationStudy, WalkForwardResult, SensitivitySurface } from '@/api/types'
 
 // Validation-page redesign: the studies table — stats row, kind chips, config
@@ -62,9 +64,14 @@ export function StudiesTable({
 
   if (studies.length === 0) {
     return (
-      <p data-testid="studies-table" style={{ marginTop: 8, fontSize: 'var(--fs-sm, 13px)', color: 'var(--text-muted)' }}>
-        No studies yet — launch one above.
-      </p>
+      <div data-testid="studies-table">
+        <EmptyState
+          icon={<ValidationIcon />}
+          title="No studies yet"
+          text="A walk-forward study is the honesty machinery: parameters chosen in-sample, judged on out-of-sample windows they never saw. Configure one above — its windows feed the gates, Insights, and recommendations."
+          hint="Needs cached bars to evaluate — backfill on the Data page first."
+        />
+      </div>
     )
   }
 

@@ -153,3 +153,29 @@ describe('DataCoveragePanel', () => {
     expect(screen.getByTestId('coverage-span').textContent).toContain('No bars cached')
   })
 })
+
+describe('DataCoveragePanel — empty cache (post-wipe no-data view)', () => {
+  it('shows the design-system empty card pointing at the backfill below', () => {
+    coverageData = { earliest: null, latest: null, regimes: [] }
+    statsData = {
+      totals: { bars: 0, sessions: 0, earliest: null, latest: null, last_updated: null, sources: [] },
+      months: [],
+      lineage: { sources: [] },
+    }
+    render(<DataCoveragePanel />)
+    const empty = screen.getByTestId('data-empty')
+    expect(empty.querySelector('.empty-state-card')).toBeTruthy()
+    expect(empty).toHaveTextContent(/bar cache is empty/i)
+    expect(empty).toHaveTextContent(/backfill/i)
+  })
+
+  it('never shows the empty card once bars exist', () => {
+    statsData = {
+      totals: { bars: 168424, sessions: 2117, earliest: '2018-01-02', latest: '2026-06-05', last_updated: 'x', sources: ['alpaca'] },
+      months: [{ month: '2018-01', state: 'complete', sessions_present: 21, sessions_expected: 21, bars: 1638, sources: ['alpaca'], missing_dates: [] }],
+      lineage: { sources: [] },
+    }
+    render(<DataCoveragePanel />)
+    expect(screen.queryByTestId('data-empty')).toBeNull()
+  })
+})

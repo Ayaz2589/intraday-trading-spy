@@ -45,7 +45,12 @@ describe('StudiesTable', () => {
 
   it('renders the empty state', () => {
     render(<StudiesTable studies={[]} />)
-    expect(screen.getByTestId('studies-table').textContent).toMatch(/no studies yet/i)
+    const empty = screen.getByTestId('studies-table')
+    expect(empty.textContent).toMatch(/no studies yet/i)
+    // post-wipe no-data view: the design-system card teaches the next step
+    expect(empty.querySelector('.empty-state-card')).toBeTruthy()
+    expect(empty.textContent).toMatch(/walk-forward/i)
+    expect(empty.textContent).toMatch(/cached bars|data page/i)
   })
 
   // Feature 014 (FR-010, T030) — re-run from the studies table.

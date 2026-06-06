@@ -99,15 +99,21 @@ describe("InsightsPage", () => {
     expect(screen.queryByTestId("insights-right-rail")).not.toBeInTheDocument();
   });
 
-  it("wires empty states through", async () => {
+  it("renders one page-level no-data view when the archive is empty (post-wipe)", async () => {
     edgeMock.mockResolvedValue({ points: [], snapshot_fingerprint: "empty" });
     distMock.mockResolvedValue({ rows: [], snapshot_fingerprint: "empty" });
+    recommendHealthMock.mockResolvedValue({ verdicts: [] });
     const { InsightsPage } = await import("./InsightsPage");
     wrap(createElement(InsightsPage));
-    await waitFor(() =>
-      expect(screen.getByText(/no out-of-sample windows yet/i)).toBeInTheDocument()
-    );
-    expect(screen.getByText(/no configs to compare yet/i)).toBeInTheDocument();
+    const empty = await screen.findByTestId("insights-empty");
+    expect(empty.querySelector(".empty-state-card")).toBeTruthy();
+    expect(empty).toHaveTextContent(/archive is empty/i);
+    expect(empty.querySelector("a[href='/validation']")).toBeTruthy();
+    // one teaching card instead of four sparse ones
+    expect(screen.queryByTestId("edge-timeseries")).toBeNull();
+    expect(screen.queryByTestId("config-distribution")).toBeNull();
+    expect(screen.queryByTestId("claude-read")).toBeNull();
+    expect(screen.queryByTestId("recommendations-panel")).toBeNull();
   });
 });
 

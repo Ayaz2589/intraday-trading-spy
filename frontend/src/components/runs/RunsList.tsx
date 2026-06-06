@@ -1,5 +1,8 @@
+import { Link } from '@tanstack/react-router'
 import { useRuns, flattenRuns } from '@/hooks/useRuns'
 import { HelpTooltip } from '@/components/help-tooltip'
+import { EmptyState } from '@/components/empty-state'
+import { BacktestsIcon } from '@/components/nav-icons'
 import { RunRow } from './RunRow'
 
 export function RunsList() {
@@ -31,19 +34,28 @@ export function RunsList() {
 
   if (runs.length === 0) {
     return (
-      <div className="p-8 text-center" data-testid="runs-list-empty">
-        <h2 className="text-lg font-semibold mb-2 inline-flex items-center gap-2">
-          No runs yet
-          <HelpTooltip helpKey="backtest_queue" />
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Runs are created by validation studies — every walk-forward window,
-          sensitivity point, and lockbox evaluation is saved as a drillable run.
-        </p>
-        <p className="text-xs text-muted-foreground mt-4 inline-flex items-center gap-1">
-          Or push CLI runs with <code>--push-to-supabase</code>
-          <HelpTooltip helpKey="cloud_push" />
-        </p>
+      <div data-testid="runs-list-empty">
+        <EmptyState
+          icon={<BacktestsIcon />}
+          title={
+            <>
+              No backtests yet <HelpTooltip helpKey="backtest_queue" />
+            </>
+          }
+          text="Runs are born from validation studies — every walk-forward window, sensitivity point, and lockbox evaluation lands here as a drillable run with its full trade ledger."
+          action={
+            <Link to="/validation" className="btn btn-primary">
+              Run a walk-forward study →
+            </Link>
+          }
+          hint={
+            <>
+              Or push CLI runs with{' '}
+              <code className="empty-state-code">--push-to-supabase</code>{' '}
+              <HelpTooltip helpKey="cloud_push" />
+            </>
+          }
+        />
       </div>
     )
   }

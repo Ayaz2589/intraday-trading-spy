@@ -2,8 +2,11 @@ import { useNavigate } from '@tanstack/react-router'
 import { useConfigDistribution, useEdgeTimeseries } from '@/hooks/useInsights'
 import { EdgeTimeseries } from './EdgeTimeseries'
 import { ConfigDistribution } from './ConfigDistribution'
+import { Link } from '@tanstack/react-router'
 import { ClaudeReadCard, flattenMetrics, type VerdictBanner } from './ClaudeReadCard'
 import { RecommendationsPanel } from '../recommend/RecommendationsPanel'
+import { EmptyState } from '../empty-state'
+import { InsightsIcon } from '../nav-icons'
 import type { ConfigDistributionRow, EdgeTimeseriesPoint } from '@/api/types'
 
 // Feature 016: the Insights page. Redesigned 2026-06-05 (design handoff,
@@ -169,6 +172,24 @@ export function InsightsPage() {
         </header>
       </div>
 
+      {/* Post-wipe no-data view: one teaching card instead of four sparse
+          ones. Only when both queries settled empty — never a loading flash. */}
+      {edge.isSuccess && dist.isSuccess &&
+      (edge.data?.points ?? []).length === 0 &&
+      (dist.data?.rows ?? []).length === 0 ? (
+        <EmptyState
+          testid="insights-empty"
+          icon={<InsightsIcon />}
+          title="The out-of-sample archive is empty"
+          text="Insights pools every validation window across all studies — the edge time-series over regimes, per-config distributions, pooled gates, and recommendations. Run a walk-forward study and this page fills itself."
+          action={
+            <Link to="/validation" className="btn btn-primary">
+              Run a walk-forward study →
+            </Link>
+          }
+          hint="New here? The Docs page walks the whole pipeline end to end."
+        />
+      ) : (
       <div className="content">
         <ArchiveHero
           points={edge.data?.points ?? []}
@@ -204,6 +225,7 @@ export function InsightsPage() {
             opens — verdicts, deterministic candidates, advisory narrative. */}
         <RecommendationsPanel />
       </div>
+      )}
     </div>
   )
 }

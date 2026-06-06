@@ -310,6 +310,8 @@ describe("RunViewer route", () => {
       "recommendation_classes",
       "evidence_pack",
       "trial_count",
+      // Feature 018.1: the side-nav factory reset; coverage in side-nav tests.
+      "delete_all_data",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

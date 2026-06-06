@@ -5,6 +5,8 @@ import { useBackfillJobs } from '@/hooks/useBackfillJobs'
 import { useStartBackfill } from '@/hooks/useStartBackfill'
 import { useBackfillStatus } from '@/hooks/useBackfillStatus'
 import { HelpTooltip } from '@/components/help-tooltip'
+import { EmptyState } from '@/components/empty-state'
+import { DataIcon } from '@/components/nav-icons'
 import { DataStatCards } from '@/components/data/DataStatCards'
 import { StatusStrip } from '@/components/data/StatusStrip'
 import { CacheBarChart } from '@/components/data/CacheBarChart'
@@ -68,6 +70,18 @@ export function DataCoveragePanel() {
           </p>
         )}
       </section>
+
+      {/* Post-wipe no-data view: an empty cache is step zero of the whole
+          pipeline — point straight at the backfill launcher below. */}
+      {stats.data && (stats.data.totals?.bars ?? 0) === 0 && (
+        <EmptyState
+          testid="data-empty"
+          icon={<DataIcon />}
+          title="The bar cache is empty"
+          text="Every backtest, study, and insight stands on cached SPY 5-minute bars — and there are none yet. Backfill the history below to give the system its data."
+          hint="Backfill history below — the full 2018 → today sweep takes about two minutes from Alpaca."
+        />
+      )}
 
       {/* Stat cards + status strip */}
       {stats.data && months.length > 0 && (
