@@ -594,3 +594,10 @@ class RecommendPackResponse(_ResponseBase):
     candidates: list[CandidateView]
     trial_counts: TrialCountsView
     snapshot_fingerprint: str
+
+
+class ResetResponse(_ResponseBase):
+    """Factory reset receipt — per-table deleted counts + the re-seeded config."""
+
+    deleted: dict
+    default_config: str

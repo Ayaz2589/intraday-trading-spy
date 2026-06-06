@@ -1707,6 +1707,67 @@ class SupabaseStorageClient:
             )
         return out
 
+    def factory_reset(self) -> dict:
+        """DANGER (side-nav Delete-all-data): wipe every research/data table
+        for this user — bars are the global market cache — in one
+        transaction, then re-seed a fresh active 'default' config, re-enable
+        Claude, and write the reset as the new journal's first event
+        (constitution VII: even the wipe leaves a trail)."""
+        statements = [
+            ("recommendation_trials", True),
+            ("insight_analyses", True),
+            ("validation_studies", True),   # cascades child runs -> trades/signals
+            ("lockbox_ledger", True),       # un-burns the lockbox: true from-scratch
+            ("runs", True),                 # cascades trades/signals/run-scoped journal
+            ("journal_events", True),
+            ("data_download_jobs", True),
+            ("backfill_jobs", True),
+            ("configs", True),
+            ("bars", False),                # global market cache (no user column)
+        ]
+        counts: dict[str, int] = {}
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                for table, scoped in statements:
+                    if scoped:
+                        cur.execute(
+                            f"DELETE FROM public.{table} WHERE user_id = %s",
+                            [self.user_id],
+                        )
+                    else:
+                        cur.execute(f"DELETE FROM public.{table}")
+                    counts[table] = max(int(cur.rowcount or 0), 0)
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            raise CloudPushError(f"factory_reset failed: {exc}") from exc
+
+        presets = {p["name"]: p for p in self.list_presets()}
+        preset = presets.get("default") or (next(iter(presets.values())) if presets else None)
+        row = self.create_config(name="default", params=(preset or {}).get("params") or {})
+        self.set_active_config(config_id=row["id"])
+        self.update_insight_settings(
+            user_id=self.user_id, claude_enabled=True, disabled_reason=None
+        )
+
+        import uuid
+        from datetime import datetime, timezone
+
+        try:
+            self.insert_journal_event(
+                event_id=uuid.uuid4(),
+                occurred_at=datetime.now(timezone.utc).isoformat(),
+                kind="lifecycle",
+                message="factory reset: all data deleted; fresh 'default' config seeded",
+                details={"event": "factory_reset", "deleted": counts},
+            )
+        except Exception:  # noqa: BLE001 — journaling must never block the reset
+            pass
+
+        return {"deleted": counts, "default_config": row["name"]}
+
     def insert_recommendation_trial(
         self, *, strategy_id, config_id, config_name: str, analysis_id, source: str
     ) -> None:
