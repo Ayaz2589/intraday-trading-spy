@@ -30,4 +30,21 @@ describe('LockboxCard run link', () => {
     render(<LockboxCard status={status()} configs={[]} running={false} onRun={vi.fn()} />)
     expect(screen.queryByRole('link', { name: /view lockbox run/i })).not.toBeInTheDocument()
   })
+
+  // Validation-page rework: the run link is a design-system button, and the
+  // candidate-config picker gets the wide select treatment.
+  it('view lockbox run is a button-styled link', () => {
+    render(
+      <LockboxCard
+        status={status({ run_id: 'aaaa1111-0000-0000-0000-000000000000' })}
+        configs={[]} running={false} onRun={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('link', { name: /view lockbox run/i }).className).toContain('btn')
+  })
+
+  it('candidate config select is wide when unspent', () => {
+    render(<LockboxCard status={status({ state: 'unspent' })} configs={[]} running={false} onRun={vi.fn()} />)
+    expect(screen.getByLabelText('lockbox config')).toHaveStyle({ minWidth: '260px' })
+  })
 })

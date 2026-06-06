@@ -36,4 +36,28 @@ describe("LockboxGate", () => {
     expect(screen.getByTestId("lockbox-state")).toHaveTextContent(/burned|contaminated/i);
     expect(document.querySelector('[data-help-key="burned_lockbox"]')).toBeTruthy();
   });
+
+  // Validation-page rework: the gate renders flat inside the route's Lockbox
+  // section — no nested card repeating the section title.
+  it("renders flat — no nested card or duplicate Lockbox heading", () => {
+    render(<LockboxGate status={_status()} onRun={vi.fn()} />);
+    expect(document.querySelector("section.card")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /lockbox/i })).toBeNull();
+  });
+
+  it("renders the state as a design-system chip", () => {
+    render(<LockboxGate status={_status()} onRun={vi.fn()} />);
+    const chip = screen.getByTestId("lockbox-state");
+    expect(chip.className).toContain("chip");
+    expect(chip).toHaveTextContent(/unspent/i);
+  });
+
+  it("renders a leading form cell passed as children in the header row", () => {
+    render(
+      <LockboxGate status={_status()} onRun={vi.fn()}>
+        <div data-testid="config-slot" />
+      </LockboxGate>,
+    );
+    expect(screen.getByTestId("config-slot")).toBeInTheDocument();
+  });
 });

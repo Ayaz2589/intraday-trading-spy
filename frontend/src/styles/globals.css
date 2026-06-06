@@ -550,6 +550,8 @@ body {
 }
 .chip-accent { background: var(--accent-soft); color: var(--accent); }
 .chip-profit { background: var(--profit-soft); color: var(--profit); }
+.chip-loss { background: var(--loss-soft); color: var(--loss); }
+.chip-muted { background: var(--surface-2); color: var(--text-muted); }
 
 /* Info dot (HelpTooltip trigger) */
 .info-dot {
