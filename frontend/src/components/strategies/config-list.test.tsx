@@ -123,6 +123,45 @@ describe('ConfigsSection', () => {
     expect(screen.queryByTestId('off-default-default')).toBeNull()
   })
 
+  // Strategy-page cleanup: rows must be tellable apart at a glance — changed
+  // knobs render as accent chips (prototype kchip.diff), non-summary diffs get
+  // their own chip, and the count pill stays muted so ACTIVE is the only blue.
+  it('highlights off-default knob chips in accent, including non-summary knobs', () => {
+    const params = {
+      risk: { max_position_value_pct: 100 },
+      strategy: { vwap_pullback: { stop: { buffer_pct: 0.2 } } },
+    }
+    wrap(
+      <ConfigsSection
+        configs={[cfg('1', 'default', true), cfg('2', 'tweaked', false, params)]}
+        expandedId={null}
+        onToggle={() => {}}
+      />,
+    )
+    const row = screen.getByTestId('config-row-tweaked')
+    // changed summary knob → accent chip
+    expect(within(row).getByText('100%').closest('.chip')?.className).toContain('chip-accent')
+    // unchanged summary knob → muted chip
+    expect(within(row).getByText('lockout').closest('.chip')?.className).not.toContain('chip-accent')
+    // off-default NON-summary knob gets its own accent chip
+    const stop = within(row).getByText('stop')
+    expect(stop.closest('.chip')?.className).toContain('chip-accent')
+    expect(within(row).getByText('0.2%')).toBeInTheDocument()
+    // the all-defaults row shows no extra chips
+    expect(within(screen.getByTestId('config-row-default')).queryByText('stop')).toBeNull()
+  })
+
+  it('renders the off-default count pill muted, not accent', () => {
+    wrap(
+      <ConfigsSection
+        configs={[cfg('1', 'default', true), cfg('2', 'wf-rr3', false, offDefaultParams)]}
+        expandedId={null}
+        onToggle={() => {}}
+      />,
+    )
+    expect(screen.getByTestId('off-default-wf-rr3').className).not.toContain('chip-accent')
+  })
+
   it('marks the active config and activates another', async () => {
     activateConfigMock.mockResolvedValue(cfg('2', 'wf-rr3', true))
     wrap(

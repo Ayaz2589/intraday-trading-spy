@@ -97,4 +97,16 @@ describe('NewConfigSection', () => {
     await mount()
     expect(document.querySelector('[data-help-key="duplicate_vs_edit"]')).toBeTruthy()
   })
+
+  // Strategy-page cleanup: balanced creator row (prototype: 1.4fr 1fr 1fr auto)
+  // — the name field must not absorb the whole card while the selects shrink.
+  it('lays out name and source as proportional cells with full-width selects', async () => {
+    await mount()
+    const name = screen.getByLabelText('new config name')
+    const source = screen.getByLabelText('source')
+    expect((name.parentElement as HTMLElement).style.flex).toBe('1.4 1 200px')
+    expect((source.parentElement as HTMLElement).style.flex).toBe('1 1 170px')
+    expect(source).toHaveStyle({ width: '100%' })
+    expect(screen.getByLabelText('preset')).toHaveStyle({ width: '100%' })
+  })
 })

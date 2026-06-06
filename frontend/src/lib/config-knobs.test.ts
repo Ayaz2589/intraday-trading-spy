@@ -3,6 +3,7 @@ import {
   KNOB_DEFAULTS,
   KNOB_PATH_LABELS,
   SENSITIVITY_KNOBS,
+  configDiffChips,
   knobChips,
   knobsFromConfig,
   offDefaultKeys,
@@ -55,6 +56,39 @@ describe('knobChips', () => {
       { label: 'cap', value: '400%' },
       { label: 'R:R', value: '2' },
       { label: 'lockout', value: '2' },
+    ])
+  })
+})
+
+describe('configDiffChips', () => {
+  it('returns the four summary chips, untagged at defaults, with no extras', () => {
+    const chips = configDiffChips(KNOB_DEFAULTS)
+    expect(chips).toHaveLength(4)
+    expect(chips.map(c => c.label)).toEqual(['risk', 'cap', 'R:R', 'lockout'])
+    expect(chips.every(c => !c.diff)).toBe(true)
+  })
+
+  it('tags off-default summary knobs as diff', () => {
+    const chips = configDiffChips({ ...KNOB_DEFAULTS, max_position_value_pct: 100, risk_reward: 3 })
+    expect(chips.find(c => c.label === 'cap')).toMatchObject({ value: '100%', diff: true })
+    expect(chips.find(c => c.label === 'R:R')).toMatchObject({ value: '3', diff: true })
+    expect(chips.find(c => c.label === 'risk')).toMatchObject({ diff: false })
+    expect(chips).toHaveLength(4)
+  })
+
+  it('appends diff chips for off-default knobs outside the fixed four', () => {
+    const chips = configDiffChips({
+      ...KNOB_DEFAULTS,
+      account_value: 50_000,
+      opening_range_minutes: 30,
+      stop_buffer_pct: 0.2,
+      max_distance_from_vwap_pct: 0.5,
+    })
+    expect(chips.slice(4)).toEqual([
+      { label: 'acct', value: '$50,000', diff: true },
+      { label: 'OR', value: '30min', diff: true },
+      { label: 'stop', value: '0.2%', diff: true },
+      { label: 'vwap', value: '0.5%', diff: true },
     ])
   })
 })
