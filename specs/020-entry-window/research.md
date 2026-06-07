@@ -56,7 +56,7 @@ invalid YAML/params fail fast with a named error.
 `...end_minutes_after_open`, labels "entry window start (min after open)" /
 "entry window end (min after open)", bounds [0, 390], kind int. Leaves are
 unique across the registry (CLI leaf resolution keeps working). Frontend
-`SENSITIVITY_KNOBS` grids: start 0/15/30/45, end 240/270/300/360 — ascending
+`SENSITIVITY_KNOBS` grids: start 0/15/30/45, end 240/270/300/390 — ascending
 and straddling the defaults per the existing invariant test.
 
 **Rationale**: identical treatment to the 8 existing knobs is the whole
