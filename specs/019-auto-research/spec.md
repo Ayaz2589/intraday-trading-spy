@@ -168,6 +168,9 @@ all reachable from the campaign's detail view.
   with **ready-for-lockbox** without consuming budget on candidates.
 - Recommendation engine returns no actionable candidates (thin evidence and
   no prescribed study): campaign halts honestly (no invented candidates).
+- Recommendation engine prescribes gather-evidence for a family the campaign
+  has already gathered: the campaign halts as stop-tuning rather than
+  looping — evidence-gathering is once per family per campaign (analyze G1).
 - Top-ranked candidate duplicates an existing config's knob projection: it
   is skipped in favor of the next ranked candidate; if all are duplicates,
   the campaign halts.
@@ -229,7 +232,12 @@ all reachable from the campaign's detail view.
   a walk-forward study on the current candidate, compute the pooled gate,
   and on failure act on the deterministic recommendation engine's
   top-ranked next step — knob-delta → create a draft config; gather-evidence
-  → run the prescribed study; stop-tuning → halt.
+  → run the prescribed study; stop-tuning → halt. The gather-evidence
+  action MUST run at most once per knob family per campaign: a repeated
+  gather-evidence prescription for an already-gathered family halts the
+  campaign as **stop-tuning** (no novel candidates), guaranteeing
+  termination even though evidence studies consume no candidate budget
+  (analyze G1).
 - **FR-008**: A campaign MUST halt only with one of: **ready-for-lockbox**
   (gate passed), **stop-tuning**, **budget-exhausted**, **cancelled**, or
   **failed** (with reason). On gate pass it MUST identify the candidate and
