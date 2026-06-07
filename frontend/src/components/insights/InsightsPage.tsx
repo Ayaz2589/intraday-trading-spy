@@ -76,7 +76,14 @@ function ArchiveHero({
             {configs.length}
             <span className="unit">config{configs.length === 1 ? '' : 's'}</span>
           </span>
-          <span className="hero-metric-sub mono">{configs.join(' · ')}</span>
+          {/* Campaigns mint configs by the dozen — keep this cell a stat, not
+              a name dump. First few inline; the rest behind a hover title. */}
+          <span className="hero-metric-sub mono" title={configs.join(' · ')}>
+            {configs.slice(0, 3).join(' · ')}
+            {configs.length > 3 && (
+              <span style={{ color: 'var(--text-muted)' }}> +{configs.length - 3} more</span>
+            )}
+          </span>
         </div>
         <div className="hero-metric">
           <span className="hero-metric-label">Windows positive</span>

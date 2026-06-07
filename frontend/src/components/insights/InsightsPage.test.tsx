@@ -235,3 +235,24 @@ describe("InsightsPage — headline stat strip (016-polish)", () => {
     expect(stats).toHaveTextContent(/2019-12-31/);
   });
 });
+
+describe("InsightsPage — configs cell stays compact with many configs", () => {
+  it("shows only the first few config names plus a +N more marker", async () => {
+    const many = Array.from({ length: 28 }, (_, i) => ({
+      ...EDGE.points[0],
+      run_id: `r${i}`,
+      config_name: `cfg-${String(i).padStart(2, "0")}`,
+    }));
+    edgeMock.mockResolvedValue({ ...EDGE, points: many });
+    distMock.mockResolvedValue(DIST);
+    const { InsightsPage } = await import("./InsightsPage");
+    wrap(createElement(InsightsPage));
+    await waitFor(() => expect(screen.getByTestId("insights-stats")).toBeInTheDocument());
+    const stats = screen.getByTestId("insights-stats");
+    expect(stats).toHaveTextContent(/28\s*configs/i);
+    expect(stats).toHaveTextContent("cfg-00");
+    expect(stats).toHaveTextContent(/\+25 more/);
+    // the long tail never renders inline
+    expect(stats).not.toHaveTextContent("cfg-27");
+  });
+});
