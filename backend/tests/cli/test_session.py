@@ -13,7 +13,6 @@ import pytest
 
 from intraday_trade_spy.cli import session as session_mod
 
-
 ANON = "anon-key-123"
 URL = "https://example.supabase.co"
 

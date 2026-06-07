@@ -18,8 +18,8 @@ import time
 
 import httpx
 
-from intraday_trade_spy.cli.session import LOGIN_HINT, NotSignedIn, authed_request
 from intraday_trade_spy.cli import session as session_mod
+from intraday_trade_spy.cli.session import LOGIN_HINT, NotSignedIn, authed_request
 from intraday_trade_spy.validation.knobs import KNOB_REGISTRY
 
 _POLL_S = 2.0
@@ -67,8 +67,8 @@ def _wait_study(study_id: str, as_json: bool) -> int:
             return _fail(resp)
         body = resp.json()
         if body.get("status") in ("finished", "failed"):
-            _emit(body, as_json=as_json,
-                  summary=[f"study {study_id} {body.get('status')} — view at /validation/{study_id}"])
+            line = f"study {study_id} {body.get('status')} — view at /validation/{study_id}"
+            _emit(body, as_json=as_json, summary=[line])
             return 0 if body.get("status") == "finished" else 1
         if not as_json:
             done = body.get("progress_completed", 0)

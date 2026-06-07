@@ -32,6 +32,11 @@ if TYPE_CHECKING:
 HEALTH_CHECK_TIMEOUT_S = 5.0
 
 
+class CampaignAlreadyRunning(Exception):
+    """Feature 019: the one-active-campaign rule (DB partial unique index)
+    surfaced as a typed error the router translates to 409."""
+
+
 class ConfigNameConflict(Exception):
     """A config name collides with an existing one (or is empty) — Feature 012."""
 
@@ -1715,6 +1720,7 @@ class SupabaseStorageClient:
         (constitution VII: even the wipe leaves a trail)."""
         statements = [
             ("recommendation_trials", True),
+            ("research_campaigns", True),   # Feature 019: campaigns are research data
             ("insight_analyses", True),
             ("validation_studies", True),   # cascades child runs -> trades/signals
             ("lockbox_ledger", True),       # un-burns the lockbox: true from-scratch
@@ -1769,15 +1775,27 @@ class SupabaseStorageClient:
         return {"deleted": counts, "default_config": row["name"]}
 
     def insert_recommendation_trial(
-        self, *, strategy_id, config_id, config_name: str, analysis_id, source: str
+        self,
+        *,
+        strategy_id,
+        config_id,
+        config_name: str,
+        analysis_id,
+        source: str,
+        campaign_id=None,
+        cycle: int | None = None,
+        family: str | None = None,
     ) -> None:
         """One ledger row per draft-flow config creation (FR-011, analyze A1:
         any analysis-originated draft is a trial). Durable by design —
-        config_id nulls on config deletion, config_name keeps the trail."""
+        config_id nulls on config deletion, config_name keeps the trail.
+        Feature 019: campaign trials carry provenance (campaign_id, cycle,
+        family — the tightened-bar count key)."""
         sql = (
             "INSERT INTO public.recommendation_trials "
-            "(user_id, strategy_id, config_id, config_name, analysis_id, source) "
-            "VALUES (%s, %s, %s, %s, %s, %s)"
+            "(user_id, strategy_id, config_id, config_name, analysis_id, source, "
+            " campaign_id, cycle, family) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
         )
         params = [
             self.user_id,
@@ -1786,6 +1804,9 @@ class SupabaseStorageClient:
             config_name,
             str(analysis_id) if analysis_id else None,
             source,
+            str(campaign_id) if campaign_id else None,
+            cycle,
+            family,
         ]
         try:
             from intraday_trade_spy.storage.db_pool import get_pool
@@ -1825,6 +1846,174 @@ class SupabaseStorageClient:
         if not rows:
             return {"drafted": 0, "validated": 0}
         return {"drafted": int(rows[0][0] or 0), "validated": int(rows[0][1] or 0)}
+
+    # ---------- Feature 019: research campaigns (psycopg pool) ----------
+
+    # RETURNING / SELECT column order — keep in sync with _campaign_row_dict.
+    _CAMPAIGN_COLS = (
+        "id, seq, starting_config_id, starting_config_name, budget, status, "
+        "thresholds, cycles, cancel_requested, verdict, verdict_detail, "
+        "created_at, updated_at"
+    )
+
+    @staticmethod
+    def _campaign_row_dict(row, *, strategy_id=None) -> dict:
+        import json as _json
+
+        def j(v, default):
+            if v is None:
+                return default
+            return _json.loads(v) if isinstance(v, str) else v
+
+        out = {
+            "id": str(row[0]),
+            "seq": int(row[1]),
+            "starting_config_id": str(row[2]) if row[2] else None,
+            "starting_config_name": row[3],
+            "budget": int(row[4]),
+            "status": row[5],
+            "thresholds": j(row[6], {}),
+            "cycles": j(row[7], []),
+            "cancel_requested": bool(row[8]),
+            "verdict": row[9],
+            "verdict_detail": j(row[10], None),
+            "created_at": str(row[11]),
+            "updated_at": str(row[12]),
+        }
+        if strategy_id is not None:
+            out["strategy_id"] = str(strategy_id)
+        if len(row) > 13:
+            out["strategy_id"] = str(row[13])
+        return out
+
+    def _campaign_sql(self, sql: str, params: list, *, fetch: str | None = None):
+        """One pool round-trip with the standard error wrap. fetch: one|all."""
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, params)
+                if fetch == "one":
+                    return cur.fetchone()
+                if fetch == "all":
+                    return cur.fetchall()
+                return cur.rowcount
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            if getattr(exc, "sqlstate", None) == "23505" or "duplicate key" in str(exc):
+                raise CampaignAlreadyRunning(str(exc)) from exc
+            raise CloudPushError(f"campaign storage call failed: {exc}") from exc
+
+    def insert_research_campaign(
+        self, *, strategy_id, starting_config_id, starting_config_name: str,
+        budget: int, thresholds: dict,
+    ) -> dict:
+        """Create a running campaign; seq = per-user max(seq)+1 computed in
+        SQL. The 0126 partial unique index enforces one running campaign —
+        a violation surfaces as CampaignAlreadyRunning."""
+        import json as _json
+
+        sql = (
+            "INSERT INTO public.research_campaigns "
+            "(user_id, strategy_id, seq, starting_config_id, starting_config_name, "
+            " budget, status, thresholds) "
+            "SELECT %s, %s, COALESCE(max(seq), 0) + 1, %s, %s, %s, 'running', %s "
+            "FROM public.research_campaigns WHERE user_id = %s "
+            f"RETURNING {self._CAMPAIGN_COLS}"
+        )
+        row = self._campaign_sql(sql, [
+            self.user_id, str(strategy_id),
+            str(starting_config_id) if starting_config_id else None,
+            starting_config_name, budget, _json.dumps(thresholds), self.user_id,
+        ], fetch="one")
+        out = self._campaign_row_dict(row)
+        out["strategy_id"] = str(strategy_id)
+        return out
+
+    def get_research_campaign(self, *, campaign_id) -> dict | None:
+        sql = (
+            f"SELECT {self._CAMPAIGN_COLS}, strategy_id "
+            "FROM public.research_campaigns WHERE id = %s AND user_id = %s"
+        )
+        row = self._campaign_sql(sql, [str(campaign_id), self.user_id], fetch="one")
+        return self._campaign_row_dict(row) if row else None
+
+    def list_research_campaigns(self) -> list[dict]:
+        sql = (
+            f"SELECT {self._CAMPAIGN_COLS}, strategy_id "
+            "FROM public.research_campaigns WHERE user_id = %s "
+            "ORDER BY created_at DESC"
+        )
+        rows = self._campaign_sql(sql, [self.user_id], fetch="all")
+        return [self._campaign_row_dict(r) for r in rows or []]
+
+    def append_campaign_cycle(self, *, campaign_id, cycle_entry: dict) -> None:
+        """Read-modify-write the cycles JSONB (single-writer: the engine task
+        owns the row; the API only flips cancel_requested)."""
+        import json as _json
+
+        row = self._campaign_sql(
+            "SELECT cycles FROM public.research_campaigns "
+            "WHERE id = %s AND user_id = %s",
+            [str(campaign_id), self.user_id], fetch="one",
+        )
+        existing = row[0] if row else []
+        if isinstance(existing, str):
+            existing = _json.loads(existing)
+        merged = list(existing or []) + [cycle_entry]
+        self._campaign_sql(
+            "UPDATE public.research_campaigns "
+            "SET cycles = %s, updated_at = now() WHERE id = %s AND user_id = %s",
+            [_json.dumps(merged), str(campaign_id), self.user_id],
+        )
+
+    def halt_research_campaign(
+        self, *, campaign_id, status: str, verdict: str, verdict_detail: dict | None,
+    ) -> None:
+        """Atomic, write-once terminal flip: status + verdict land in ONE
+        UPDATE guarded by `verdict IS NULL`."""
+        import json as _json
+
+        self._campaign_sql(
+            "UPDATE public.research_campaigns "
+            "SET status = %s, verdict = %s, verdict_detail = %s, updated_at = now() "
+            "WHERE id = %s AND user_id = %s AND verdict IS NULL",
+            [status, verdict, _json.dumps(verdict_detail or {}),
+             str(campaign_id), self.user_id],
+        )
+
+    def request_campaign_cancel(self, *, campaign_id) -> bool:
+        """Cooperative cancel flag; True iff the campaign was still running."""
+        n = self._campaign_sql(
+            "UPDATE public.research_campaigns "
+            "SET cancel_requested = true, updated_at = now() "
+            "WHERE id = %s AND user_id = %s AND status = 'running'",
+            [str(campaign_id), self.user_id],
+        )
+        return bool(n)
+
+    def fail_running_campaigns(self, *, reason: str) -> int:
+        """Startup reconciler (research.md R3): a service restart leaves no
+        phantom 'running' campaigns — they fail explicitly with the reason."""
+        import json as _json
+
+        return int(self._campaign_sql(
+            "UPDATE public.research_campaigns "
+            "SET status = 'failed', verdict = 'failed', verdict_detail = %s, "
+            "    updated_at = now() "
+            "WHERE status = 'running'",
+            [_json.dumps({"reason": reason})],
+        ) or 0)
+
+    def count_family_trials(self, *, strategy_id, family: str) -> int:
+        """The tightened-bar count: recorded trials for this knob family."""
+        row = self._campaign_sql(
+            "SELECT count(*) FROM public.recommendation_trials "
+            "WHERE user_id = %s AND strategy_id = %s AND family = %s",
+            [self.user_id, str(strategy_id), family], fetch="one",
+        )
+        return int(row[0]) if row else 0
 
     # ---------- Feature 016: Claude analyses + settings (PostgREST) ----------
 

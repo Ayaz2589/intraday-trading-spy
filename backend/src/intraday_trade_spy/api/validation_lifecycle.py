@@ -435,12 +435,17 @@ def gather_pooled_oos(*, study_id, user_id, storage):
     return study, window_trades, float(next(iter(uniq))), run_refs
 
 
-def _persist_pooled_gate(*, storage, study, gate) -> None:
+def _persist_pooled_gate(*, storage, study, gate, bar: dict | None = None) -> None:
     """Read-modify-write (research R2): update_validation_study replaces the
     whole result jsonb, so merge the additive pooled_gate key into a copy.
-    NEVER writes study status/progress (analyze I1)."""
+    NEVER writes study status/progress (analyze I1). Feature 019: a campaign
+    cycle's tightened bar {k, level} rides along so the verdict is
+    self-describing and recomputable (SC-005)."""
     merged = dict(study.get("result") or {})
-    merged["pooled_gate"] = gate.model_dump(mode="json")
+    payload = gate.model_dump(mode="json")
+    if bar is not None:
+        payload["bar"] = bar
+    merged["pooled_gate"] = payload
     storage.update_validation_study(study_id=study["id"], result=merged)
 
 
@@ -450,12 +455,25 @@ def _stamped(gate):
     return gate.model_copy(update={"computed_at": datetime.now(timezone.utc).isoformat()})
 
 
-def run_pooled_gate_fast(*, study_id, user_id, storage, base_cfg: Config | None = None):
+def run_pooled_gate_fast(
+    *,
+    study_id,
+    user_id,
+    storage,
+    base_cfg: Config | None = None,
+    alpha_override: float | None = None,
+    bar: dict | None = None,
+):
     """Synchronous fast gate: pooled CIs + MC + sign test + verdict; persists
-    into result.pooled_gate and returns the stamped result."""
+    into result.pooled_gate and returns the stamped result. Feature 019:
+    campaign cycles pass alpha_override (= base_alpha/k, the tightened bar)
+    and the bar metadata {k, level} to be recorded with the verdict."""
     from intraday_trade_spy.validation.pooled import compute_pooled_gate
 
     cfg = base_cfg or load_config(DEFAULT_CONFIG_PATH)
+    gate_cfg = cfg.validation.pooled_gate
+    if alpha_override is not None:
+        gate_cfg = gate_cfg.model_copy(update={"alpha": alpha_override})
     study, windows, equity, _refs = gather_pooled_oos(
         study_id=study_id, user_id=user_id, storage=storage
     )
@@ -463,14 +481,14 @@ def run_pooled_gate_fast(*, study_id, user_id, storage, base_cfg: Config | None 
         gate = compute_pooled_gate(
             windows,
             starting_equity=equity,
-            cfg=cfg.validation.pooled_gate,
+            cfg=gate_cfg,
             mc_cfg=cfg.validation.monte_carlo,
             low_confidence_threshold=cfg.metrics.low_confidence_trade_count,
         )
     except ValueError as exc:
         raise PooledGateNotComputable(str(exc)) from exc
     stamped = _stamped(gate)
-    _persist_pooled_gate(storage=storage, study=study, gate=stamped)
+    _persist_pooled_gate(storage=storage, study=study, gate=stamped, bar=bar)
     return stamped
 
 
