@@ -21,6 +21,7 @@ import { Route as AuthenticatedDocsRouteImport } from './routes/_authenticated.d
 import { Route as AuthenticatedDataRouteImport } from './routes/_authenticated.data'
 import { Route as AuthenticatedValidationStudyIdRouteImport } from './routes/_authenticated.validation_.$studyId'
 import { Route as AuthenticatedRunsRunIdRouteImport } from './routes/_authenticated.runs_.$runId'
+import { Route as AuthenticatedValidationCampaignsCampaignIdRouteImport } from './routes/_authenticated.validation_.campaigns.$campaignId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -82,6 +83,12 @@ const AuthenticatedRunsRunIdRoute = AuthenticatedRunsRunIdRouteImport.update({
   path: '/runs/$runId',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedValidationCampaignsCampaignIdRoute =
+  AuthenticatedValidationCampaignsCampaignIdRouteImport.update({
+    id: '/validation_/campaigns/$campaignId',
+    path: '/validation/campaigns/$campaignId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/sign-in/': typeof SignInIndexRoute
   '/runs/$runId': typeof AuthenticatedRunsRunIdRoute
   '/validation/$studyId': typeof AuthenticatedValidationStudyIdRoute
+  '/validation/campaigns/$campaignId': typeof AuthenticatedValidationCampaignsCampaignIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInIndexRoute
   '/runs/$runId': typeof AuthenticatedRunsRunIdRoute
   '/validation/$studyId': typeof AuthenticatedValidationStudyIdRoute
+  '/validation/campaigns/$campaignId': typeof AuthenticatedValidationCampaignsCampaignIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +132,7 @@ export interface FileRoutesById {
   '/sign-in/': typeof SignInIndexRoute
   '/_authenticated/runs_/$runId': typeof AuthenticatedRunsRunIdRoute
   '/_authenticated/validation_/$studyId': typeof AuthenticatedValidationStudyIdRoute
+  '/_authenticated/validation_/campaigns/$campaignId': typeof AuthenticatedValidationCampaignsCampaignIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/sign-in/'
     | '/runs/$runId'
     | '/validation/$studyId'
+    | '/validation/campaigns/$campaignId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/runs/$runId'
     | '/validation/$studyId'
+    | '/validation/campaigns/$campaignId'
   id:
     | '__root__'
     | '/'
@@ -165,6 +177,7 @@ export interface FileRouteTypes {
     | '/sign-in/'
     | '/_authenticated/runs_/$runId'
     | '/_authenticated/validation_/$studyId'
+    | '/_authenticated/validation_/campaigns/$campaignId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRunsRunIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/validation_/campaigns/$campaignId': {
+      id: '/_authenticated/validation_/campaigns/$campaignId'
+      path: '/validation/campaigns/$campaignId'
+      fullPath: '/validation/campaigns/$campaignId'
+      preLoaderRoute: typeof AuthenticatedValidationCampaignsCampaignIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -272,6 +292,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedValidationRoute: typeof AuthenticatedValidationRoute
   AuthenticatedRunsRunIdRoute: typeof AuthenticatedRunsRunIdRoute
   AuthenticatedValidationStudyIdRoute: typeof AuthenticatedValidationStudyIdRoute
+  AuthenticatedValidationCampaignsCampaignIdRoute: typeof AuthenticatedValidationCampaignsCampaignIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -283,6 +304,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedValidationRoute: AuthenticatedValidationRoute,
   AuthenticatedRunsRunIdRoute: AuthenticatedRunsRunIdRoute,
   AuthenticatedValidationStudyIdRoute: AuthenticatedValidationStudyIdRoute,
+  AuthenticatedValidationCampaignsCampaignIdRoute:
+    AuthenticatedValidationCampaignsCampaignIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

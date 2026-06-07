@@ -98,7 +98,13 @@ export type HelpContentKey =
   | "recommendation_classes"
   | "evidence_pack"
   | "trial_count"
-  | "delete_all_data";
+  | "delete_all_data"
+  // Feature 019 (auto-research campaigns) concepts
+  | "auto_research_campaign"
+  | "trial_budget"
+  | "tightened_bar"
+  | "stopping_rules"
+  | "ready_for_lockbox";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -516,5 +522,32 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "What this data feeds",
     description:
       "A quick link between the data and the research built on it: how many backtests and validation studies have run against this cache, and when the most recent one ran. Counts match the Runs page. Deeper per-run lineage (which exact dates each run consumed) is planned for the insights feature.",
+  },
+
+  // ---- Feature 019: auto-research campaigns ----
+  auto_research_campaign: {
+    title: "Auto-research campaign",
+    description:
+      "One unattended loop over the research pipeline: check data freshness, run a walk-forward study on the current candidate, compute the pooled gate, and — if it fails — try the recommendation engine's best next config. It halts with an honest verdict (ready for lockbox, stop tuning, budget exhausted, cancelled, or failed) and it can NEVER spend your lockbox — that final shot stays yours.",
+  },
+  trial_budget: {
+    title: "Trial budget",
+    description:
+      "The maximum number of candidate configs one campaign may try. Every candidate is recorded in the trial ledger — each try against the same history erodes what 'out-of-sample' means — so the budget caps how much erosion a single campaign can cause before it must stop and report.",
+  },
+  tightened_bar: {
+    title: "Tightened bar (1 − α/k)",
+    description:
+      "Try enough variants and one will pass a fixed 95% gate by pure luck. To prevent that, each knob family's k-th recorded trial must clear a stricter confidence bar: 1 − α/k (Bonferroni). The bar only ever tightens — volume cannot wear the gate down — and every verdict records the exact bar it was judged against.",
+  },
+  stopping_rules: {
+    title: "Stopping rules",
+    description:
+      "A campaign can only end five ways: ready-for-lockbox (a candidate passed the tightened gate — frozen for YOUR one-shot decision), stop-tuning (the engine concluded no setting in the family shows deployable edge), budget exhausted, cancelled by you, or failed with the reason recorded. There is no 'keep going until something passes' — that would guarantee a false positive eventually.",
+  },
+  ready_for_lockbox: {
+    title: "Ready for lockbox",
+    description:
+      "The campaign's success verdict: a candidate cleared the tightened pooled gate on data the loop was allowed to touch. The lockbox — the untouched final slice — is deliberately NOT spent by automation. Review the candidate, and when you are convinced, run your one-shot lockbox test from the Validation page yourself.",
   },
 };
