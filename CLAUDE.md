@@ -107,3 +107,12 @@ Backtest MVP: monorepo skeleton, config loader, domain models, VWAP +
 opening range indicators, VWAP-pullback long strategy, risk manager,
 CLI backtester. No React UI yet — that becomes a later feature.
 <!-- SPECKIT END -->
+
+<!-- SESSION CONTINUITY (outside the speckit-managed block) -->
+## Session continuity
+
+At session start, read `.claude/context-summaries/latest.md` (local,
+gitignored) to recover the previous session's state. Before clearing
+context, run the `clear-context` skill (`.claude/skills/clear-context/`)
+to write the next summary. Dated summaries are permanent local records;
+only `latest.md` is overwritten.
