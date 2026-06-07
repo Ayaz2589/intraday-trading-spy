@@ -125,9 +125,13 @@ def materialize_bars_csv(
 
     bars = storage_client.list_bars(range_start=str(start), range_end=str(end))
     have_dates = {b["bar_start"][:10] for b in bars}
+    # Ranges may legitimately extend into the future (the lockbox split ends
+    # 2026-12-31 by design) — bars can't exist past today, so never expect
+    # (or try to fetch) future days.
+    expect_end = min(end, today)
     expected_dates = {
         (start + timedelta(days=i)).isoformat()
-        for i in range((end - start).days + 1)
+        for i in range((expect_end - start).days + 1)
         if (start + timedelta(days=i)).weekday() < 5  # Mon-Fri only
     }
     missing = sorted(expected_dates - have_dates)

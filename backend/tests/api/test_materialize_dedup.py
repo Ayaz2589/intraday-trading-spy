@@ -112,3 +112,53 @@ def test_materialize_output_is_chronological(tmp_path):
         "2026-06-01T09:35:00-04:00",
     ]
     Path(out).unlink(missing_ok=True)
+
+
+# ---- future-dated ranges (lockbox spans into the future by design) -------------
+
+def test_materialize_never_fetches_future_days():
+    """A range ending in the future (e.g. the 2025–26 lockbox) must not try to
+    download bars for days that haven't happened — DownloadRequest refuses
+    future dates and the 500 would block the lockbox run entirely."""
+    import freezegun
+
+    from intraday_trade_spy.api import lifecycle as lc
+
+    with freezegun.freeze_time("2026-06-07"):
+        stub = mock.MagicMock()
+        stub.list_bars.return_value = [
+            {"bar_start": "2026-06-05T09:30:00-04:00", "open": "1", "high": "1.1",
+             "low": "0.9", "close": "1", "volume": "10", "source": "alpaca"},
+        ]
+        calls = []
+        with mock.patch.object(lc, "_fetch_and_cache_range",
+                               side_effect=lambda **kw: calls.append(kw)):
+            out = lc.materialize_bars_csv(
+                storage_client=stub, start=date(2026, 6, 5), end=date(2026, 12, 31))
+        assert calls == []  # nothing missing in the past — nothing to fetch
+        rows = _read_csv(out)
+        assert len(rows) == 1
+        Path(out).unlink(missing_ok=True)
+
+
+def test_materialize_clamps_fetch_to_today_when_past_days_missing():
+    import freezegun
+
+    from intraday_trade_spy.api import lifecycle as lc
+
+    with freezegun.freeze_time("2026-06-07"):
+        stub = mock.MagicMock()
+        stub.list_bars.return_value = [
+            {"bar_start": "2026-06-04T09:30:00-04:00", "open": "1", "high": "1.1",
+             "low": "0.9", "close": "1", "volume": "10", "source": "alpaca"},
+        ]
+        calls = []
+        with mock.patch.object(lc, "_fetch_and_cache_range",
+                               side_effect=lambda **kw: calls.append(kw)):
+            out = lc.materialize_bars_csv(
+                storage_client=stub, start=date(2026, 6, 4), end=date(2026, 12, 31))
+        # 2026-06-05 (Fri) is missing and in the past — fetched; nothing future.
+        assert len(calls) == 1
+        assert calls[0]["start"] == date(2026, 6, 5)
+        assert calls[0]["end"] <= date(2026, 6, 7)
+        Path(out).unlink(missing_ok=True)
