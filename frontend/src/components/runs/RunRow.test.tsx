@@ -77,3 +77,21 @@ describe('<RunRow />', () => {
     expect(screen.getByTestId('run-origin-badge')).toHaveTextContent('CLI run')
   })
 })
+
+describe('<RunRow /> — numeric cells (backtests-page polish)', () => {
+  it('renders bare right-aligned numbers without word prefixes', async () => {
+    const { RunRow } = await import('./RunRow')
+    render(wrap(<RunRow run={baseRun} />))
+    expect(screen.getByTestId('run-row-trades')).toHaveTextContent(/^5$/)
+    const pnl = screen.getByTestId('run-row-pnl')
+    expect(pnl).toHaveTextContent(/^\$120\.50$/)
+    expect(pnl).toHaveAttribute('data-sign', 'pos')
+  })
+
+  it('marks negative PnL as a loss', async () => {
+    const { RunRow } = await import('./RunRow')
+    const losing = { ...baseRun, id: 'r9', summary: { ...baseRun.summary, pnl: '-$42.10' } }
+    render(wrap(<RunRow run={losing} />))
+    expect(screen.getByTestId('run-row-pnl')).toHaveAttribute('data-sign', 'neg')
+  })
+})

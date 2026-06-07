@@ -5,6 +5,11 @@ import { useDeleteRun } from '@/hooks/useDeleteRun'
 import { RunOriginBadge } from './RunOriginBadge'
 import type { Run, RunStatus } from '@/api/types'
 
+// Single source for the list's column template — header (RunsList) and rows
+// must never drift apart.
+export const RUNS_GRID = '1fr 170px 120px 90px 110px 40px'
+export const RUNS_GRID_MIN_WIDTH = 680
+
 const STATUS_LABEL: Record<RunStatus, string> = {
   queued: 'Queued',
   running: 'Running',
@@ -42,7 +47,8 @@ export function RunRow({ run, failureReason }: Props) {
         data-testid={`run-row-${run.id}`}
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 170px 120px 120px 120px 40px',
+          gridTemplateColumns: RUNS_GRID,
+          minWidth: RUNS_GRID_MIN_WIDTH,
           gap: 12,
           alignItems: 'center',
           padding: '8px 12px',
@@ -84,11 +90,29 @@ export function RunRow({ run, failureReason }: Props) {
           />
           {STATUS_LABEL[run.status]}
         </span>
-        <span style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}>
-          {run.summary.total_trades} trades
+        <span
+          className="mono"
+          data-testid="run-row-trades"
+          style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}
+        >
+          {run.summary.total_trades}
         </span>
-        <span style={{ fontSize: 'var(--fs-xs)', textAlign: 'right' }}>
-          PnL {run.summary.pnl}
+        <span
+          className="mono"
+          data-testid="run-row-pnl"
+          data-sign={pnlSign(run.summary.pnl)}
+          style={{
+            fontSize: 'var(--fs-xs)',
+            textAlign: 'right',
+            color:
+              pnlSign(run.summary.pnl) === 'neg'
+                ? 'var(--loss)'
+                : pnlSign(run.summary.pnl) === 'pos'
+                  ? 'var(--profit)'
+                  : undefined,
+          }}
+        >
+          {run.summary.pnl}
         </span>
         <button
           type="button"
@@ -140,4 +164,12 @@ function formatTime(iso: string): string {
   } catch {
     return iso
   }
+}
+
+// summary.pnl is a preformatted string ("$120.50", "-$42.10", "+3.4R") —
+// derive the sign for the loss/profit color without reformatting it.
+function pnlSign(pnl: string): 'pos' | 'neg' | 'zero' {
+  const n = parseFloat(pnl.replace(/[^0-9.+-]/g, ''))
+  if (!Number.isFinite(n) || n === 0) return 'zero'
+  return n < 0 ? 'neg' : 'pos'
 }

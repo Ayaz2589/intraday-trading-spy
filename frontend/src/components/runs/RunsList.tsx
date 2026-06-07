@@ -3,7 +3,7 @@ import { useRuns, flattenRuns } from '@/hooks/useRuns'
 import { HelpTooltip } from '@/components/help-tooltip'
 import { EmptyState } from '@/components/empty-state'
 import { BacktestsIcon } from '@/components/nav-icons'
-import { RunRow } from './RunRow'
+import { RunRow, RUNS_GRID, RUNS_GRID_MIN_WIDTH } from './RunRow'
 
 export function RunsList() {
   const query = useRuns()
@@ -60,12 +60,40 @@ export function RunsList() {
     )
   }
 
+  const finished = runs.filter(r => r.status === 'finished').length
+  const failed = runs.filter(r => r.status === 'failed').length
+  const trades = runs.reduce((n, r) => n + (r.summary?.total_trades ?? 0), 0)
+
   return (
     <div data-testid="runs-list">
+      {/* Counts cover the LOADED pages (the list is cursor-paginated). */}
+      <div data-testid="runs-stats" style={{ display: 'flex', gap: 22, margin: '4px 0 10px' }}>
+        {(
+          [
+            [String(runs.length), 'loaded', 'var(--text)'],
+            [String(finished), 'finished', 'var(--profit, #1a7f37)'],
+            [String(failed), 'failed', failed > 0 ? 'var(--loss, #b42318)' : 'var(--text-muted)'],
+            [trades.toLocaleString(), 'trades', 'var(--text)'],
+          ] as Array<[string, string, string]>
+        ).map(([value, label, color]) => (
+          <span key={label}>
+            <span style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 'var(--fs-lg, 17px)', color }}>
+              {value}
+            </span>
+            <span style={{ display: 'block', fontSize: 'var(--fs-xs, 10px)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {label}
+            </span>
+          </span>
+        ))}
+      </div>
+      {/* Fixed-width columns + min-width scroll container: alignment holds at
+          any viewport instead of the grid squishing out of line. */}
+      <div data-testid="runs-scroll" style={{ overflowX: 'auto' }}>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 170px 120px 120px 120px 40px',
+          gridTemplateColumns: RUNS_GRID,
+          minWidth: RUNS_GRID_MIN_WIDTH,
           gap: 12,
           padding: '8px 12px',
           fontSize: 'var(--fs-xs)',
@@ -92,6 +120,7 @@ export function RunsList() {
       {runs.map(run => (
         <RunRow key={run.id} run={run} />
       ))}
+      </div>
       {query.hasNextPage && (
         <div style={{ padding: 12, textAlign: 'center' }}>
           <button
