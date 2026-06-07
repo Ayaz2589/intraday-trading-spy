@@ -513,3 +513,40 @@ describe("ClaudeReadCard — de-densify (cards + tabs + CI strip)", () => {
     expect(screen.queryAllByTestId("claude-finding")).toHaveLength(0);
   });
 });
+
+describe("ClaudeReadCard — collapsible", () => {
+  it("collapses and re-expands via the header chevron", async () => {
+    getSettingsMock.mockResolvedValue(SETTINGS_ON);
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    const { ClaudeReadCard } = await import("./ClaudeReadCard");
+    wrap(createElement(ClaudeReadCard, { scope: "insights", metricValues: METRICS }));
+    await screen.findByText(/the edge concentrates/i);
+
+    const toggle = screen.getByRole("button", { name: /collapse claude's read/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(toggle);
+    expect(screen.queryByText(/the edge concentrates/i)).toBeNull();
+    // header survives the collapse
+    expect(screen.getByText(/claude's read/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /expand claude's read/i }));
+    expect(await screen.findByText(/the edge concentrates/i)).toBeInTheDocument();
+  });
+
+  it("starts collapsed when defaultOpen is false", async () => {
+    getSettingsMock.mockResolvedValue(SETTINGS_ON);
+    getAnalysisMock.mockResolvedValue(ANALYSIS);
+    const { ClaudeReadCard } = await import("./ClaudeReadCard");
+    wrap(
+      createElement(ClaudeReadCard, {
+        scope: "insights",
+        metricValues: METRICS,
+        defaultOpen: false,
+      }),
+    );
+    await waitFor(() => expect(getAnalysisMock).toHaveBeenCalled());
+    expect(screen.queryByText(/the edge concentrates/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /expand claude's read/i }));
+    expect(await screen.findByText(/the edge concentrates/i)).toBeInTheDocument();
+  });
+});

@@ -217,6 +217,7 @@ export function InsightsPage() {
 
         <ClaudeReadCard
           scope="insights"
+          defaultOpen={false}
           banner={banner}
           currentFingerprints={{
             timeseries: edge.data?.snapshot_fingerprint ?? null,
@@ -229,8 +230,10 @@ export function InsightsPage() {
         />
 
         {/* 018 US2: evidence-backed recommendations close the loop the page
-            opens — verdicts, deterministic candidates, advisory narrative. */}
-        <RecommendationsPanel />
+            opens — verdicts, deterministic candidates, advisory narrative.
+            Both advisory cards start collapsed — the hero + tables carry the
+            page; the narratives expand on demand. */}
+        <RecommendationsPanel defaultOpen={false} />
       </div>
       )}
     </div>

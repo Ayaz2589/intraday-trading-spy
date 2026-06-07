@@ -31,7 +31,13 @@ function citedLine(v: HealthVerdictView): string {
   return parts.join(' · ')
 }
 
-export function RecommendationsPanel() {
+export function RecommendationsPanel({
+  defaultOpen = true,
+}: {
+  // Accordion: the panel body collapses behind the header chevron.
+  defaultOpen?: boolean
+} = {}) {
+  const [open, setOpen] = useState(defaultOpen)
   const health = useConfigHealth()
   const verdicts = [...(health.data?.verdicts ?? [])].sort(
     (a, b) =>
@@ -61,9 +67,19 @@ export function RecommendationsPanel() {
             validation machinery, never auto-applied
           </span>
         </div>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-expanded={open}
+          aria-label={open ? 'Collapse recommendations' : 'Expand recommendations'}
+          onClick={() => setOpen((o) => !o)}
+          style={{ marginLeft: 'auto', padding: 4, fontSize: 14, alignSelf: 'flex-start' }}
+        >
+          {open ? '▾' : '▸'}
+        </button>
       </header>
 
-      {verdicts.length === 0 ? (
+      {!open ? null : verdicts.length === 0 ? (
         <p className="stat-label">
           No configs with out-of-sample history yet — run a walk-forward study
           and health verdicts will appear here.

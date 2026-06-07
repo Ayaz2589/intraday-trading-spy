@@ -102,6 +102,7 @@ export function ClaudeReadCard({
   draftBaseConfig,
   currentFingerprints,
   metricValues = {},
+  defaultOpen = true,
 }: {
   scope: 'study' | 'insights' | 'recommend'
   scopeId?: string
@@ -111,6 +112,8 @@ export function ClaudeReadCard({
   draftBaseConfig?: string
   currentFingerprints?: Record<string, string | null> | null
   metricValues?: Record<string, string | number>
+  // Accordion: the card body collapses behind the header chevron.
+  defaultOpen?: boolean
 }) {
   const navigate = useNavigate()
   const settings = useClaudeSettings()
@@ -124,6 +127,7 @@ export function ClaudeReadCard({
   const [showAllFindings, setShowAllFindings] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [section, setSection] = useState<'findings' | 'risks' | 'experiments'>('findings')
+  const [open, setOpen] = useState(defaultOpen)
 
   const cfg = settings.data
   const analysis = stored.data ?? generate.data ?? null
@@ -167,8 +171,40 @@ export function ClaudeReadCard({
             is non-deterministic.
           </span>
         </div>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-expanded={open}
+          aria-label={open ? "Collapse Claude's read" : "Expand Claude's read"}
+          onClick={() => setOpen((o) => !o)}
+          style={{ marginLeft: 'auto', padding: 4, fontSize: 14, alignSelf: 'flex-start' }}
+        >
+          {open ? '▾' : '▸'}
+        </button>
       </header>
 
+      {/* The gate-derived verdict banner is the honesty signal — it never
+          hides behind the collapse; only the advisory narrative does. */}
+      {banner && (
+        <div
+          data-testid="insights-verdict-banner"
+          className={`verdict-banner verdict-${banner.tone}`}
+        >
+          <div className="verdict-icon" aria-hidden>
+            {banner.tone === 'pass' ? '✓' : '✕'}
+          </div>
+          <div>
+            <div className="verdict-title">{banner.title}</div>
+            <div className="stat-label">
+              {banner.text} <span>(derived from the seeded gates — not Claude)</span>
+            </div>
+            {banner.gates && banner.gates.length > 0 && <GateCiStrips gates={banner.gates} />}
+          </div>
+        </div>
+      )}
+
+      {open && (
+      <>
       {cfg && !cfg.configured && (
         <p className="stat-label" data-testid="claude-unconfigured">
           Not configured — set ANTHROPIC_API_KEY on the backend to enable
@@ -205,24 +241,6 @@ export function ClaudeReadCard({
           >
             Re-enable
           </button>
-        </div>
-      )}
-
-      {banner && (
-        <div
-          data-testid="insights-verdict-banner"
-          className={`verdict-banner verdict-${banner.tone}`}
-        >
-          <div className="verdict-icon" aria-hidden>
-            {banner.tone === 'pass' ? '✓' : '✕'}
-          </div>
-          <div>
-            <div className="verdict-title">{banner.title}</div>
-            <div className="stat-label">
-              {banner.text} <span>(derived from the seeded gates — not Claude)</span>
-            </div>
-            {banner.gates && banner.gates.length > 0 && <GateCiStrips gates={banner.gates} />}
-          </div>
         </div>
       )}
 
@@ -542,6 +560,8 @@ export function ClaudeReadCard({
             Pause
           </button>
         </div>
+      )}
+      </>
       )}
     </section>
   )

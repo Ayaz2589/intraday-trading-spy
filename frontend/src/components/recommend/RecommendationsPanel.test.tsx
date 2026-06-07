@@ -258,3 +258,35 @@ describe('RecommendationsPanel — trial ledger (018 US3)', () => {
     expect(ledger).toHaveTextContent(/0 drafted/i)
   })
 })
+
+describe('RecommendationsPanel — collapsible', () => {
+  it('collapses and re-expands via the header chevron', async () => {
+    getHealthMock.mockResolvedValue(VERDICTS)
+    getPackMock.mockResolvedValue(PACK)
+    getSettingsMock.mockResolvedValue({ claude_enabled: true, disabled_reason: null, configured: true })
+    getAnalysisMock.mockResolvedValue(null)
+    wrap(<RecommendationsPanel />)
+    await screen.findByTestId('rec-verdict-wf-rr3')
+
+    const toggle = screen.getByRole('button', { name: /collapse recommendations/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(screen.queryByTestId('rec-verdict-wf-rr3')).toBeNull()
+    expect(screen.getByText(/recommendations/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /expand recommendations/i }))
+    expect(await screen.findByTestId('rec-verdict-wf-rr3')).toBeInTheDocument()
+  })
+
+  it('starts collapsed when defaultOpen is false', async () => {
+    getHealthMock.mockResolvedValue(VERDICTS)
+    getPackMock.mockResolvedValue(PACK)
+    getSettingsMock.mockResolvedValue({ claude_enabled: true, disabled_reason: null, configured: true })
+    getAnalysisMock.mockResolvedValue(null)
+    wrap(<RecommendationsPanel defaultOpen={false} />)
+    await waitFor(() => expect(getHealthMock).toHaveBeenCalled())
+    expect(screen.queryByTestId('rec-verdict-wf-rr3')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /expand recommendations/i }))
+    expect(await screen.findByTestId('rec-verdict-wf-rr3')).toBeInTheDocument()
+  })
+})
