@@ -158,3 +158,55 @@ def test_research_config_rejects_out_of_range_values():
         ResearchConfig(base_alpha=0.6)        # ...and <= 0.5
     with pytest.raises(ValidationError):
         ResearchConfig(default_budget=-1)     # budget >= 0
+
+
+# ---- Feature 020 (entry-window filter knobs) ----------------------------------
+
+
+def test_entry_window_defaults_reproduce_current_behavior():
+    from intraday_trade_spy.config import EntryWindowConfig, VwapPullbackConfig
+
+    win = EntryWindowConfig()
+    assert win.start_minutes_after_open == 0
+    assert win.end_minutes_after_open == 390
+    # params without the keys (every pre-020 config) load as the defaults
+    cfg = VwapPullbackConfig()
+    assert cfg.entry_window.start_minutes_after_open == 0
+    assert cfg.entry_window.end_minutes_after_open == 390
+
+
+def test_entry_window_loads_from_yaml():
+    from pathlib import Path
+
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(Path(__file__).resolve().parents[1] / "config" / "config.yaml")
+    assert cfg.strategy.vwap_pullback.entry_window.start_minutes_after_open == 0
+    assert cfg.strategy.vwap_pullback.entry_window.end_minutes_after_open == 390
+
+
+def test_entry_window_rejects_empty_window_naming_both_values():
+    from intraday_trade_spy.config import EntryWindowConfig
+
+    with pytest.raises(ValidationError) as exc:
+        EntryWindowConfig(start_minutes_after_open=300, end_minutes_after_open=240)
+    assert "300" in str(exc.value) and "240" in str(exc.value)  # FR-004
+
+
+def test_entry_window_bounds():
+    from intraday_trade_spy.config import EntryWindowConfig
+
+    with pytest.raises(ValidationError):
+        EntryWindowConfig(start_minutes_after_open=-1)
+    with pytest.raises(ValidationError):
+        EntryWindowConfig(end_minutes_after_open=391)
+
+
+def test_entry_window_accepts_whole_floats_from_sweep_grids():
+    # Sensitivity grids arrive as floats (30.0); Pydantic lax int coercion
+    # must accept them (analyze note 1).
+    from intraday_trade_spy.config import EntryWindowConfig
+
+    win = EntryWindowConfig(start_minutes_after_open=30.0, end_minutes_after_open=270.0)
+    assert win.start_minutes_after_open == 30
+    assert win.end_minutes_after_open == 270

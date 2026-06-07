@@ -17,6 +17,9 @@ class SignalStatus(StrEnum):
     EXITED = "exited"
     FORCE_FLAT = "force_flat"
     LOCKOUT = "lockout"
+    # Feature 020: a fully-valid setup suppressed by the entry window —
+    # journaled (constitution VII), never traded.
+    SKIPPED_WINDOW = "skipped_window"
 
 
 class Bar(BaseModel):
@@ -46,6 +49,18 @@ class IndicatorSnapshot(BaseModel):
     or_complete: bool
     distance_from_vwap_pct: float
     prior_bar_close: float | None
+
+
+class WindowSkip(BaseModel):
+    """Feature 020: a setup that satisfied every detection rule but fell
+    outside the config's entry window. Journal-only — carries the window so
+    the row explains itself."""
+
+    model_config = ConfigDict(frozen=True)
+    timestamp: AwareDatetime
+    reason: str
+    start_minutes_after_open: int
+    end_minutes_after_open: int
 
 
 class Signal(BaseModel):

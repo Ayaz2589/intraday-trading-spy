@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AppConfig(BaseModel):
@@ -58,6 +58,26 @@ class VwapPullbackTargetConfig(BaseModel):
     risk_reward: float = 2.0
 
 
+class EntryWindowConfig(BaseModel):
+    """Feature 020: entries allowed only inside [start, end) minutes after the
+    09:30 ET open. Defaults reproduce pre-020 behavior exactly — this is the
+    deliberate, validated, journaled re-introduction of the concept feature
+    010 removed for being parsed-but-never-read."""
+
+    start_minutes_after_open: int = Field(default=0, ge=0, le=390)
+    end_minutes_after_open: int = Field(default=390, ge=0, le=390)
+
+    @model_validator(mode="after")
+    def _window_not_empty(self) -> "EntryWindowConfig":
+        if self.start_minutes_after_open >= self.end_minutes_after_open:
+            raise ValueError(
+                "entry window is empty: start_minutes_after_open="
+                f"{self.start_minutes_after_open} must be < "
+                f"end_minutes_after_open={self.end_minutes_after_open}"
+            )
+        return self
+
+
 class VwapPullbackConfig(BaseModel):
     # Feature 010: removed `min_minutes_after_open` and the `confirmation` block
     # (`require_close_above_prior_bar_high`, `require_close_above_vwap`) — they
@@ -67,6 +87,7 @@ class VwapPullbackConfig(BaseModel):
     max_distance_from_vwap_pct: float = 0.25
     stop: VwapPullbackStopConfig = Field(default_factory=VwapPullbackStopConfig)
     target: VwapPullbackTargetConfig = Field(default_factory=VwapPullbackTargetConfig)
+    entry_window: EntryWindowConfig = Field(default_factory=EntryWindowConfig)
 
 
 class StrategyConfig(BaseModel):

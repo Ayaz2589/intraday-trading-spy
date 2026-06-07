@@ -703,6 +703,87 @@ with more suspicion than this one.
 
 ---
 
+## Experiment 008 — 2026-06-07 — Full-span knob sweeps: nothing rescues the always-on strategy
+
+### Hypothesis
+
+After the auto-research campaign (feature 019) halted with *stop-tuning*, the
+open question was: **is the strategy dead, or just the config?** Sweep every
+signal-shaping knob across its sensible range at full train-span (2018–2022,
+~2,000+ trades per point) and let the surfaces answer.
+
+### Setup
+
+Sensitivity studies on `default` (R:R 3.0, cap 1200%), train segment, total-R
+metric: `risk_reward` {1.5, 2, 2.5, 3} (bf42dd85), `max_distance_from_vwap_pct`
+{0.1, 0.25, 0.5, 1.0}, `opening_range.minutes` {10, 15, 20, 30},
+`stop.buffer_pct` {0, 0.05, 0.1, 0.2}.
+
+### Outcome
+
+| Knob | Best point | Best total R | Current point |
+|---|---|---|---|
+| risk_reward | 3.0 | −0.54 | (is current) |
+| vwap distance | 0.5 | **+4.08** | 0.25 → −0.54 |
+| opening range | 15 | −0.54 | (is current) |
+| stop buffer | 0.10 | **+3.95** | 0.05 → −0.54 |
+
+### Lesson
+
+**No knob rescues the always-on strategy.** Two real ridges exist (wider VWAP
+band — confirming Experiment 005's one-month hint at full span — and a doubled
+stop buffer), but both are ~+0.002 R/trade: an order of magnitude under the
+0.01 R/trade evidence bar, and the recommendation engine correctly refused to
+suggest them. Every other direction is flat or worse (no stop buffer = −18.5R,
+death by wick). Combined with 007's noisy OOS verdict: the *config space* is
+exonerated — whatever is wrong with vwap-pullback is not a tuning problem.
+
+---
+
+## Experiment 009 — 2026-06-07 — Entry-window: a diagnostic slice fails the intervention test
+
+### Hypothesis
+
+A per-trade diagnostic of the R:R=2.0 run (166b9671) showed entries in the
+first ~15 minutes after the opening range carried the strategy's ENTIRE net
+loss (651 trades, −125.9R, 29% win) while 10:00–14:00 entries were net positive
+(+60R, 37–41% win), stably across all five years. Hypothesis: an entry-window
+filter (start ≥ 30 min after open) turns the strategy around. Feature 020 built
+the knob; this sweep judged it.
+
+### Setup
+
+Sensitivity study f0847935 on `default`, train segment:
+`entry_window.start_minutes_after_open` {0, 15, 30, 45}.
+
+### Outcome
+
+| start (min after open) | total R | trades |
+|---|---|---|
+| 0 (baseline) | −0.54 | 2,181 |
+| 15 | −0.54 | 2,181 |
+| **30** | **−11.91** | 2,065 |
+| 45 | −7.22 | 1,998 |
+
+### Lesson
+
+**Hypothesis refuted — skipping the open made it WORSE.** The slice arithmetic
+("remove the −126R cohort, keep the +60R rest") silently assumed trades are
+independent. They are not: with the morning slot empty, the engine takes a
+*different* trade sequence all day — one-position-at-a-time, cooldowns and
+lockouts all reshuffle. A conditional slice is a correlation; only running the
+intervention through the engine is causal. (Also note start=15 ≡ start=0: the
+opening range already gates the first 15 minutes — a built-in consistency
+check that the knob behaves.)
+
+Verdict after 008+009: vwap-pullback has **no surviving rescue hypothesis** —
+config knobs, timing, all honestly tested. Next research must change the
+strategy logic itself (regime conditioning or a second entry setup), not its
+parameters. The entry-window knob remains: every future strategy gets honest
+time-of-day search for free.
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical

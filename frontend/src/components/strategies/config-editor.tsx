@@ -39,6 +39,9 @@ const SIGNAL_FIELDS: FieldDef[] = [
   { key: 'risk_reward', label: 'Risk : reward', step: 0.25 },
   { key: 'stop_buffer_pct', label: 'Stop buffer', step: 0.01, suffix: '%' },
   { key: 'max_distance_from_vwap_pct', label: 'Max dist. VWAP', step: 0.05, suffix: '%' },
+  // Feature 020: the entry window — when the strategy may enter at all.
+  { key: 'entry_start_minutes', label: 'Entry from (min after open)', step: 15, suffix: 'min', help: 'entry_window' },
+  { key: 'entry_end_minutes', label: 'Entry until (min after open)', step: 15, suffix: 'min' },
 ]
 
 export function ConfigEditor({ config }: { config: Config }) {

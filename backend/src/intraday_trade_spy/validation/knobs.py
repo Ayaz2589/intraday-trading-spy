@@ -38,6 +38,16 @@ _SPECS = [
         "strategy.vwap_pullback.max_distance_from_vwap_pct",
         "max distance from VWAP (%)", 0.01, 2.0, "float",
     ),
+    # Feature 020: the entry window — searchable like any knob so the
+    # 09:4x-loss hypothesis is judged by the validation machinery.
+    KnobSpec(
+        "strategy.vwap_pullback.entry_window.start_minutes_after_open",
+        "entry window start (min after open)", 0, 390, "int",
+    ),
+    KnobSpec(
+        "strategy.vwap_pullback.entry_window.end_minutes_after_open",
+        "entry window end (min after open)", 0, 390, "int",
+    ),
 ]
 
 KNOB_REGISTRY: dict[str, KnobSpec] = {s.path: s for s in _SPECS}

@@ -13,6 +13,9 @@ export interface KnobValues {
   risk_reward: number
   stop_buffer_pct: number
   max_distance_from_vwap_pct: number
+  // Feature 020: entry window (minutes after the 09:30 ET open)
+  entry_start_minutes: number
+  entry_end_minutes: number
 }
 
 // Mirror of backend/config/config.yaml (verified 2026-06-05) — drives the
@@ -27,6 +30,8 @@ export const KNOB_DEFAULTS: KnobValues = {
   risk_reward: 2.0,
   stop_buffer_pct: 0.05,
   max_distance_from_vwap_pct: 0.25,
+  entry_start_minutes: 0,
+  entry_end_minutes: 390,
 }
 
 /** Knobs that differ from the built-in defaults (drives "N off default"). */
@@ -66,6 +71,8 @@ export function configDiffChips(
     { key: 'opening_range_minutes', label: 'OR', value: `${knobs.opening_range_minutes}min` },
     { key: 'stop_buffer_pct', label: 'stop', value: `${knobs.stop_buffer_pct}%` },
     { key: 'max_distance_from_vwap_pct', label: 'vwap', value: `${knobs.max_distance_from_vwap_pct}%` },
+    { key: 'entry_start_minutes', label: 'entry from', value: `${knobs.entry_start_minutes}m` },
+    { key: 'entry_end_minutes', label: 'entry until', value: `${knobs.entry_end_minutes}m` },
   ]
   for (const e of extras) {
     if (knobs[e.key] !== KNOB_DEFAULTS[e.key]) chips.push({ label: e.label, value: e.value, diff: true })
@@ -101,6 +108,14 @@ export function knobsFromConfig(config: Config | undefined): KnobValues {
       get(p, ['strategy', 'vwap_pullback', 'max_distance_from_vwap_pct']),
       KNOB_DEFAULTS.max_distance_from_vwap_pct,
     ),
+    entry_start_minutes: num(
+      get(p, ['strategy', 'vwap_pullback', 'entry_window', 'start_minutes_after_open']),
+      KNOB_DEFAULTS.entry_start_minutes,
+    ),
+    entry_end_minutes: num(
+      get(p, ['strategy', 'vwap_pullback', 'entry_window', 'end_minutes_after_open']),
+      KNOB_DEFAULTS.entry_end_minutes,
+    ),
   }
 }
 
@@ -123,6 +138,10 @@ export function buildParams(
         max_distance_from_vwap_pct: knobs.max_distance_from_vwap_pct,
         stop: { buffer_pct: knobs.stop_buffer_pct },
         target: { risk_reward: knobs.risk_reward },
+        entry_window: {
+          start_minutes_after_open: knobs.entry_start_minutes,
+          end_minutes_after_open: knobs.entry_end_minutes,
+        },
       },
     },
   }
@@ -140,6 +159,8 @@ export const KNOB_PATH_LABELS: Record<string, string> = {
   'strategy.vwap_pullback.target.risk_reward': 'risk:reward target',
   'strategy.vwap_pullback.stop.buffer_pct': 'stop buffer (%)',
   'strategy.vwap_pullback.max_distance_from_vwap_pct': 'max distance from VWAP (%)',
+  'strategy.vwap_pullback.entry_window.start_minutes_after_open': 'entry window start (min after open)',
+  'strategy.vwap_pullback.entry_window.end_minutes_after_open': 'entry window end (min after open)',
 }
 
 export function knobLabel(path: string): string {
@@ -165,4 +186,7 @@ export const SENSITIVITY_KNOBS: SensitivityKnob[] = [
   { path: 'risk.max_position_value_pct', defaults: [100, 200, 400, 800] },
   { path: 'risk.max_consecutive_losses', defaults: [1, 2, 3, 4] },
   { path: 'risk.account_value', defaults: [10_000, 25_000, 50_000, 100_000] },
+  // Feature 020: the entry-window hypothesis grids (straddle the defaults).
+  { path: 'strategy.vwap_pullback.entry_window.start_minutes_after_open', defaults: [0, 15, 30, 45] },
+  { path: 'strategy.vwap_pullback.entry_window.end_minutes_after_open', defaults: [240, 270, 300, 390] },
 ].map(k => ({ ...k, label: knobLabel(k.path) }))

@@ -28,6 +28,9 @@ EXPECTED_BOUNDS = {
     RR: (0.5, 10),
     "strategy.vwap_pullback.stop.buffer_pct": (0.0, 1.0),
     DIST: (0.01, 2.0),
+    # Feature 020: the entry window joins the searchable whitelist.
+    "strategy.vwap_pullback.entry_window.start_minutes_after_open": (0, 390),
+    "strategy.vwap_pullback.entry_window.end_minutes_after_open": (0, 390),
 }
 
 
@@ -99,3 +102,49 @@ def test_registry_prompt_section_mentions_every_path_and_bounds():
     for path, (lo, hi) in EXPECTED_BOUNDS.items():
         assert path in section
         assert str(lo) in section and str(hi) in section
+
+
+# ---- Feature 020: entry-window knobs join the registry --------------------------
+
+
+def test_entry_window_knobs_are_registered_with_bounds():
+    from intraday_trade_spy.validation.knobs import KNOB_REGISTRY
+
+    start = KNOB_REGISTRY["strategy.vwap_pullback.entry_window.start_minutes_after_open"]
+    end = KNOB_REGISTRY["strategy.vwap_pullback.entry_window.end_minutes_after_open"]
+    assert (start.min, start.max, start.kind) == (0, 390, "int")
+    assert (end.min, end.max, end.kind) == (0, 390, "int")
+    assert start.label == "entry window start (min after open)"
+    assert end.label == "entry window end (min after open)"
+
+
+def test_entry_window_changes_sanitize_like_any_knob():
+    from intraday_trade_spy.validation.knobs import sanitize_changes
+
+    kept = sanitize_changes([
+        {"knob_path": "strategy.vwap_pullback.entry_window.start_minutes_after_open", "value": 30},
+        {"knob_path": "strategy.vwap_pullback.entry_window.end_minutes_after_open", "value": 270},
+        {"knob_path": "strategy.vwap_pullback.entry_window.start_minutes_after_open", "value": 500},
+        {"knob_path": "strategy.vwap_pullback.entry_window.end_minutes_after_open", "value": -5},
+    ])
+    assert [(c.knob_path.rsplit(".", 1)[-1], c.value) for c in kept] == [
+        ("start_minutes_after_open", 30.0),
+        ("end_minutes_after_open", 270.0),
+    ]
+
+
+def test_entry_window_knobs_appear_in_the_prompt_section():
+    from intraday_trade_spy.validation.knobs import registry_prompt_section
+
+    text = registry_prompt_section()
+    assert "entry_window.start_minutes_after_open" in text
+    assert "entry_window.end_minutes_after_open" in text
+
+
+def test_registry_leaves_remain_unique():
+    """The CLI resolves knobs by unique leaf (019 contract) — adding knobs
+    must never create a leaf collision."""
+    from intraday_trade_spy.validation.knobs import KNOB_REGISTRY
+
+    leaves = [p.rsplit(".", 1)[-1] for p in KNOB_REGISTRY]
+    assert len(leaves) == len(set(leaves))

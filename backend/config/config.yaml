@@ -45,6 +45,16 @@ strategy:
       buffer_pct: 0.05
     target:
       risk_reward: 2.0
+    # Feature 020: entries allowed only inside [start, end) minutes after the
+    # 09:30 ET open. Defaults reproduce pre-020 behavior BYTE-identically:
+    # start 0 (opening-range completion still governs) and end 390 (inert —
+    # the 15:30 no-new-trades cutoff still rejects late signals through the
+    # risk manager, exactly as before; an end of 360 would silently re-class
+    # those rejections as window skips). Evidence: the 09:4x entry cohort
+    # carried the strategy's entire net loss (diagnostic 2026-06-07).
+    entry_window:
+      start_minutes_after_open: 0
+      end_minutes_after_open: 390
 
 risk:
   account_value: 25000.0

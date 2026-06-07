@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   KNOB_DEFAULTS,
+  buildParams,
   KNOB_PATH_LABELS,
   SENSITIVITY_KNOBS,
   configDiffChips,
@@ -30,6 +31,8 @@ describe('KNOB_DEFAULTS', () => {
       risk_reward: 2.0,
       stop_buffer_pct: 0.05,
       max_distance_from_vwap_pct: 0.25,
+      entry_start_minutes: 0,
+      entry_end_minutes: 390,
     })
   })
 
@@ -113,6 +116,8 @@ describe('SENSITIVITY_KNOBS', () => {
       'strategy.vwap_pullback.target.risk_reward': KNOB_DEFAULTS.risk_reward,
       'strategy.vwap_pullback.stop.buffer_pct': KNOB_DEFAULTS.stop_buffer_pct,
       'strategy.vwap_pullback.max_distance_from_vwap_pct': KNOB_DEFAULTS.max_distance_from_vwap_pct,
+      'strategy.vwap_pullback.entry_window.start_minutes_after_open': KNOB_DEFAULTS.entry_start_minutes,
+      'strategy.vwap_pullback.entry_window.end_minutes_after_open': KNOB_DEFAULTS.entry_end_minutes,
     }
     for (const k of SENSITIVITY_KNOBS) {
       expect(k.defaults.length).toBeGreaterThanOrEqual(2)
@@ -124,5 +129,56 @@ describe('SENSITIVITY_KNOBS', () => {
   it('keeps the risk:reward grid the launcher has always defaulted to', () => {
     const rr = SENSITIVITY_KNOBS.find(k => k.path === 'strategy.vwap_pullback.target.risk_reward')
     expect(rr?.defaults).toEqual([1.5, 2.0, 2.5, 3.0])
+  })
+})
+
+
+// ---- Feature 020: entry-window knobs ------------------------------------------
+
+describe('entry-window knobs (020)', () => {
+  it('has behavior-preserving defaults (0 / 390)', () => {
+    expect(KNOB_DEFAULTS.entry_start_minutes).toBe(0)
+    expect(KNOB_DEFAULTS.entry_end_minutes).toBe(390)
+  })
+
+  it('reads the nested entry_window params and defaults when absent', () => {
+    const knobs = knobsFromConfig({
+      id: '1', name: 'x', mode: 'backtest', timeframe: '5m', strategy_id: 's',
+      params: { strategy: { vwap_pullback: { entry_window: {
+        start_minutes_after_open: 30, end_minutes_after_open: 270 } } } },
+    } as never)
+    expect(knobs.entry_start_minutes).toBe(30)
+    expect(knobs.entry_end_minutes).toBe(270)
+    const bare = knobsFromConfig({ params: {} } as never)
+    expect(bare.entry_start_minutes).toBe(0)
+    expect(bare.entry_end_minutes).toBe(390)
+  })
+
+  it('writes the window back into nested params', () => {
+    const params = buildParams(
+      { ...KNOB_DEFAULTS, entry_start_minutes: 30, entry_end_minutes: 270 },
+      'vwap_pullback_long',
+    ) as { strategy: { vwap_pullback: { entry_window: Record<string, number> } } }
+    expect(params.strategy.vwap_pullback.entry_window).toEqual({
+      start_minutes_after_open: 30,
+      end_minutes_after_open: 270,
+    })
+  })
+
+  it('labels both paths and (via the registry-coverage test above) the sensitivity pills', () => {
+    expect(KNOB_PATH_LABELS['strategy.vwap_pullback.entry_window.start_minutes_after_open'])
+      .toBe('entry window start (min after open)')
+    expect(KNOB_PATH_LABELS['strategy.vwap_pullback.entry_window.end_minutes_after_open'])
+      .toBe('entry window end (min after open)')
+  })
+
+  it('emits accent diff chips only when the window is off-default', () => {
+    const off = configDiffChips({ ...KNOB_DEFAULTS, entry_start_minutes: 30, entry_end_minutes: 270 })
+    expect(off.slice(4)).toEqual([
+      { label: 'entry from', value: '30m', diff: true },
+      { label: 'entry until', value: '270m', diff: true },
+    ])
+    const chips = configDiffChips(KNOB_DEFAULTS)
+    expect(chips.find(c => c.label === 'entry from')).toBeUndefined()
   })
 })

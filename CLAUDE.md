@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/019-auto-research/plan.md](specs/019-auto-research/plan.md) — **implemented (35/36 tasks; live e2e T035 awaits the operator's one-time OTP sign-in)**: automated strategy research — authenticated research CLI for every pipeline step (email-OTP session via GoTrue REST + anon key, never service-role; `make research-login` / `study-wf` / `gate` / `campaign` …); server-side auto-research campaigns (BackgroundTask over `research_campaigns`, migration 0126 applied live) cycling data-freshness → walk-forward → Bonferroni-tightened pooled gate (level 1−α/k by family trial count, recorded per verdict) → deterministic recommendation actuation, halting only at ready_for_lockbox / stop_tuning / budget_exhausted / cancelled / failed, NEVER touching the lockbox (tested), gather-once-per-family termination (analyze G1); Validation-page Auto-research section + `/validation/campaigns/$id` detail route; 5 new HELP_CONTENT concepts (88 total). Backend 804 / frontend 690 passing, zero new deps.
+**Active plan**: [specs/020-entry-window/plan.md](specs/020-entry-window/plan.md) — **implemented, live-verified** (entry-window filter knobs: `strategy.vwap_pullback.entry_window.{start,end}_minutes_after_open`, ints [0,390], defaults 0/**390** = byte-identical current behavior — a 360 default would have silently re-classed post-cutoff risk rejections as skips; the golden rejection-breakdown test caught it. Strategy `evaluate` → Signal | WindowSkip | None with engine-journaled SKIPPED_WINDOW rows that survive the cloud push as 'entry_window' signals (VII; migrations 0128); `MarketClock.minutes_since_open`; registry-whitelisted so sweeps/recommendations/campaigns search the window honestly; editor/diff-chips/pills/tooltip surface. Live sweep f0847935 verdict: the skip-the-open hypothesis FAILED on the current config (start 30 → −11.9R vs −0.54R baseline) — the diagnostic slice ignored path dependence; hypotheses go through the engine, not arithmetic on slices).
 
-**Most recent spec**: [specs/019-auto-research/spec.md](specs/019-auto-research/spec.md)
+**Most recent spec**: [specs/020-entry-window/spec.md](specs/020-entry-window/spec.md)
 
 **Cross-feature design** (features 005-008): [docs/migrations/2026-05-30-supabase-vercel-migration.md](docs/migrations/2026-05-30-supabase-vercel-migration.md)
 
@@ -25,6 +25,7 @@
 - [specs/016-insights/plan.md](specs/016-insights/plan.md) — implemented & merged to main via PRs #3/#4 (pooled study gate productized — wf-rr3 verdict persisted NOT PASSED, canonical CI [−0.71,+2.60]; Insights page w/ R-default edge time-series + regime overlay + per-config distribution + gate chips; advisory Claude narrative — cited findings, snapshot-pinned idempotency, billing auto-pause; migration 0123, dep `anthropic`; live-verified incl. real Opus analysis).
 - [specs/017-claude-experiment-drafts/plan.md](specs/017-claude-experiment-drafts/plan.md) — implemented & merged to main via PR #6 (clickable Claude experiments → draft configs: knob registry w/ whitelist sanitation before storage, URL-carried transient drafts, human-gated create w/ durable provenance via configs.description; migration 0124).
 - [specs/018-recommendation-engine/plan.md](specs/018-recommendation-engine/plan.md) — implemented & merged to main (recommendation engine closing the 016/017 loop: deterministic per-config OOS health verdicts w/ config.yaml thresholds + Strategies badge, evidence packs mined from persisted 011/014/016 artifacts — no new backtests, ranked whitelisted knob-delta candidates + gather-evidence/stop-tuning classes, Claude scope='recommend' on the existing analyst, 017 Draft-config actuation, deletion-surviving trial ledger; migration 0125 applied; new backend package `recommend/`; zero new deps; deterministic core works with Claude off; live-verified incl. real Opus recommend analysis — SC-002 recompute-identical, SC-006 stop-tuning fired on the real all-gates-fail archive).
+- [specs/019-auto-research/plan.md](specs/019-auto-research/plan.md) — implemented & merged to main `b8732e9` (automated strategy research: email-OTP research CLI + make targets for every pipeline step — never service-role; auto-research campaigns over `research_campaigns` w/ Bonferroni-tightened gate 1−α/k, five honest halt verdicts, NEVER touches the lockbox, gather-once termination; Validation Auto-research section + campaign detail route; migrations 0126/0127 applied; 36/36 tasks, live-verified — campaign 03 halted stop_tuning and the follow-up sweeps showed no knob rescues the always-on strategy; the 09:4x diagnostic motivated feature 020).
 
 Source of truth for governance: `.specify/memory/constitution.md` (v1.1.0).
 Read it, the active plan, and the active spec before planning, reviewing,
@@ -106,3 +107,12 @@ Backtest MVP: monorepo skeleton, config loader, domain models, VWAP +
 opening range indicators, VWAP-pullback long strategy, risk manager,
 CLI backtester. No React UI yet — that becomes a later feature.
 <!-- SPECKIT END -->
+
+<!-- SESSION CONTINUITY (outside the speckit-managed block) -->
+## Session continuity
+
+At session start, read `.claude/context-summaries/latest.md` (local,
+gitignored) to recover the previous session's state. Before clearing
+context, run the `clear-context` skill (`.claude/skills/clear-context/`)
+to write the next summary. Dated summaries are permanent local records;
+only `latest.md` is overwritten.
