@@ -25,6 +25,9 @@ import {
 // Strategy — they all study the same strategy artifact.
 const NAV_ITEMS = [
   { to: '/trade', label: 'Trade', icon: <TradeIcon />, depth: 0 },
+  // Feature 022: historic replay nests under Trade — same cockpit, driven by
+  // stored history instead of the live broker.
+  { to: '/trade/historic', label: 'Historic Trade', icon: <TradeIcon />, depth: 1 },
   { to: '/strategies', label: 'Strategy', icon: <StrategyIcon />, depth: 0 },
   { to: '/validation', label: 'Validation', icon: <ValidationIcon />, depth: 1 },
   { to: '/insights', label: 'Insights', icon: <InsightsIcon />, depth: 1 },

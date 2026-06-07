@@ -71,6 +71,13 @@ export type HelpContentKey =
   | "forward_record"
   | "manual_order"
   | "live_journal"
+  // Feature 022 (historic trade replay) concepts
+  | "replay"
+  | "simulated_clock"
+  | "playback_speed"
+  | "simulated_fill"
+  | "session_recap"
+  | "strategy_automation_replay"
   // Feature 012 (config management) concepts
   | "active_config"
   | "duplicate_vs_edit"
@@ -621,5 +628,35 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Live journal",
     description:
       "The append-only record of everything the live loop did: every signal (emitted, approved, rejected with its reason, executed, exited, force-flat) in the same vocabulary as backtest journals, plus lifecycle events (session start/stop, data gaps, safety pauses, broker rejections). Rejections are first-class — they're the most important learning artifact this page produces.",
+  },
+  replay: {
+    title: "Historic replay",
+    description:
+      "A simulation that replays a real past SPY session bar-by-bar from stored history, so you can watch how the day developed, trade it by hand, and/or watch the strategy trade it. It touches no brokerage and writes nothing to the database — it is purely for learning and is kept entirely separate from the backtest archive and the live forward record.",
+  },
+  simulated_clock: {
+    title: "Simulated clock",
+    description:
+      "The replay runs on a pretend session clock (America/New_York), not the wall clock. It starts at the 09:30 open and advances at the speed you choose; a stored 5-minute bar appears the instant the simulated clock crosses its time. Everything — strategy evaluation, fills, the 15:55 force-flat — keys off this simulated time, so the replay behaves exactly as the day did.",
+  },
+  playback_speed: {
+    title: "Playback speed",
+    description:
+      "How much simulated market time elapses per real second. 1× is real-time (a 6.5-hour session takes 6.5 hours); 3600× replays the whole session in about seven seconds. You can speed up, slow down, or pause at any moment without restarting — the bars keep arriving in order, nothing is skipped.",
+  },
+  simulated_fill: {
+    title: "Simulated fill",
+    description:
+      "Orders fill against the historical bars using the SAME honest cost model as backtests: an entry fills at the next bar's open with slippage (you can never fill on a bar you've already watched close), stop/target legs fill intra-bar when price crosses them, and a bar that spans both fills the stop first (conservative). No real broker is involved — the fills are computed from the recorded prices.",
+  },
+  session_recap: {
+    title: "Session recap",
+    description:
+      "The end-of-replay summary: trades taken, win rate, expectancy and total R, gross P&L, an equity curve, and a per-trade table — in the same vocabulary as backtests. It's informational only: a replay's results are never saved to the archive or the forward record, so nothing here feeds the gates or recommendations.",
+  },
+  strategy_automation_replay: {
+    title: "Strategy automation (replay)",
+    description:
+      "Toggle this on to watch the VWAP-pullback strategy trade the replayed session itself — the exact same strategy/risk/fill pipeline a backtest uses, so its decisions match a backtest of that day one-for-one. Every signal, window-skip, approval, rejection, and exit is journaled as it happens. You can run it alongside your own manual trades and compare at the recap.",
   },
 };

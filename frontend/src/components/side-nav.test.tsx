@@ -21,6 +21,7 @@ import { SideNav } from './side-nav'
 
 const LINKS: Array<[string, string]> = [
   ['Trade', '/trade'],
+  ['Historic Trade', '/trade/historic'],
   ['Strategy', '/strategies'],
   ['Validation', '/validation'],
   ['Insights', '/insights'],
@@ -29,29 +30,34 @@ const LINKS: Array<[string, string]> = [
   ['Docs', '/docs'],
 ]
 
+// Exact-name matcher — "Trade" must not also match "Historic Trade".
+const exact = (label: string) => new RegExp(`^${label}$`, 'i')
+
 describe('<SideNav />', () => {
   beforeEach(() => {
     localStorage.clear()
   })
 
-  it('puts Trade first and nests Validation/Insights/Backtests under Strategy', () => {
+  it('puts Trade first, nests Historic Trade under it, then Strategy group', () => {
     render(<SideNav />)
     const nav = screen.getByRole('navigation', { name: /primary/i })
     const hrefs = Array.from(nav.querySelectorAll('a')).map(a => a.getAttribute('href'))
     expect(hrefs[0]).toBe('/trade')
+    expect(hrefs[1]).toBe('/trade/historic')
     // group order: Strategy parent immediately followed by its sub-items
-    expect(hrefs.slice(1, 5)).toEqual(['/strategies', '/validation', '/insights', '/runs'])
+    expect(hrefs.slice(2, 6)).toEqual(['/strategies', '/validation', '/insights', '/runs'])
     // sub-items are visually nested (depth attribute drives the indent)
     for (const sub of ['validation', 'insights', 'runs']) {
       expect(screen.getByTestId(`side-nav-link-${sub}`)).toHaveAttribute('data-depth', '1')
     }
+    expect(screen.getByTestId('side-nav-link-trade/historic')).toHaveAttribute('data-depth', '1')
     expect(screen.getByTestId('side-nav-link-strategies')).toHaveAttribute('data-depth', '0')
   })
 
-  it('renders the seven nav links with labels when expanded', () => {
+  it('renders the nav links with labels when expanded', () => {
     render(<SideNav />)
     for (const [label, href] of LINKS) {
-      const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
+      const link = screen.getByRole('link', { name: exact(label) })
       expect(link).toHaveAttribute('href', href)
       expect(link.textContent).toContain(label)
     }
@@ -60,7 +66,7 @@ describe('<SideNav />', () => {
   it('each nav link renders its SVG icon (user-provided icon set)', () => {
     render(<SideNav />)
     for (const [label] of LINKS) {
-      const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
+      const link = screen.getByRole('link', { name: exact(label) })
       expect(link.querySelector('svg')).not.toBeNull()
     }
   })
@@ -75,7 +81,7 @@ describe('<SideNav />', () => {
     render(<SideNav />)
     expect(screen.getByTestId('side-nav')).toHaveAttribute('data-collapsed', 'true')
     for (const [label, href] of LINKS) {
-      const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
+      const link = screen.getByRole('link', { name: exact(label) })
       expect(link).toHaveAttribute('href', href)
       expect(link.textContent).not.toContain(label) // icon only
     }
