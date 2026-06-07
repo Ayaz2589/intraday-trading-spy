@@ -33,3 +33,6 @@ backend/.supabase/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Local session-continuity artifacts (clear-context skill) — not repo history
+.claude/context-summaries/
