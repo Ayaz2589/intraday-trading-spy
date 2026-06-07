@@ -227,3 +227,71 @@ def test_lockout_uses_net_realized_pnl(default_config_path):
     eng._apply_exit_to_state(state, pos)
     assert state.daily_realized_pnl == pytest.approx(-3.0)  # net, not gross −2.0
     assert state.daily_lockout_active is True
+
+
+# ----------- Feature 020: entry-window gate --------------------------------
+
+
+def _windowed(cfg, start, end):
+    from intraday_trade_spy.config import EntryWindowConfig
+
+    vp = cfg.strategy.vwap_pullback.model_copy(
+        update={"entry_window": EntryWindowConfig(
+            start_minutes_after_open=start, end_minutes_after_open=end)}
+    )
+    return cfg.model_copy(
+        update={"strategy": cfg.strategy.model_copy(update={"vwap_pullback": vp})}
+    )
+
+
+def test_default_window_is_byte_identical_to_baseline(default_config_path, sample_csv_path, tmp_path):
+    """FR-010/SC-001: explicitly-set defaults == implicit defaults == pre-020."""
+    cfg = _zero_cost(_legacy_default(load_config(default_config_path)))
+    base = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    win = BacktestEngine(_windowed(cfg, 0, 390)).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    assert [r.model_dump() for r in win.journal_rows] == [r.model_dump() for r in base.journal_rows]
+    assert win.summary.model_dump() == base.summary.model_dump()
+
+
+def test_narrow_window_suppresses_entries_and_journals_skips(default_config_path, sample_csv_path, tmp_path):
+    """SC-002 on the fixture: a window that excludes the fixture's setups
+    yields zero executions and one SKIPPED_WINDOW row per suppressed setup
+    (every base EMITTED row was a valid setup), with no side effects."""
+    from intraday_trade_spy.models import SignalStatus
+
+    cfg = _zero_cost(_legacy_default(load_config(default_config_path)))
+    base = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    emitted = [r for r in base.journal_rows if r.status == SignalStatus.EMITTED]
+    assert emitted, "fixture must emit setups for this test to mean anything"
+
+    win = BacktestEngine(_windowed(cfg, 0, 1)).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    statuses = [r.status for r in win.journal_rows]
+    assert SignalStatus.EXECUTED not in statuses
+    assert SignalStatus.EMITTED not in statuses
+    skips = [r for r in win.journal_rows if r.status == SignalStatus.SKIPPED_WINDOW]
+    # Every setup the baseline emitted is skipped here; the windowed run also
+    # keeps evaluating during bars where the baseline held a position, so it
+    # may find MORE valid setups (skips is a superset of base emissions).
+    assert {r.timestamp for r in emitted} <= {r.timestamp for r in skips}
+    for s in skips:
+        assert "window" in (s.reason or "").lower()
+        assert s.vwap is not None  # full indicator context (VII)
+    assert win.summary.total_trades == 0
+
+
+def test_summary_is_neutral_to_skipped_window_rows(default_config_path, sample_csv_path, tmp_path):
+    """R5: skips are learning artifacts, not performance events — a journal
+    with extra SKIPPED_WINDOW rows produces identical summary numbers."""
+    from intraday_trade_spy.backtest.metrics import compute_summary
+    from intraday_trade_spy.models import SignalStatus
+
+    cfg = _zero_cost(_legacy_default(load_config(default_config_path)))
+    base = BacktestEngine(cfg).run(csv_path=sample_csv_path, output_dir=tmp_path)
+    skip_row = base.journal_rows[0].model_copy(update={
+        "status": SignalStatus.SKIPPED_WINDOW,
+        "reason": "setup at minute 5 outside entry window [30, 270)",
+    })
+    augmented = [skip_row, *base.journal_rows, skip_row]
+    s1 = compute_summary(base.journal_rows, account_value=cfg.risk.account_value, metrics_config=cfg.metrics)
+    s2 = compute_summary(augmented, account_value=cfg.risk.account_value, metrics_config=cfg.metrics)
+    assert s1.model_dump() == s2.model_dump()

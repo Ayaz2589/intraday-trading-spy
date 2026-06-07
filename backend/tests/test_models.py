@@ -156,3 +156,28 @@ def test_summary_metrics_new_fields_default_safely():
     assert s.hour_buckets == []
     assert s.weekday_buckets == []
     assert s.month_buckets == []
+
+
+# ---- Feature 020: skipped-window journal surface -------------------------------
+
+
+def test_signal_status_has_skipped_window():
+    from intraday_trade_spy.models import SignalStatus
+
+    assert SignalStatus.SKIPPED_WINDOW.value == "skipped_window"
+
+
+def test_window_skip_is_frozen_with_required_fields():
+    from datetime import UTC, datetime
+
+    import pytest
+    from intraday_trade_spy.models import WindowSkip
+
+    skip = WindowSkip(
+        timestamp=datetime(2026, 5, 28, 13, 50, tzinfo=UTC),
+        reason="setup at minute 20 outside entry window [30, 270)",
+        start_minutes_after_open=30,
+        end_minutes_after_open=270,
+    )
+    with pytest.raises(Exception):
+        skip.reason = "mutate"  # frozen

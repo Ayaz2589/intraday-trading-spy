@@ -42,3 +42,31 @@ def test_no_new_trades_after_cutoff():
 def test_force_flat():
     assert _clk().is_force_flat(datetime(2026, 5, 28, 15, 55, tzinfo=ET)) is True
     assert _clk().is_force_flat(datetime(2026, 5, 28, 15, 54, tzinfo=ET)) is False
+
+
+# ---- Feature 020: minutes_since_open (the entry-window time source) ----------
+
+
+def test_minutes_since_open_basic():
+    clk = _clk()
+    assert clk.minutes_since_open(datetime(2026, 6, 5, 9, 30, tzinfo=ET)) == 0
+    assert clk.minutes_since_open(datetime(2026, 6, 5, 9, 45, tzinfo=ET)) == 15
+    assert clk.minutes_since_open(datetime(2026, 6, 5, 14, 0, tzinfo=ET)) == 270
+    assert clk.minutes_since_open(datetime(2026, 6, 5, 15, 55, tzinfo=ET)) == 385
+
+
+def test_minutes_since_open_converts_from_utc():
+    clk = _clk()
+    # 14:00 UTC on a June day == 10:00 ET (EDT)
+    assert clk.minutes_since_open(datetime(2026, 6, 5, 14, 0, tzinfo=ZoneInfo("UTC"))) == 30
+
+
+def test_minutes_since_open_negative_before_open():
+    clk = _clk()
+    assert clk.minutes_since_open(datetime(2026, 6, 5, 9, 15, tzinfo=ET)) == -15
+
+
+def test_minutes_since_open_winter_session():
+    clk = _clk()
+    # EST (winter): 15:00 UTC == 10:00 ET
+    assert clk.minutes_since_open(datetime(2026, 1, 5, 15, 0, tzinfo=ZoneInfo("UTC"))) == 30

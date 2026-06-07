@@ -9,7 +9,13 @@ from intraday_trade_spy.data.bars import BarIterator
 from intraday_trade_spy.data.indicators import attach_indicators, snapshot_from_row
 from intraday_trade_spy.data.loader import load_bars
 from intraday_trade_spy.journal.logger import JournalLogger
-from intraday_trade_spy.models import BacktestRun, JournalEntry, SignalStatus, TradePlan
+from intraday_trade_spy.models import (
+    BacktestRun,
+    JournalEntry,
+    SignalStatus,
+    TradePlan,
+    WindowSkip,
+)
 from intraday_trade_spy.risk.manager import RiskManager
 from intraday_trade_spy.risk.state import RiskState
 from intraday_trade_spy.strategy.vwap_pullback import VwapPullbackLong
@@ -117,7 +123,24 @@ class BacktestEngine:
 
             # 4) Evaluate strategy if no open position.
             if state.open_position is None:
-                sig = self.strategy.evaluate(bar, snap)
+                sig = self.strategy.evaluate(
+                    bar, snap, self.clock.minutes_since_open(bar.timestamp)
+                )
+                # Feature 020: a fully-valid setup outside the entry window —
+                # journal it (constitution VII), trade nothing, change nothing.
+                if isinstance(sig, WindowSkip):
+                    log.log(
+                        status=SignalStatus.SKIPPED_WINDOW,
+                        timestamp=sig.timestamp,
+                        setup="vwap_pullback_long",
+                        vwap=snap.vwap,
+                        or_high=snap.or_high,
+                        or_low=snap.or_low,
+                        distance_from_vwap_pct=snap.distance_from_vwap_pct,
+                        prior_bar_close=snap.prior_bar_close,
+                        reason=sig.reason,
+                    )
+                    sig = None
                 if sig is not None:
                     self._log_signal(log, sig, snap, SignalStatus.EMITTED)
                     decision = self.risk.validate(sig, state)
