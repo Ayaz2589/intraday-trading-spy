@@ -290,6 +290,31 @@ class PaperConfig(BaseModel):
     chart_30d_days: int = Field(default=30, ge=1)
 
 
+# ---- Feature 022 (historic trade replay) ------------------------------------
+
+
+class ReplayConfig(BaseModel):
+    """Historic-replay playback knobs (/trade/historic). `speeds` are the
+    selectable settings, each = simulated market-seconds elapsed per one real
+    second (1 = real-time … 3600 = a full session in ~7s). UI-presentation
+    values kept here so no magic numbers live in source. `default_speed` must
+    be one of `speeds`."""
+
+    speeds: list[int] = Field(
+        default_factory=lambda: [1, 10, 30, 60, 300, 600, 1800, 3600]
+    )
+    default_speed: int = 60
+
+    @model_validator(mode="after")
+    def _default_in_speeds(self) -> "ReplayConfig":
+        if self.default_speed not in self.speeds:
+            raise ValueError(
+                f"replay.default_speed={self.default_speed} must be one of "
+                f"replay.speeds={self.speeds}"
+            )
+        return self
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     market: MarketConfig
@@ -303,6 +328,7 @@ class Config(BaseModel):
     insights: InsightsConfig = Field(default_factory=InsightsConfig)
     research: ResearchConfig = Field(default_factory=ResearchConfig)
     paper: PaperConfig = Field(default_factory=PaperConfig)
+    replay: ReplayConfig = Field(default_factory=ReplayConfig)
 
 
 def load_config(path: str | Path) -> Config:
