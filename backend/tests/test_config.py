@@ -210,3 +210,41 @@ def test_entry_window_accepts_whole_floats_from_sweep_grids():
     win = EntryWindowConfig(start_minutes_after_open=30.0, end_minutes_after_open=270.0)
     assert win.start_minutes_after_open == 30
     assert win.end_minutes_after_open == 270
+
+
+# ---- Feature 021 (live paper trading) ------------------------------------------
+
+
+def test_paper_config_defaults():
+    from intraday_trade_spy.config import PaperConfig
+
+    cfg = PaperConfig()
+    assert cfg.stale_data_seconds == 120
+    assert cfg.reconcile_seconds == 5
+    assert cfg.warmup_lookback_days == 1
+    assert cfg.chart_30d_days == 30
+
+
+def test_paper_block_loads_from_yaml():
+    from pathlib import Path
+
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(Path(__file__).resolve().parents[1] / "config" / "config.yaml")
+    assert cfg.paper.stale_data_seconds == 120
+    assert cfg.paper.reconcile_seconds == 5
+    assert cfg.paper.warmup_lookback_days == 1
+    assert cfg.paper.chart_30d_days == 30
+
+
+def test_paper_config_rejects_out_of_range_values():
+    from intraday_trade_spy.config import PaperConfig
+
+    with pytest.raises(ValidationError):
+        PaperConfig(stale_data_seconds=0)     # must allow at least one bar gap
+    with pytest.raises(ValidationError):
+        PaperConfig(reconcile_seconds=0)      # must poll at least every second... > 0
+    with pytest.raises(ValidationError):
+        PaperConfig(warmup_lookback_days=0)   # warmup needs >= 1 day
+    with pytest.raises(ValidationError):
+        PaperConfig(chart_30d_days=0)
