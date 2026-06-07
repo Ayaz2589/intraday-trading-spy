@@ -25,6 +25,12 @@ export function ConfigsSection({
   const rename = useRenameConfig()
   const del = useDeleteConfig()
 
+  // The active config is the one runs/studies/campaigns use — pin it to the
+  // top; the rest keep the API's name order.
+  const ordered = [...configs].sort(
+    (a, b) => Number(b.is_active) - Number(a.is_active),
+  )
+
   return (
     <section data-testid="config-list" style={cardSection}>
       <SectionTitle
@@ -35,7 +41,7 @@ export function ConfigsSection({
         <HelpTooltip helpKey="active_config" />
       </SectionTitle>
       <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0', display: 'grid', gap: 8 }}>
-        {configs.map(c => (
+        {ordered.map(c => (
           <ConfigRow
             key={c.id}
             config={c}

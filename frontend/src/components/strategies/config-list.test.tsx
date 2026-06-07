@@ -293,3 +293,24 @@ describe('ConfigsSection', () => {
     expect(patchConfigMock).not.toHaveBeenCalled()
   })
 })
+
+describe('ConfigsSection — ordering', () => {
+  it('pins the active config to the top regardless of name order', () => {
+    wrap(
+      <ConfigsSection
+        configs={[
+          cfg('c1', 'auto04-c1-buffer'),
+          cfg('c2', 'zz-experimental', true),
+          cfg('c3', 'deep-combo'),
+        ]}
+        expandedId={null}
+        onToggle={vi.fn()}
+      />,
+    )
+    const rows = screen.getAllByRole('listitem')
+    expect(rows[0].textContent).toContain('zz-experimental')
+    // the rest keep their alphabetical order
+    expect(rows[1].textContent).toContain('auto04-c1-buffer')
+    expect(rows[2].textContent).toContain('deep-combo')
+  })
+})
