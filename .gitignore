@@ -37,3 +37,4 @@ backend/.supabase/
 # Local session-continuity artifacts (clear-context skill) — not repo history
 .claude/context-summaries/
 .venv-sbx/
+screenshots/
