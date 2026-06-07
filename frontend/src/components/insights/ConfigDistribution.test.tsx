@@ -105,3 +105,21 @@ describe("ConfigDistribution — signed value coloring (redesign)", () => {
     expect(pos.getAttribute("style")).toContain("--profit");
   });
 });
+
+describe("ConfigDistribution — pagination", () => {
+  it("paginates past 10 config rows", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({
+      ...ROWS[0],
+      config_name: `cfg-${String(i).padStart(2, "0")}`,
+    }));
+    render(<ConfigDistribution rows={rows} />);
+    expect(screen.getAllByTestId(/dist-row-/)).toHaveLength(10);
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    expect(screen.getAllByTestId(/dist-row-/)).toHaveLength(2);
+  });
+
+  it("shows no pager for a handful of rows", () => {
+    render(<ConfigDistribution rows={ROWS} />);
+    expect(screen.queryByTestId("pager")).toBeNull();
+  });
+});

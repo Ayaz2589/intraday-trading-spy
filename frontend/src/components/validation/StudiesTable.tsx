@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { HelpTooltip } from '../help-tooltip'
 import { EmptyState } from '@/components/empty-state'
+import { Pager, usePager } from '@/components/pager'
 import { ValidationIcon } from '@/components/nav-icons'
 import type { ValidationStudy, WalkForwardResult, SensitivitySurface } from '@/api/types'
 
@@ -61,6 +62,8 @@ export function StudiesTable({
   onRerun?: (studyId: string) => void
 }) {
   const [expanded, setExpanded] = useState<string | null>(null)
+  // Paginate the rows; the stats strip above keeps counting the whole archive.
+  const pager = usePager(studies, 10)
 
   if (studies.length === 0) {
     return (
@@ -110,7 +113,7 @@ export function StudiesTable({
           </tr>
         </thead>
         <tbody>
-          {studies.map((s) => {
+          {pager.pageItems.map((s) => {
             const isOpen = expanded === s.id
             const pct = s.progress_total > 0 ? Math.round((s.progress_completed / s.progress_total) * 100) : 0
             const style = STATUS_STYLE[s.status] ?? STATUS_STYLE.queued
@@ -212,6 +215,7 @@ export function StudiesTable({
           })}
         </tbody>
       </table>
+      <Pager page={pager.page} pageCount={pager.pageCount} onPage={pager.setPage} />
     </div>
   )
 }

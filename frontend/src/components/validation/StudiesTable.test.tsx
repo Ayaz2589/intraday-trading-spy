@@ -89,3 +89,22 @@ describe('resultSummary', () => {
     expect(resultSummary(study({ result: null }))).toBeNull()
   })
 })
+
+describe('StudiesTable — pagination', () => {
+  it('paginates past 10 studies and keeps the stats counting all of them', () => {
+    const studies = Array.from({ length: 12 }, (_, i) =>
+      study({ id: `s${i}`, progress_completed: 1, progress_total: 1 }),
+    )
+    render(<StudiesTable studies={studies} />)
+    expect(screen.getAllByTestId(/study-row-/)).toHaveLength(10)
+    // stats strip still reflects the whole archive, not the page
+    expect(screen.getByTestId('studies-stats').textContent).toContain('12')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getAllByTestId(/study-row-/)).toHaveLength(2)
+  })
+
+  it('shows no pager when 10 or fewer studies', () => {
+    render(<StudiesTable studies={[study({})]} />)
+    expect(screen.queryByTestId('pager')).toBeNull()
+  })
+})

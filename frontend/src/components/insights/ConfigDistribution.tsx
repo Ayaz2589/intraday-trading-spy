@@ -1,4 +1,5 @@
 import { HelpTooltip } from '../help-tooltip'
+import { Pager, usePager } from '@/components/pager'
 import type { ConfigDistributionRow } from '@/api/types'
 
 // Feature 016 (US2): per-config distribution of per-window OOS outcomes —
@@ -53,6 +54,7 @@ export function ConfigDistribution({
   rows: ConfigDistributionRow[]
   onOpenStudy?(studyId: string): void
 }) {
+  const pager = usePager(rows, 10)
   return (
     <section className="card" data-testid="config-distribution">
       <header className="card-head">
@@ -91,7 +93,7 @@ export function ConfigDistribution({
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {pager.pageItems.map((r) => (
                 <tr key={r.config_name ?? '?'} data-testid={`dist-row-${r.config_name ?? 'unknown'}`}>
                   <td style={{ fontWeight: 600 }}>{r.config_name ?? '(unknown)'}</td>
                   <td className="mono" style={{ color: 'var(--text-muted)' }}>
@@ -138,6 +140,7 @@ export function ConfigDistribution({
               ))}
             </tbody>
           </table>
+          <Pager page={pager.page} pageCount={pager.pageCount} onPage={pager.setPage} />
         </div>
       )}
     </section>

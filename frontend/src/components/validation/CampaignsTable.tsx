@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/empty-state'
+import { Pager, usePager } from '@/components/pager'
 import { VERDICT_CHIP_CLASS, VERDICT_LABEL } from './AutoResearchCard'
 import type { Campaign } from '@/api/types'
 
@@ -6,6 +7,7 @@ import type { Campaign } from '@/api/types'
 // to its cycle-by-cycle detail page.
 
 export function CampaignsTable({ campaigns }: { campaigns: Campaign[] }) {
+  const pager = usePager(campaigns, 10)
   if (campaigns.length === 0) {
     return (
       <EmptyState
@@ -17,8 +19,9 @@ export function CampaignsTable({ campaigns }: { campaigns: Campaign[] }) {
     )
   }
   return (
+    <>
     <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0', display: 'grid', gap: 8 }}>
-      {campaigns.map(c => (
+      {pager.pageItems.map(c => (
         <li
           key={c.id}
           className="card"
@@ -48,5 +51,7 @@ export function CampaignsTable({ campaigns }: { campaigns: Campaign[] }) {
         </li>
       ))}
     </ul>
+    <Pager page={pager.page} pageCount={pager.pageCount} onPage={pager.setPage} />
+    </>
   )
 }

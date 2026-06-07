@@ -38,3 +38,20 @@ describe('CampaignsTable', () => {
     expect(screen.getByText(/no campaigns yet/i)).toBeInTheDocument()
   })
 })
+
+describe('CampaignsTable — pagination', () => {
+  it('paginates past 10 campaigns', () => {
+    const campaigns = Array.from({ length: 13 }, (_, i) =>
+      campaign({ id: `c-${i}`, seq: i }),
+    )
+    render(<CampaignsTable campaigns={campaigns} />)
+    expect(screen.getAllByTestId(/campaign-row-/)).toHaveLength(10)
+    const next = screen.getByRole('button', { name: /next/i })
+    next.click?.()
+  })
+
+  it('shows no pager when few campaigns', () => {
+    render(<CampaignsTable campaigns={[campaign({})]} />)
+    expect(screen.queryByTestId('pager')).toBeNull()
+  })
+})
