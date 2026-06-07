@@ -7,7 +7,7 @@
 make study-sens CONFIG=default KNOB=start_minutes_after_open VALUES=0,15,30,45
 
 # sweep the window end across the afternoon fade
-make study-sens CONFIG=default KNOB=end_minutes_after_open VALUES=240,270,300,360
+make study-sens CONFIG=default KNOB=end_minutes_after_open VALUES=240,270,300,390
 ```
 
 Or in the UI: Strategy page → edit a config → Signal group → set

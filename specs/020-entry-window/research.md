@@ -39,7 +39,7 @@ the clock (new dependency direction, harder unit tests).
 ## R3 — Config shape + validation
 
 **Decision**: `EntryWindowConfig {start_minutes_after_open: int = 0 (ge=0,
-le=390), end_minutes_after_open: int = 360 (ge=1, le=390)}` nested as
+le=390), end_minutes_after_open: int = 390 (ge=0, le=390) — corrected from 360, see spec Clarifications}` nested as
 `strategy.vwap_pullback.entry_window`, with a model validator rejecting
 start ≥ end (FR-004). config.yaml documents the block with the defaults.
 Stored config params lacking the keys deserialize to defaults (Pydantic

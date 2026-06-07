@@ -196,7 +196,7 @@ off-default chips.
   uses it), appearing in the editor and the docs glossary.
 - **FR-009**: The frontend sensitivity launcher MUST offer both knobs as
   toggle pills with sensible default grids that straddle the config default
-  (e.g. start: 0/15/30/45; end: 240/270/300/360).
+  (e.g. start: 0/15/30/45; end: 240/270/300/390).
 - **FR-010**: Existing stored configs, presets, studies, and baselines MUST
   be unaffected: params lacking the window keys load as the defaults, and a
   default-window backtest produces byte-identical trades to the pre-feature
