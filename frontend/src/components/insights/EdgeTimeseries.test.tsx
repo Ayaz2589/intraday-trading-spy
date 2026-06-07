@@ -117,3 +117,41 @@ describe("EdgeTimeseries — taller detailed chart (016-polish round 3)", () => 
     expect(tip).toHaveTextContent(/0\.018/);     // expectancy R always in the detail
   });
 });
+
+describe("EdgeTimeseries — many-config defaults (post-campaign-series)", () => {
+  // 28 configs turned the chart to spaghetti: every series plotted, the
+  // legend overflowing on one line. Default to the top-5 configs by OOS
+  // trades; every config keeps a toggle chip.
+  const MANY = Array.from({ length: 8 }, (_, i) =>
+    pt({
+      run_id: `r${i}`,
+      config_name: `cfg-${i}`,
+      trades: 100 - i, // cfg-0..cfg-4 are the top five
+    }),
+  );
+
+  it("plots only the top five configs by trades by default", () => {
+    const { container } = render(<EdgeTimeseries points={MANY} onOpenRun={vi.fn()} />);
+    expect(container.querySelectorAll("[data-testid='ls-point']")).toHaveLength(5);
+    expect(screen.getByRole("button", { name: /cfg-0/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /cfg-7/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("a chip toggles its config's series on", () => {
+    const { container } = render(<EdgeTimeseries points={MANY} onOpenRun={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /cfg-7/ }));
+    expect(container.querySelectorAll("[data-testid='ls-point']")).toHaveLength(6);
+  });
+
+  it("show all plots every config", () => {
+    const { container } = render(<EdgeTimeseries points={MANY} onOpenRun={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /show all/i }));
+    expect(container.querySelectorAll("[data-testid='ls-point']")).toHaveLength(8);
+  });
+
+  it("with five or fewer configs everything is visible and there is no show-all", () => {
+    const { container } = render(<EdgeTimeseries points={POINTS} onOpenRun={vi.fn()} />);
+    expect(container.querySelectorAll("[data-testid='ls-point']")).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /show all/i })).toBeNull();
+  });
+});

@@ -17,6 +17,7 @@ import type { EdgeTimeseriesPoint, RegimeView } from '@/api/types'
 // P&L semantics; the metric toggle is a segmented control.
 
 const PALETTE = ['var(--accent)', 'var(--info)', 'var(--warn)', '#8b7cc8', '#6b8cae']
+const DEFAULT_SERIES = 5
 
 type Metric = 'r' | 'pct' | 'usd'
 
@@ -56,7 +57,28 @@ export function EdgeTimeseries({
     const key = p.config_name ?? '(unknown config)'
     byConfig.set(key, [...(byConfig.get(key) ?? []), p])
   }
-  const series: LineScatterSeries[] = [...byConfig.entries()].map(([id, pts], i) => ({
+
+  // Campaign series minted dozens of configs — plotting all of them is
+  // spaghetti. Rank by pooled OOS trades, show the top few by default, and
+  // give every config a toggle chip. Colors are stable per ranked position.
+  const ranked = [...byConfig.entries()]
+    .map(([id, pts]) => ({ id, trades: pts.reduce((a, p) => a + p.trades, 0) }))
+    .sort((a, b) => b.trades - a.trades || a.id.localeCompare(b.id))
+  const defaultVisible = new Set(ranked.slice(0, DEFAULT_SERIES).map((r) => r.id))
+  const [picked, setPicked] = useState<Set<string> | null>(null) // null = top-N default
+  const visible = picked ?? defaultVisible
+  const toggleConfig = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev ?? defaultVisible)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const series: LineScatterSeries[] = ranked
+    .map(({ id }, i) => ({ id, i, pts: byConfig.get(id) ?? [] }))
+    .filter(({ id }) => visible.has(id))
+    .map(({ id, i, pts }) => ({
     id,
     color: PALETTE[i % PALETTE.length],
     points: pts
@@ -124,6 +146,7 @@ export function EdgeTimeseries({
             series={series}
             bands={bands}
             height={320}
+            legend={false}
             formatY={(v) =>
               metric === 'r'
                 ? v.toFixed(2)
@@ -134,6 +157,79 @@ export function EdgeTimeseries({
             formatX={(v) => String(new Date(v).getUTCFullYear())}
             onPointClick={(d) => onOpenRun(d as string)}
           />
+          <div
+            data-testid="edge-legend"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 8,
+            }}
+          >
+            {ranked.map((r, i) => {
+              const on = visible.has(r.id)
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleConfig(r.id)}
+                  className="mono"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    border: '1px solid var(--border)',
+                    background: on ? 'var(--surface-2)' : 'transparent',
+                    color: on ? 'var(--text)' : 'var(--text-muted)',
+                    fontSize: 'var(--fs-xs, 11px)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: PALETTE[i % PALETTE.length],
+                      opacity: on ? 1 : 0.35,
+                    }}
+                  />
+                  {r.id}
+                </button>
+              )
+            })}
+            {ranked.length > DEFAULT_SERIES && (
+              <span style={{ display: 'inline-flex', gap: 4, marginLeft: 'auto' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ fontSize: 'var(--fs-xs, 11px)', padding: '2px 8px' }}
+                  onClick={() => setPicked(new Set(ranked.map((r) => r.id)))}
+                >
+                  show all {ranked.length}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ fontSize: 'var(--fs-xs, 11px)', padding: '2px 8px' }}
+                  onClick={() => setPicked(null)}
+                >
+                  top {DEFAULT_SERIES}
+                </button>
+              </span>
+            )}
+          </div>
+          {ranked.length > visible.size && (
+            <p className="chart-hint" style={{ marginTop: 4 }}>
+              showing {visible.size} of {ranked.length} configs (top {DEFAULT_SERIES} by
+              OOS trades by default) — click a chip to toggle a config
+            </p>
+          )}
           {metric === 'usd' && byConfig.size > 1 && (
             <p className="chart-hint" style={{ marginTop: 4 }}>
               ⚠ raw $ is not comparable across configs run at different account

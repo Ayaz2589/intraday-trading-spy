@@ -43,6 +43,7 @@ export function LineScatter({
   formatY = (v) => String(Math.round(v * 100) / 100),
   formatX = (v) => String(v),
   height = 220,
+  legend = true,
 }: {
   series: LineScatterSeries[]
   bands?: LineScatterBand[]
@@ -50,6 +51,8 @@ export function LineScatter({
   formatY?(v: number): string
   formatX?(v: number): string
   height?: number
+  // Set false when the caller renders its own (e.g. toggleable) legend.
+  legend?: boolean
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(800)
@@ -269,7 +272,11 @@ export function LineScatter({
           ))}
         </div>
       )}
-      <div className="stat-label" style={{ display: 'flex', gap: 'var(--sp-4)', marginTop: 4 }}>
+      {legend && (
+      <div
+        className="stat-label"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-4)', marginTop: 4 }}
+      >
         {series.map((s) => (
           <span key={s.id}>
             <span
@@ -286,6 +293,7 @@ export function LineScatter({
           </span>
         ))}
       </div>
+      )}
     </div>
   )
 }
