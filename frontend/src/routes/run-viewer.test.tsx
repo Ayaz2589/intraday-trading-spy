@@ -320,6 +320,9 @@ describe("RunViewer route", () => {
       "tightened_bar",
       "stopping_rules",
       "ready_for_lockbox",
+      // Feature 020: renders in the config editor; coverage in
+      // config-editor.test.tsx + help-content.test.ts.
+      "entry_window",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

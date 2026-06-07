@@ -104,7 +104,9 @@ export type HelpContentKey =
   | "trial_budget"
   | "tightened_bar"
   | "stopping_rules"
-  | "ready_for_lockbox";
+  | "ready_for_lockbox"
+  // Feature 020 (entry-window filter) concept
+  | "entry_window";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   vwap: {
@@ -549,5 +551,12 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Ready for lockbox",
     description:
       "The campaign's success verdict: a candidate cleared the tightened pooled gate on data the loop was allowed to touch. The lockbox — the untouched final slice — is deliberately NOT spent by automation. Review the candidate, and when you are convinced, run your one-shot lockbox test from the Validation page yourself.",
+  },
+
+  // ---- Feature 020: entry-window filter ----
+  entry_window: {
+    title: "Entry window",
+    description:
+      "When the strategy is allowed to enter, in minutes after the 09:30 ET open. Why it exists: eight years of data showed entries in the first minutes after the opening range carried this strategy's ENTIRE net loss (29% win rate vs 37–41% mid-day) — chaos, not edge. Setups outside the window aren't traded; they're journaled as 'skipped_window' so you can see exactly what the filter declined. Defaults (0–390) change nothing; narrow it — or let a sensitivity sweep or campaign search it — to test when the edge actually lives.",
   },
 };

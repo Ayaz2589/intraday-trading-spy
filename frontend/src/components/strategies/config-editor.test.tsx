@@ -103,3 +103,34 @@ describe('ConfigEditor', () => {
     }
   })
 })
+
+// ---- Feature 020: entry-window fields ------------------------------------------
+
+describe('ConfigEditor entry window (020)', () => {
+  it('renders both window fields in the Signal group with default hints and tooltip', () => {
+    wrap(<ConfigEditor config={cfg()} />)
+    expect(screen.getByLabelText('Entry from (min after open)')).toHaveValue(0)
+    expect(screen.getByLabelText('Entry until (min after open)')).toHaveValue(390)
+    expect(screen.getByText('default 0min')).toBeInTheDocument()
+    expect(screen.getByText('default 390min')).toBeInTheDocument()
+    expect(document.querySelector('[data-help-key="entry_window"]')).toBeTruthy()
+  })
+
+  it('flags off-default window values and saves them into nested params', async () => {
+    patchConfigMock.mockResolvedValue(cfg())
+    wrap(<ConfigEditor config={cfg()} />)
+    fireEvent.change(screen.getByLabelText('Entry from (min after open)'), { target: { value: '30' } })
+    fireEvent.change(screen.getByLabelText('Entry until (min after open)'), { target: { value: '270' } })
+    expect(screen.getByTestId('off-default-entry_start_minutes')).toBeInTheDocument()
+    expect(screen.getByTestId('off-default-entry_end_minutes')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'save wf-rr3' }))
+    await waitFor(() => expect(patchConfigMock).toHaveBeenCalled())
+    const params = patchConfigMock.mock.calls[0][1].params as {
+      strategy: { vwap_pullback: { entry_window: Record<string, number> } }
+    }
+    expect(params.strategy.vwap_pullback.entry_window).toEqual({
+      start_minutes_after_open: 30,
+      end_minutes_after_open: 270,
+    })
+  })
+})
