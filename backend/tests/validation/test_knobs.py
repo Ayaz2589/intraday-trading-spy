@@ -28,6 +28,9 @@ EXPECTED_BOUNDS = {
     RR: (0.5, 10),
     "strategy.vwap_pullback.stop.buffer_pct": (0.0, 1.0),
     DIST: (0.01, 2.0),
+    # Feature 020: the entry window joins the searchable whitelist.
+    "strategy.vwap_pullback.entry_window.start_minutes_after_open": (0, 390),
+    "strategy.vwap_pullback.entry_window.end_minutes_after_open": (0, 390),
 }
 
 
