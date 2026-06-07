@@ -20,11 +20,12 @@ vi.mock('@/api/reset', () => ({
 import { SideNav } from './side-nav'
 
 const LINKS: Array<[string, string]> = [
+  ['Trade', '/trade'],
+  ['Strategy', '/strategies'],
   ['Validation', '/validation'],
   ['Insights', '/insights'],
-  ['Data', '/data'],
-  ['Strategy', '/strategies'],
   ['Backtests', '/runs'],
+  ['Data', '/data'],
   ['Docs', '/docs'],
 ]
 
@@ -33,7 +34,21 @@ describe('<SideNav />', () => {
     localStorage.clear()
   })
 
-  it('renders the six nav links with labels when expanded', () => {
+  it('puts Trade first and nests Validation/Insights/Backtests under Strategy', () => {
+    render(<SideNav />)
+    const nav = screen.getByRole('navigation', { name: /primary/i })
+    const hrefs = Array.from(nav.querySelectorAll('a')).map(a => a.getAttribute('href'))
+    expect(hrefs[0]).toBe('/trade')
+    // group order: Strategy parent immediately followed by its sub-items
+    expect(hrefs.slice(1, 5)).toEqual(['/strategies', '/validation', '/insights', '/runs'])
+    // sub-items are visually nested (depth attribute drives the indent)
+    for (const sub of ['validation', 'insights', 'runs']) {
+      expect(screen.getByTestId(`side-nav-link-${sub}`)).toHaveAttribute('data-depth', '1')
+    }
+    expect(screen.getByTestId('side-nav-link-strategies')).toHaveAttribute('data-depth', '0')
+  })
+
+  it('renders the seven nav links with labels when expanded', () => {
     render(<SideNav />)
     for (const [label, href] of LINKS) {
       const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
