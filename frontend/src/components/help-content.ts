@@ -60,6 +60,17 @@ export type HelpContentKey =
   | "permutation_test"
   | "lockbox"
   | "burned_lockbox"
+  // Feature 021 (live paper trading) concepts
+  | "automation_session"
+  | "armed_session"
+  | "paper_account"
+  | "sizing_account_value"
+  | "protective_orders"
+  | "reconcile_drift"
+  | "stale_data_pause"
+  | "forward_record"
+  | "manual_order"
+  | "live_journal"
   // Feature 012 (config management) concepts
   | "active_config"
   | "duplicate_vs_edit"
@@ -558,5 +569,57 @@ export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
     title: "Entry window",
     description:
       "When the strategy is allowed to enter, in minutes after the 09:30 ET open. Why it exists: eight years of data showed entries in the first minutes after the opening range carried this strategy's ENTIRE net loss (29% win rate vs 37–41% mid-day) — chaos, not edge. Setups outside the window aren't traded; they're journaled as 'skipped_window' so you can see exactly what the filter declined. Defaults (0–390) change nothing; narrow it — or let a sensitivity sweep or campaign search it — to test when the edge actually lives.",
+  },
+
+  // ---- Feature 021: live paper trading ----
+  automation_session: {
+    title: "Automation session",
+    description:
+      "One operator-initiated run of live automated paper trading: the same strategy → risk manager → broker → journal pipeline backtests use, fed by real-time SPY bars against the Alpaca PAPER account. It stays on until you stop it — trading each day, going flat by 15:55 ET, idling overnight. Why it matters: with the historical lockbox spent, this forward record is the only honest out-of-sample evidence the project can still produce.",
+  },
+  armed_session: {
+    title: "Armed",
+    description:
+      "Automation is on but the market is closed, so nothing can trade yet. The session 'arms' and begins evaluating bars at the next 09:30 ET open — you don't need to be at the screen. The arming itself is journaled.",
+  },
+  paper_account: {
+    title: "Paper account",
+    description:
+      "A brokerage-simulated account: real market data, fake money. Orders route to Alpaca's paper venue, which simulates fills. The app treats the broker as the source of truth for positions, orders, and equity — what you see here is what Alpaca reports, refreshed every few seconds. Live-money trading is disabled in this app by constitution.",
+  },
+  sizing_account_value: {
+    title: "Sizing account value",
+    description:
+      "The capital figure the risk manager sizes positions from — the config's account_value, EXACTLY as backtests size. Why not the broker's equity? Comparability: the forward record must be readable against the backtest archive, and paper equity is an arbitrary, resettable number. Broker equity is shown alongside for reconciliation.",
+  },
+  protective_orders: {
+    title: "Protective orders (bracket)",
+    description:
+      "Every entry is a bracket order: the stop-loss and take-profit rest at the BROKER from the moment the entry is accepted — they are real resting orders, not app-side logic. If the app dies, the position is still protected. One leg filling cancels the other. No stop-loss = no trade, with zero exceptions.",
+  },
+  reconcile_drift: {
+    title: "Position mismatch (drift)",
+    description:
+      "The app's belief about the position disagrees with what the broker reports. The broker is the source of truth, so new entries pause until you acknowledge — the app never silently 'fixes' a mismatch, because silent fixes hide bugs. Investigate (the journal has the event), then acknowledge to resume.",
+  },
+  stale_data_pause: {
+    title: "Stale data pause",
+    description:
+      "No fresh market data arrived for the configured window while the market was open, so automation stopped taking NEW entries — never trade blind. Existing positions stay protected by their broker-side stop/target. Entries resume automatically when data flows again (the resuming bar itself never trades).",
+  },
+  forward_record: {
+    title: "Forward record",
+    description:
+      "Every paper trade, journal event, and P&L point accumulated by automation — true out-of-sample evidence, because it's decided before the outcome exists. It uses the same metrics vocabulary as backtests (R multiples, expectancy, win rate) but is kept strictly SEPARATE from the backtest archive so it can serve as the new lockbox.",
+  },
+  manual_order: {
+    title: "Manual paper order",
+    description:
+      "A buy you place yourself — but never exempt from the rules: you provide the stop and target, and the SAME risk manager that vets strategy signals sizes and can veto it. One position at a time, SPY only, long only. Manual trades are journaled with manual origin so the forward record stays honest about what the strategy did versus what you did.",
+  },
+  live_journal: {
+    title: "Live journal",
+    description:
+      "The append-only record of everything the live loop did: every signal (emitted, approved, rejected with its reason, executed, exited, force-flat) in the same vocabulary as backtest journals, plus lifecycle events (session start/stop, data gaps, safety pauses, broker rejections). Rejections are first-class — they're the most important learning artifact this page produces.",
   },
 };

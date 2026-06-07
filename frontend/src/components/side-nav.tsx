@@ -10,6 +10,7 @@ import {
   DocsIcon,
   InsightsIcon,
   StrategyIcon,
+  TradeIcon,
   ValidationIcon,
 } from '@/components/nav-icons'
 
@@ -19,13 +20,17 @@ import {
 // intentionally removed for now (will be re-enabled later, likely with 015's
 // soft-delete retention).
 
+// Feature 021 IA: Trade is the primary surface (the live cockpit); the
+// research surfaces (Validation / Insights / Backtests) nest under
+// Strategy — they all study the same strategy artifact.
 const NAV_ITEMS = [
-  { to: '/validation', label: 'Validation', icon: <ValidationIcon /> },
-  { to: '/insights', label: 'Insights', icon: <InsightsIcon /> },
-  { to: '/data', label: 'Data', icon: <DataIcon /> },
-  { to: '/strategies', label: 'Strategy', icon: <StrategyIcon /> },
-  { to: '/runs', label: 'Backtests', icon: <BacktestsIcon /> },
-  { to: '/docs', label: 'Docs', icon: <DocsIcon /> },
+  { to: '/trade', label: 'Trade', icon: <TradeIcon />, depth: 0 },
+  { to: '/strategies', label: 'Strategy', icon: <StrategyIcon />, depth: 0 },
+  { to: '/validation', label: 'Validation', icon: <ValidationIcon />, depth: 1 },
+  { to: '/insights', label: 'Insights', icon: <InsightsIcon />, depth: 1 },
+  { to: '/runs', label: 'Backtests', icon: <BacktestsIcon />, depth: 1 },
+  { to: '/data', label: 'Data', icon: <DataIcon />, depth: 0 },
+  { to: '/docs', label: 'Docs', icon: <DocsIcon />, depth: 0 },
 ] as const
 
 export function SideNav() {
@@ -108,12 +113,13 @@ export function SideNav() {
           gap: 2,
         }}
       >
-        {NAV_ITEMS.map(({ to, label, icon }) => (
+        {NAV_ITEMS.map(({ to, label, icon, depth }) => (
           <Link
             key={to}
             to={to}
             aria-label={label}
             title={label}
+            data-depth={depth}
             data-testid={`side-nav-link-${to.slice(1)}`}
             activeProps={{
               style: {
@@ -128,10 +134,13 @@ export function SideNav() {
               justifyContent: collapsed ? 'center' : 'flex-start',
               gap: 10,
               padding: collapsed ? '10px 0' : '8px 10px',
+              // nested research surfaces indent under Strategy (icon rail
+              // stays flat — depth is meaningless at icon size)
+              marginLeft: collapsed ? 0 : depth * 18,
+              fontSize: depth > 0 ? 'var(--fs-xs, 12px)' : 'var(--fs-sm, 13px)',
               borderRadius: 'var(--r-sm, 6px)',
               color: 'var(--text-muted)',
               textDecoration: 'none',
-              fontSize: 'var(--fs-sm, 13px)',
               fontWeight: 600,
             }}
           >

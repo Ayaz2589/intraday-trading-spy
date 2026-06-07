@@ -16,7 +16,10 @@ class MarketClock:
         return dt if dt.tzinfo == ET else dt.astimezone(ET)
 
     def is_market_open(self, dt: datetime) -> bool:
-        t = self._et(dt).time()
+        et = self._et(dt)
+        if et.weekday() >= 5:  # Sat/Sun — live loops ask about NOW, not bars
+            return False
+        t = et.time()
         return self.session_start <= t < self.session_end
 
     def is_or_complete(self, dt: datetime, or_minutes: int) -> bool:

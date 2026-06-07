@@ -103,6 +103,19 @@ export function InsightsIcon() {
   )
 }
 
+/** Candlestick + pulse — live paper trading. */
+export function TradeIcon() {
+  return (
+    <Svg>
+      <path d="M7 4v3M7 13v3" />
+      <rect x={5.4} y={7} width={3.2} height={6} rx={0.6} />
+      <path d="M16 6v3M16 15v4" />
+      <rect x={14.4} y={9} width={3.2} height={6} rx={0.6} />
+      <path d="M3.5 19.5h17" />
+    </Svg>
+  )
+}
+
 /** Open book — Docs. */
 export function DocsIcon() {
   return (

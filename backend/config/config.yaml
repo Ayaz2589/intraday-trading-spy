@@ -229,3 +229,11 @@ research:
   default_budget: 6          # campaign trial budget when not specified at launch
   base_alpha: 0.05           # gate alpha at k=1; cycle bar level = 1 - alpha/k
   backfill_start: "2018-01-01"  # full-span auto-backfill start for an empty cache
+
+# Live paper trading (Feature 021). All thresholds for the /trade live loop
+# live here, never in source (constitution).
+paper:
+  stale_data_seconds: 120     # no live bar for this long during RTH -> pause entries
+  reconcile_seconds: 5        # broker truth poll cadence (position/orders/equity)
+  warmup_lookback_days: 1     # historical fetch span to rebuild today's session bars
+  chart_30d_days: 30          # daily-bar span of the 30d chart view

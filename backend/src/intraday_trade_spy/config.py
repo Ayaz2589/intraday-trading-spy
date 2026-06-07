@@ -277,6 +277,19 @@ class ResearchConfig(BaseModel):
     backfill_start: str = "2018-01-01"  # full-span auto-backfill (empty cache)
 
 
+# ---- Feature 021 (live paper trading) ----------------------------------------
+
+
+class PaperConfig(BaseModel):
+    """Thresholds for the live paper-trading loop (/trade). Constitution:
+    config-resident, never hardcoded."""
+
+    stale_data_seconds: int = Field(default=120, ge=1)
+    reconcile_seconds: int = Field(default=5, ge=1)
+    warmup_lookback_days: int = Field(default=1, ge=1)
+    chart_30d_days: int = Field(default=30, ge=1)
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     market: MarketConfig
@@ -289,6 +302,7 @@ class Config(BaseModel):
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     insights: InsightsConfig = Field(default_factory=InsightsConfig)
     research: ResearchConfig = Field(default_factory=ResearchConfig)
+    paper: PaperConfig = Field(default_factory=PaperConfig)
 
 
 def load_config(path: str | Path) -> Config:
