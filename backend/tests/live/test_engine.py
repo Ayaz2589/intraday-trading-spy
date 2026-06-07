@@ -368,3 +368,56 @@ def test_reconcile_matching_state_does_not_pause():
     broker.position = None  # both flat — no drift
     eng.reconcile(datetime(2026, 6, 8, 9, 33, tzinfo=ET))
     assert "reconcile_mismatch" not in storage.kinds()
+
+
+# ---- manual orders (US4) ----------------------------------------------------------
+
+def test_manual_order_goes_through_the_risk_manager_and_brackets():
+    eng, storage, broker = _engine()
+    eng.on_five_minute_bar(_bar(9, 30, c=524.9))  # establish day/state
+    out = eng.submit_manual(
+        stop_loss=524.0, take_profit=527.0, price=525.0,
+        now=datetime(2026, 6, 8, 10, 0, tzinfo=ET),
+    )
+    assert out["approved"] is True
+    assert len(broker.brackets) == 1
+    assert broker.brackets[0]["stop_loss"] == 524.0
+    legs = [o for o in storage.orders if o.get("leg")]
+    assert all(o["origin"] == "manual" for o in legs)
+    kinds = storage.kinds()
+    assert "emitted" in kinds and "approved" in kinds
+
+
+def test_manual_order_rejected_when_position_open():
+    eng, storage, broker = _engine()
+    _walk_to_signal(eng)
+    qty = broker.brackets[0]["qty"]
+    eng.on_order_update({"broker_order_id": "ord-1", "leg": "entry",
+                         "status": "filled", "filled_qty": qty,
+                         "filled_avg_price": 525.80,
+                         "timestamp": _bar(9, 50).timestamp})
+    out = eng.submit_manual(
+        stop_loss=524.0, take_profit=527.0, price=525.0,
+        now=datetime(2026, 6, 8, 10, 0, tzinfo=ET),
+    )
+    assert out["approved"] is False
+    assert "position" in out["reason"]
+    assert len(broker.brackets) == 1  # no second bracket
+    assert "rejected" in storage.kinds()
+
+
+def test_manual_close_flattens_and_marks_exit_reason_manual():
+    eng, storage, broker = _engine()
+    _walk_to_signal(eng)
+    qty = broker.brackets[0]["qty"]
+    eng.on_order_update({"broker_order_id": "ord-1", "leg": "entry",
+                         "status": "filled", "filled_qty": qty,
+                         "filled_avg_price": 525.80,
+                         "timestamp": _bar(9, 50).timestamp})
+    eng.close_manual(now=datetime(2026, 6, 8, 11, 0, tzinfo=ET))
+    assert broker.flattened == 1
+    eng.on_order_update({"broker_order_id": "ord-close", "leg": "close",
+                         "status": "filled", "filled_qty": qty,
+                         "filled_avg_price": 526.00,
+                         "timestamp": datetime(2026, 6, 8, 11, 0, tzinfo=ET)})
+    assert storage.trades[0]["exit_reason"] == "manual"

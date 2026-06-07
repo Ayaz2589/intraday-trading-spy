@@ -10,6 +10,7 @@ import {
   DocsIcon,
   InsightsIcon,
   StrategyIcon,
+  TradeIcon,
   ValidationIcon,
 } from '@/components/nav-icons'
 
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: '/data', label: 'Data', icon: <DataIcon /> },
   { to: '/strategies', label: 'Strategy', icon: <StrategyIcon /> },
   { to: '/runs', label: 'Backtests', icon: <BacktestsIcon /> },
+  { to: '/trade', label: 'Trade', icon: <TradeIcon /> },
   { to: '/docs', label: 'Docs', icon: <DocsIcon /> },
 ] as const
 

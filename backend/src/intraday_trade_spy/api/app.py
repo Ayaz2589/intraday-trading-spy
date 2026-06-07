@@ -134,7 +134,9 @@ def _startup_bars_refresh() -> None:
     Errors are swallowed by the caller so a yfinance hiccup never blocks
     the server from coming up.
     """
-    from datetime import date as _d, timedelta as _td
+    from datetime import date as _d
+    from datetime import timedelta as _td
+
     from intraday_trade_spy.storage import SupabaseStorageClient
 
     url = os.environ.get("SUPABASE_URL")

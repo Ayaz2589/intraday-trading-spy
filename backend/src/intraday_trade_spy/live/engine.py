@@ -151,10 +151,10 @@ class LiveSessionEngine:
             planned_risk_dollars=decision.planned_risk_dollars, **common,
         )
         self._submit_entry(sig, decision.quantity,
-                           decision.planned_risk_dollars, bar)
+                           decision.planned_risk_dollars, bar.session_date)
 
-    def _submit_entry(self, sig: Signal, qty: int, risk_dollars: float,
-                      bar: Bar) -> None:
+    def _submit_entry(self, sig: Any, qty: int, risk_dollars: float,
+                      trading_day: date, *, origin: str = "strategy") -> bool:
         from intraday_trade_spy.live.alpaca_broker import BrokerRejection
 
         self._order_seq += 1
@@ -167,12 +167,12 @@ class LiveSessionEngine:
         except BrokerRejection as exc:
             self.journal.lifecycle(
                 "broker_reject", timestamp=sig.timestamp,
-                trading_day=bar.session_date, reason=str(exc),
+                trading_day=trading_day, reason=str(exc),
             )
-            return
+            return False
         self.storage.insert_paper_order(
             session_id=self.session_id, broker_order_id=order["broker_order_id"],
-            client_order_id=client_order_id, leg="entry", origin="strategy",
+            client_order_id=client_order_id, leg="entry", origin=origin,
             side="buy", qty=qty, limit_price=None, stop_price=None,
             status=order["status"], raw=order,
         )
@@ -182,7 +182,7 @@ class LiveSessionEngine:
                 session_id=self.session_id,
                 broker_order_id=leg["broker_order_id"],
                 client_order_id=client_order_id, leg=leg_name,
-                origin="strategy", side="sell", qty=qty,
+                origin=origin, side="sell", qty=qty,
                 limit_price=sig.take_profit if leg_name == "take_profit" else None,
                 stop_price=sig.stop_loss if leg_name == "stop_loss" else None,
                 status=leg["status"], raw=leg,
@@ -194,12 +194,81 @@ class LiveSessionEngine:
             )
         self._entry = {
             "signal": sig, "qty": qty, "risk_dollars": risk_dollars,
-            "origin": "strategy",
+            "origin": origin,
             "entry_order_id": order["broker_order_id"],
             "entry_price": None, "entry_time": None, "filled_qty": 0,
             "leg_map": leg_map,
         }
         self.state.trades_taken_today += 1
+        return True
+
+    # ---- manual orders (US4: same risk manager, manual origin) --------------------
+
+    def submit_manual(self, *, stop_loss: float, take_profit: float,
+                      price: float, now: datetime) -> dict:
+        """A manual buy — risk-gated exactly like a strategy signal
+        (FR-018). Returns {approved, reason, quantity}."""
+        from types import SimpleNamespace
+
+        trading_day = self._day(now)
+        if self.state is None:
+            self.state = RiskState(
+                session_date=trading_day,
+                account_value=self.cfg.risk.account_value,
+            )
+        # Signal-shaped duck type: RiskManager reads symbol/planned_entry/
+        # stop_loss/timestamp — same veto path, no duplicate rules.
+        sig = SimpleNamespace(
+            symbol="SPY", setup="manual", direction=None, timestamp=now,
+            planned_entry=price, stop_loss=stop_loss, take_profit=take_profit,
+            reason="manual order",
+        )
+        self.journal.signal(
+            "emitted", timestamp=now, trading_day=trading_day,
+            planned_entry=price, stop_loss=stop_loss, take_profit=take_profit,
+            reason="manual order", origin="manual",
+        )
+        if self._entry is not None and self.state.open_position is None:
+            decision_reason = "position_already_open"
+            approved = False
+        else:
+            decision = self.risk.validate(sig, self.state)
+            approved = decision.approved
+            decision_reason = decision.reason
+        if not approved:
+            self.journal.signal(
+                "rejected", timestamp=now, trading_day=trading_day,
+                planned_entry=price, stop_loss=stop_loss,
+                take_profit=take_profit, reason=decision_reason,
+                rejection_check=decision_reason, origin="manual",
+            )
+            return {"approved": False, "reason": decision_reason, "quantity": 0}
+        self.journal.signal(
+            "approved", timestamp=now, trading_day=trading_day,
+            planned_entry=price, stop_loss=stop_loss, take_profit=take_profit,
+            quantity=decision.quantity,
+            planned_risk_dollars=decision.planned_risk_dollars, origin="manual",
+        )
+        ok = self._submit_entry(sig, decision.quantity,
+                                decision.planned_risk_dollars, trading_day,
+                                origin="manual")
+        return {"approved": ok,
+                "reason": "submitted" if ok else "broker_rejected",
+                "quantity": decision.quantity if ok else 0}
+
+    def close_manual(self, *, now: datetime) -> None:
+        """Operator-initiated close: cancel legs, close position; the close
+        fill completes the trade with exit_reason='manual'."""
+        from intraday_trade_spy.live.alpaca_broker import BrokerRejection
+
+        self._close_reason = "manual"
+        try:
+            self.broker.flatten()
+        except BrokerRejection as exc:
+            self.journal.lifecycle(
+                "broker_reject", timestamp=now, trading_day=self._day(now),
+                reason=f"manual close failed: {exc}",
+            )
 
     # ---- order updates ---------------------------------------------------------------
 

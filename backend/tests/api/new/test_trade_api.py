@@ -275,3 +275,94 @@ def test_ack_pause_clears_mismatch(
     stub_storage_client.set_paper_session_pause.assert_called_once()
     kw = stub_storage_client.set_paper_session_pause.call_args.kwargs
     assert kw["paused"] is False
+
+
+# ---- T034: performance + journal ---------------------------------------------------
+
+def test_performance_summary_uses_backtest_definitions(
+    unit_client, stub_storage_client, alpaca_env,
+):
+    stub_storage_client.list_paper_trades.return_value = [
+        {"id": "t1", "session_id": "ps-1", "trading_day": "2026-06-08",
+         "origin": "strategy", "qty": 10, "entry_time": "2026-06-08T14:00:00Z",
+         "exit_time": "2026-06-08T15:00:00Z", "entry_price": 525.0,
+         "exit_price": 527.0, "stop_loss": 524.0, "take_profit": 527.0,
+         "exit_reason": "target", "gross_pnl": 20.0, "fees": 0, "realized_r": 2.0},
+        {"id": "t2", "session_id": "ps-1", "trading_day": "2026-06-08",
+         "origin": "strategy", "qty": 10, "entry_time": "2026-06-08T15:30:00Z",
+         "exit_time": "2026-06-08T15:45:00Z", "entry_price": 525.0,
+         "exit_price": 524.0, "stop_loss": 524.0, "take_profit": 527.0,
+         "exit_reason": "stop", "gross_pnl": -10.0, "fees": 0, "realized_r": -1.0},
+    ]
+    stub_storage_client.list_paper_sessions.return_value = [
+        {"id": "ps-1", "started_at": "2026-06-08T13:30:00Z", "status": "stopped"},
+    ]
+    resp = unit_client.get("/api/trade/performance")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    s = body["summary"]
+    assert s["trades"] == 2 and s["wins"] == 1
+    assert s["win_rate"] == 0.5
+    assert s["total_r"] == 1.0                  # +2.0 − 1.0
+    assert s["expectancy_r"] == 0.5             # mean R — backtest definition
+    assert s["total_gross_pnl"] == 10.0
+    # equity curve is cumulative in time order
+    assert [p["cum_pnl"] for p in body["equity_curve"]] == [20.0, 10.0]
+    assert body["sessions"][0]["trades"] == 2
+
+
+def test_journal_endpoint_is_seq_incremental(
+    unit_client, stub_storage_client, alpaca_env,
+):
+    stub_storage_client.list_paper_events.return_value = [
+        {"seq": 5, "trading_day": "2026-06-08", "timestamp": "t",
+         "kind": "emitted", "payload": {}},
+    ]
+    resp = unit_client.get("/api/trade/journal?session_id=ps-1&since_seq=4")
+    assert resp.status_code == 200
+    assert resp.json()["events"][0]["seq"] == 5
+    kw = stub_storage_client.list_paper_events.call_args.kwargs
+    assert kw["since_seq"] == 4
+
+
+# ---- T040: manual orders (US4) -----------------------------------------------------
+
+def test_manual_order_422_without_stop_or_target(
+    unit_client, stub_storage_client, alpaca_env,
+):
+    resp = unit_client.post("/api/trade/orders", json={"take_profit": 527.0})
+    assert resp.status_code == 422
+    resp = unit_client.post("/api/trade/orders", json={"stop_loss": 524.0})
+    assert resp.status_code == 422
+
+
+def test_manual_order_409_without_running_session(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    stub_storage_client.get_running_paper_session.return_value = None
+    resp = unit_client.post(
+        "/api/trade/orders", json={"stop_loss": 524.0, "take_profit": 527.0},
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["error"] == "no_running_session"
+
+
+def test_close_position_409_when_flat(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    fake_market.get_position.return_value = None
+    resp = unit_client.post("/api/trade/position/close")
+    assert resp.status_code == 409
+
+
+def test_close_position_200_flattens(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    fake_market.get_position.return_value = {"qty": 12, "avg_entry": 525.1,
+                                             "unrealized_pnl": 0.0}
+    fake_market.flatten.return_value = {"broker_order_id": "ord-c",
+                                        "status": "accepted"}
+    stub_storage_client.get_running_paper_session.return_value = _session_row()
+    resp = unit_client.post("/api/trade/position/close")
+    assert resp.status_code == 200, resp.text
+    fake_market.flatten.assert_called_once()

@@ -70,3 +70,14 @@ def test_minutes_since_open_winter_session():
     clk = _clk()
     # EST (winter): 15:00 UTC == 10:00 ET
     assert clk.minutes_since_open(datetime(2026, 1, 5, 15, 0, tzinfo=ZoneInfo("UTC"))) == 30
+
+
+def test_market_is_closed_on_weekends():
+    # 2026-06-07 is a Sunday; 2026-06-08 a Monday (Feature 021: the live
+    # loop asks "is the market open NOW?" — weekday matters, unlike
+    # backtests where bars only exist on trading days).
+    from datetime import datetime
+
+    assert _clk().is_market_open(datetime(2026, 6, 7, 10, 0, tzinfo=ET)) is False
+    assert _clk().is_market_open(datetime(2026, 6, 6, 10, 0, tzinfo=ET)) is False  # Saturday
+    assert _clk().is_market_open(datetime(2026, 6, 8, 10, 0, tzinfo=ET)) is True

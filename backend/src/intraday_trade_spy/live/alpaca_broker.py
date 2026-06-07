@@ -28,7 +28,11 @@ class BrokerRejection(Exception):
 
 
 def _assert_paper(client: Any) -> None:
-    base = str(getattr(client, "_base_url", ""))
+    # alpaca-py stores _base_url as the BaseURL enum (str() is
+    # 'BaseURL.TRADING_PAPER'); injected fakes use plain URL strings.
+    # Normalize via .value when present, then case-insensitive match.
+    raw = getattr(client, "_base_url", "")
+    base = str(getattr(raw, "value", raw)).lower()
     if "paper" not in base:
         raise RuntimeError(
             f"trading endpoint is not the paper API ({base or 'unknown'}) — "

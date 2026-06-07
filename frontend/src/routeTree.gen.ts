@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignInCallbackRouteImport } from './routes/sign-in/callback'
 import { Route as AuthenticatedValidationRouteImport } from './routes/_authenticated.validation'
+import { Route as AuthenticatedTradeRouteImport } from './routes/_authenticated.trade'
 import { Route as AuthenticatedStrategiesRouteImport } from './routes/_authenticated.strategies'
 import { Route as AuthenticatedRunsRouteImport } from './routes/_authenticated.runs'
 import { Route as AuthenticatedInsightsRouteImport } from './routes/_authenticated.insights'
@@ -45,6 +46,11 @@ const SignInCallbackRoute = SignInCallbackRouteImport.update({
 const AuthenticatedValidationRoute = AuthenticatedValidationRouteImport.update({
   id: '/validation',
   path: '/validation',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedTradeRoute = AuthenticatedTradeRouteImport.update({
+  id: '/trade',
+  path: '/trade',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedStrategiesRoute = AuthenticatedStrategiesRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/insights': typeof AuthenticatedInsightsRoute
   '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
+  '/trade': typeof AuthenticatedTradeRoute
   '/validation': typeof AuthenticatedValidationRoute
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/': typeof SignInIndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/insights': typeof AuthenticatedInsightsRoute
   '/runs': typeof AuthenticatedRunsRoute
   '/strategies': typeof AuthenticatedStrategiesRoute
+  '/trade': typeof AuthenticatedTradeRoute
   '/validation': typeof AuthenticatedValidationRoute
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in': typeof SignInIndexRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_authenticated/insights': typeof AuthenticatedInsightsRoute
   '/_authenticated/runs': typeof AuthenticatedRunsRoute
   '/_authenticated/strategies': typeof AuthenticatedStrategiesRoute
+  '/_authenticated/trade': typeof AuthenticatedTradeRoute
   '/_authenticated/validation': typeof AuthenticatedValidationRoute
   '/sign-in/callback': typeof SignInCallbackRoute
   '/sign-in/': typeof SignInIndexRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/runs'
     | '/strategies'
+    | '/trade'
     | '/validation'
     | '/sign-in/callback'
     | '/sign-in/'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/runs'
     | '/strategies'
+    | '/trade'
     | '/validation'
     | '/sign-in/callback'
     | '/sign-in'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/_authenticated/insights'
     | '/_authenticated/runs'
     | '/_authenticated/strategies'
+    | '/_authenticated/trade'
     | '/_authenticated/validation'
     | '/sign-in/callback'
     | '/sign-in/'
@@ -222,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/validation'
       fullPath: '/validation'
       preLoaderRoute: typeof AuthenticatedValidationRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/trade': {
+      id: '/_authenticated/trade'
+      path: '/trade'
+      fullPath: '/trade'
+      preLoaderRoute: typeof AuthenticatedTradeRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/strategies': {
@@ -289,6 +308,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedInsightsRoute: typeof AuthenticatedInsightsRoute
   AuthenticatedRunsRoute: typeof AuthenticatedRunsRoute
   AuthenticatedStrategiesRoute: typeof AuthenticatedStrategiesRoute
+  AuthenticatedTradeRoute: typeof AuthenticatedTradeRoute
   AuthenticatedValidationRoute: typeof AuthenticatedValidationRoute
   AuthenticatedRunsRunIdRoute: typeof AuthenticatedRunsRunIdRoute
   AuthenticatedValidationStudyIdRoute: typeof AuthenticatedValidationStudyIdRoute
@@ -301,6 +321,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedInsightsRoute: AuthenticatedInsightsRoute,
   AuthenticatedRunsRoute: AuthenticatedRunsRoute,
   AuthenticatedStrategiesRoute: AuthenticatedStrategiesRoute,
+  AuthenticatedTradeRoute: AuthenticatedTradeRoute,
   AuthenticatedValidationRoute: AuthenticatedValidationRoute,
   AuthenticatedRunsRunIdRoute: AuthenticatedRunsRunIdRoute,
   AuthenticatedValidationStudyIdRoute: AuthenticatedValidationStudyIdRoute,

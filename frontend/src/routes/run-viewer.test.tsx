@@ -323,6 +323,18 @@ describe("RunViewer route", () => {
       // Feature 020: renders in the config editor; coverage in
       // config-editor.test.tsx + help-content.test.ts.
       "entry_window",
+      // Feature 021 live-paper-trading keys render on /trade; coverage
+      // lives in components/trade tests + help-coverage.test.tsx.
+      "automation_session",
+      "armed_session",
+      "paper_account",
+      "sizing_account_value",
+      "protective_orders",
+      "reconcile_drift",
+      "stale_data_pause",
+      "forward_record",
+      "manual_order",
+      "live_journal",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

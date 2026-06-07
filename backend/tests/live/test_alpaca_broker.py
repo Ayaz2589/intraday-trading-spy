@@ -175,3 +175,20 @@ def test_flatten_when_flat_only_cancels():
 
 def test_get_account_equity():
     assert _broker().get_account()["equity"] == 100231.55
+
+
+def test_real_alpaca_enum_base_url_is_recognized_as_paper():
+    """alpaca-py's TradingClient._base_url is the BaseURL.TRADING_PAPER enum
+    (str() = 'BaseURL.TRADING_PAPER'), not a URL string — the guard must
+    accept it (live verification 2026-06-07 caught this)."""
+    from enum import Enum
+
+    class BaseURL(Enum):
+        TRADING_PAPER = "https://paper-api.alpaca.markets"
+        TRADING = "https://api.alpaca.markets"
+
+    client = FakeTradingClient(base_url=BaseURL.TRADING_PAPER)
+    _broker(client)  # must construct
+
+    with pytest.raises(RuntimeError, match="paper"):
+        _broker(FakeTradingClient(base_url=BaseURL.TRADING))

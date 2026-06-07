@@ -400,3 +400,145 @@ def ack_pause(
             reason="operator acknowledged (runner offline)",
         )
     return {**row, "entries_paused": False, "pause_reason": None}
+
+
+# ---- forward performance record (US3) -----------------------------------------------
+
+@router.get("/performance")
+def trade_performance(
+    user_id: UUID = Depends(auth_user_id),  # noqa: B008, ARG001 — FastAPI DI
+    storage_client=Depends(get_storage_client),  # noqa: B008
+) -> dict:
+    trades = storage_client.list_paper_trades()
+    trades = sorted(trades, key=lambda t: str(t.get("entry_time")))
+    rs = [float(t["realized_r"]) for t in trades]
+    pnls = [float(t["gross_pnl"]) for t in trades]
+    wins = sum(1 for p in pnls if p > 0)
+    cum = 0.0
+    curve = []
+    for t, p in zip(trades, pnls):
+        cum += p
+        curve.append({"t": str(t.get("exit_time")), "cum_pnl": round(cum, 2)})
+    by_session: dict[str, dict] = {}
+    for t, r in zip(trades, rs):
+        s = by_session.setdefault(str(t["session_id"]), {"trades": 0, "total_r": 0.0})
+        s["trades"] += 1
+        s["total_r"] += r
+    sessions = []
+    for row in storage_client.list_paper_sessions():
+        agg = by_session.get(str(row["id"]), {"trades": 0, "total_r": 0.0})
+        sessions.append({
+            "id": row["id"], "started_at": row["started_at"],
+            "status": row["status"], "trades": agg["trades"],
+            "total_r": round(agg["total_r"], 4),
+        })
+    n = len(trades)
+    return {
+        "summary": {
+            "trades": n,
+            "wins": wins,
+            "win_rate": (wins / n) if n else None,
+            "expectancy_r": (sum(rs) / n) if n else None,
+            "total_r": round(sum(rs), 4),
+            "total_gross_pnl": round(sum(pnls), 2),
+        },
+        "equity_curve": curve,
+        "trades": trades,
+        "sessions": sessions,
+    }
+
+
+@router.get("/journal")
+def trade_journal(
+    session_id: str,
+    since_seq: int = 0,
+    user_id: UUID = Depends(auth_user_id),  # noqa: B008, ARG001 — FastAPI DI
+    storage_client=Depends(get_storage_client),  # noqa: B008
+) -> dict:
+    return {"events": storage_client.list_paper_events(
+        session_id=session_id, since_seq=since_seq,
+    )}
+
+
+# ---- manual orders (US4: risk-gated, never exempt) ----------------------------------
+
+from pydantic import BaseModel  # noqa: E402 — local request model
+
+
+class ManualOrderBody(BaseModel):
+    stop_loss: float
+    take_profit: float
+
+
+@router.post("/orders", status_code=201)
+def manual_order(
+    body: ManualOrderBody,
+    user_id: UUID = Depends(auth_user_id),  # noqa: B008, ARG001 — FastAPI DI
+    storage_client=Depends(get_storage_client),  # noqa: B008
+) -> dict:
+    row = storage_client.get_running_paper_session()
+    if row is None:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "no_running_session",
+                    "message": "start automation first — manual orders ride "
+                               "the running session's risk state and journal"},
+        )
+    from intraday_trade_spy.live.runner import RUNNING
+
+    runner = RUNNING.get(row["id"])
+    if runner is None:
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "runner_unavailable",
+                    "message": "the session runner is not alive in this "
+                               "process — restart automation"},
+        )
+    df = fetch_intraday_df()
+    if df.empty:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "no_market_data",
+                    "message": "no bars available to price the entry"},
+        )
+    price = float(df.sort_values("timestamp")["close"].iloc[-1])
+    if not (body.stop_loss < price < body.take_profit):
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_levels",
+                    "message": f"stop must be below and target above the "
+                               f"current price ({price:.2f})"},
+        )
+    out = runner._engine.submit_manual(
+        stop_loss=body.stop_loss, take_profit=body.take_profit,
+        price=price, now=_now(),
+    )
+    if not out["approved"]:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "risk_rejected", "message": out["reason"]},
+        )
+    return out
+
+
+@router.post("/position/close")
+def close_position(
+    user_id: UUID = Depends(auth_user_id),  # noqa: B008, ARG001 — FastAPI DI
+    storage_client=Depends(get_storage_client),  # noqa: B008
+) -> dict:
+    broker = AlpacaPaperBroker()
+    if broker.get_position() is None:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "flat", "message": "no open position to close"},
+        )
+    row = storage_client.get_running_paper_session()
+    from intraday_trade_spy.live.runner import RUNNING
+
+    runner = RUNNING.get(row["id"]) if row else None
+    if runner is not None:
+        # the engine flattens and the close fill journals exit_reason=manual
+        runner._engine.close_manual(now=_now())
+    else:
+        broker.flatten()
+    return {"closed": True}
