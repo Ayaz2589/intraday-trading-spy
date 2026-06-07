@@ -37,6 +37,11 @@ class CampaignAlreadyRunning(Exception):
     surfaced as a typed error the router translates to 409."""
 
 
+class PaperSessionAlreadyRunning(Exception):
+    """Feature 021: the one-running-session rule (paper_sessions partial
+    unique index) surfaced as a typed error the router translates to 409."""
+
+
 class ConfigNameConflict(Exception):
     """A config name collides with an existing one (or is empty) — Feature 012."""
 
@@ -2014,6 +2019,241 @@ class SupabaseStorageClient:
             [self.user_id, str(strategy_id), family], fetch="one",
         )
         return int(row[0]) if row else 0
+
+    # ---------- Feature 021: live paper trading (psycopg pool) ----------------
+
+    _PAPER_SESSION_COLS = (
+        "id, strategy_id, config_id, config_name, config_snapshot, status, "
+        "entries_paused, pause_reason, started_at, stopped_at, stop_reason, "
+        "created_at, updated_at"
+    )
+
+    @staticmethod
+    def _paper_session_row_dict(row) -> dict:
+        import json as _json
+
+        snapshot = row[4]
+        if isinstance(snapshot, str):
+            snapshot = _json.loads(snapshot)
+        return {
+            "id": str(row[0]), "strategy_id": str(row[1]),
+            "config_id": str(row[2]) if row[2] else None,
+            "config_name": row[3], "config_snapshot": snapshot,
+            "status": row[5], "entries_paused": bool(row[6]),
+            "pause_reason": row[7],
+            "started_at": str(row[8]),
+            "stopped_at": str(row[9]) if row[9] else None,
+            "stop_reason": row[10],
+            "created_at": str(row[11]), "updated_at": str(row[12]),
+        }
+
+    def _paper_sql(self, sql: str, params: list, *, fetch: str | None = None):
+        """One pool round-trip; unique violations surface as
+        PaperSessionAlreadyRunning (the only unique constraint we insert
+        against is the one-running index)."""
+        try:
+            from intraday_trade_spy.storage.db_pool import get_pool
+
+            with get_pool().connection() as conn, conn.cursor() as cur:
+                cur.execute(sql, params)
+                if fetch == "one":
+                    return cur.fetchone()
+                if fetch == "all":
+                    return cur.fetchall()
+                return cur.rowcount
+        except CloudPushError:
+            raise
+        except Exception as exc:
+            if getattr(exc, "sqlstate", None) == "23505" or "duplicate key" in str(exc):
+                raise PaperSessionAlreadyRunning(str(exc)) from exc
+            raise CloudPushError(f"paper storage call failed: {exc}") from exc
+
+    def insert_paper_session(
+        self, *, strategy_id, config_id, config_name: str, config_snapshot: dict,
+    ) -> dict:
+        import json as _json
+
+        sql = (
+            "INSERT INTO public.paper_sessions "
+            "(user_id, strategy_id, config_id, config_name, config_snapshot, status) "
+            "VALUES (%s, %s, %s, %s, %s, 'running') "
+            f"RETURNING {self._PAPER_SESSION_COLS}"
+        )
+        row = self._paper_sql(sql, [
+            self.user_id, str(strategy_id),
+            str(config_id) if config_id else None,
+            config_name, _json.dumps(config_snapshot),
+        ], fetch="one")
+        return self._paper_session_row_dict(row)
+
+    def get_paper_session(self, *, session_id) -> dict | None:
+        row = self._paper_sql(
+            f"SELECT {self._PAPER_SESSION_COLS} FROM public.paper_sessions "
+            "WHERE id = %s AND user_id = %s",
+            [str(session_id), self.user_id], fetch="one",
+        )
+        return self._paper_session_row_dict(row) if row else None
+
+    def get_running_paper_session(self) -> dict | None:
+        row = self._paper_sql(
+            f"SELECT {self._PAPER_SESSION_COLS} FROM public.paper_sessions "
+            "WHERE user_id = %s AND status = 'running'",
+            [self.user_id], fetch="one",
+        )
+        return self._paper_session_row_dict(row) if row else None
+
+    def list_paper_sessions(self) -> list[dict]:
+        rows = self._paper_sql(
+            f"SELECT {self._PAPER_SESSION_COLS} FROM public.paper_sessions "
+            "WHERE user_id = %s ORDER BY started_at DESC",
+            [self.user_id], fetch="all",
+        )
+        return [self._paper_session_row_dict(r) for r in rows or []]
+
+    def stop_paper_session(self, *, session_id, status: str, stop_reason: str) -> bool:
+        """Terminal flip; only a running session can be stopped/interrupted."""
+        n = self._paper_sql(
+            "UPDATE public.paper_sessions "
+            "SET status = %s, stop_reason = %s, stopped_at = now(), updated_at = now() "
+            "WHERE id = %s AND user_id = %s AND status = 'running'",
+            [status, stop_reason, str(session_id), self.user_id],
+        )
+        return bool(n)
+
+    def set_paper_session_pause(
+        self, *, session_id, paused: bool, reason: str | None,
+    ) -> None:
+        self._paper_sql(
+            "UPDATE public.paper_sessions "
+            "SET entries_paused = %s, pause_reason = %s, updated_at = now() "
+            "WHERE id = %s AND user_id = %s",
+            [paused, reason, str(session_id), self.user_id],
+        )
+
+    def interrupt_running_paper_sessions(self, *, reason: str) -> int:
+        """Startup reconciler (FR-009): a restart never silently resumes a
+        session — it is marked interrupted with the reason, explicitly."""
+        return int(self._paper_sql(
+            "UPDATE public.paper_sessions "
+            "SET status = 'interrupted', stop_reason = %s, stopped_at = now(), "
+            "    updated_at = now() "
+            "WHERE status = 'running'",
+            [reason],
+        ) or 0)
+
+    def insert_paper_order(
+        self, *, session_id, broker_order_id, client_order_id: str, leg: str,
+        origin: str, side: str, qty: int, limit_price, stop_price,
+        status: str, raw: dict | None,
+    ) -> str:
+        import json as _json
+
+        row = self._paper_sql(
+            "INSERT INTO public.paper_orders "
+            "(user_id, session_id, broker_order_id, client_order_id, leg, origin, "
+            " side, qty, limit_price, stop_price, status, raw) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            [self.user_id, str(session_id), broker_order_id, client_order_id,
+             leg, origin, side, qty, limit_price, stop_price, status,
+             _json.dumps(raw or {})],
+            fetch="one",
+        )
+        return str(row[0])
+
+    def update_paper_order(
+        self, *, broker_order_id: str, status: str, filled_qty: int = 0,
+        filled_avg_price=None, raw: dict | None = None,
+    ) -> None:
+        import json as _json
+
+        self._paper_sql(
+            "UPDATE public.paper_orders "
+            "SET status = %s, filled_qty = %s, filled_avg_price = %s, "
+            "    raw = %s, updated_at = now() "
+            "WHERE broker_order_id = %s AND user_id = %s",
+            [status, filled_qty, filled_avg_price, _json.dumps(raw or {}),
+             broker_order_id, self.user_id],
+        )
+
+    def insert_paper_trade(
+        self, *, session_id, trading_day, origin: str, qty: int,
+        entry_time, exit_time, entry_price, exit_price, stop_loss, take_profit,
+        exit_reason: str, gross_pnl, realized_r,
+        entry_order_id=None, exit_order_id=None, fees=0.0,
+    ) -> str:
+        row = self._paper_sql(
+            "INSERT INTO public.paper_trades "
+            "(user_id, session_id, trading_day, origin, qty, entry_time, exit_time, "
+            " entry_price, exit_price, stop_loss, take_profit, exit_reason, "
+            " gross_pnl, fees, realized_r, entry_order_id, exit_order_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "RETURNING id",
+            [self.user_id, str(session_id), trading_day, origin, qty,
+             entry_time, exit_time, entry_price, exit_price, stop_loss,
+             take_profit, exit_reason, gross_pnl, fees, realized_r,
+             str(entry_order_id) if entry_order_id else None,
+             str(exit_order_id) if exit_order_id else None],
+            fetch="one",
+        )
+        return str(row[0])
+
+    def list_paper_trades(self, *, session_id=None) -> list[dict]:
+        where = "WHERE user_id = %s"
+        params: list = [self.user_id]
+        if session_id is not None:
+            where += " AND session_id = %s"
+            params.append(str(session_id))
+        rows = self._paper_sql(
+            "SELECT id, session_id, trading_day, origin, qty, entry_time, exit_time, "
+            "       entry_price, exit_price, stop_loss, take_profit, exit_reason, "
+            "       gross_pnl, fees, realized_r "
+            f"FROM public.paper_trades {where} ORDER BY entry_time",
+            params, fetch="all",
+        )
+        cols = ["id", "session_id", "trading_day", "origin", "qty", "entry_time",
+                "exit_time", "entry_price", "exit_price", "stop_loss", "take_profit",
+                "exit_reason", "gross_pnl", "fees", "realized_r"]
+        return [dict(zip(cols, [str(r[0]), str(r[1]), *r[2:]])) for r in rows or []]
+
+    def append_paper_event(
+        self, *, session_id, trading_day, timestamp, kind: str, payload: dict,
+    ) -> int:
+        """Append-only journal row; the per-session monotone seq is computed
+        in SQL (max(seq)+1) so concurrent writers can never reuse one."""
+        import json as _json
+
+        row = self._paper_sql(
+            "INSERT INTO public.paper_events "
+            "(user_id, session_id, seq, trading_day, timestamp, kind, payload) "
+            "SELECT %s, %s, COALESCE(max(seq), 0) + 1, %s, %s, %s, %s "
+            "FROM public.paper_events WHERE session_id = %s "
+            "RETURNING seq",
+            [self.user_id, str(session_id), trading_day, timestamp, kind,
+             _json.dumps(payload or {}), str(session_id)],
+            fetch="one",
+        )
+        return int(row[0])
+
+    def list_paper_events(self, *, session_id, since_seq: int = 0) -> list[dict]:
+        import json as _json
+
+        rows = self._paper_sql(
+            "SELECT seq, trading_day, timestamp, kind, payload "
+            "FROM public.paper_events "
+            "WHERE session_id = %s AND user_id = %s AND seq > %s "
+            "ORDER BY seq",
+            [str(session_id), self.user_id, since_seq], fetch="all",
+        )
+        out = []
+        for r in rows or []:
+            payload = r[4]
+            if isinstance(payload, str):
+                payload = _json.loads(payload)
+            out.append({
+                "seq": int(r[0]), "trading_day": str(r[1]),
+                "timestamp": str(r[2]), "kind": r[3], "payload": payload,
+            })
+        return out
 
     # ---------- Feature 016: Claude analyses + settings (PostgREST) ----------
 
