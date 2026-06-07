@@ -41,6 +41,7 @@ dev = [
 intraday-trade-spy-backtest = "intraday_trade_spy.cli.run_backtest:main"
 intraday-trade-spy-download = "intraday_trade_spy.cli.download_spy_data:main"
 intraday-trade-spy-server = "intraday_trade_spy.api.static_server:main"
+intraday-trade-spy-research = "intraday_trade_spy.cli.research:main"
 
 [build-system]
 requires = ["setuptools>=68"]
