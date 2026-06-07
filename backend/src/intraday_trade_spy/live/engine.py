@@ -60,6 +60,7 @@ class LiveSessionEngine:
         self.state: RiskState | None = None
         self._stop_requested = False
         self._entries_paused = False
+        self._pause_reason: str | None = None
         self._force_flatted_day: date | None = None
         self._last_data_at: datetime | None = None
         self._entry: dict | None = None       # submitted/partial entry context
@@ -82,8 +83,12 @@ class LiveSessionEngine:
         snap = self.session_state.append(bar)
 
         if self._entries_paused:
-            # Fresh data ends the pause, but the resuming bar itself never
-            # trades — its session frame may be missing gap bars.
+            if self._pause_reason == "reconcile_mismatch":
+                # Drift never auto-resumes — the operator must acknowledge
+                # (FR-016). Data keeps flowing; entries stay blocked.
+                return
+            # A stale-data pause ends with fresh data, but the resuming bar
+            # itself never trades — its session frame may be missing bars.
             self._set_pause(False, None, timestamp=bar.timestamp,
                             trading_day=bar.session_date)
             return
@@ -330,16 +335,44 @@ class LiveSessionEngine:
             )
 
     def _set_pause(self, paused: bool, reason: str | None, *,
-                   timestamp: datetime, trading_day: date, **ctx: Any) -> None:
+                   timestamp: datetime, trading_day: date,
+                   kind: str | None = None, **ctx: Any) -> None:
         self._entries_paused = paused
+        self._pause_reason = reason
         self.storage.set_paper_session_pause(
             session_id=self.session_id, paused=paused, reason=reason,
         )
         self.journal.lifecycle(
-            "safety_pause" if paused else "safety_resume",
+            kind or ("safety_pause" if paused else "safety_resume"),
             timestamp=timestamp, trading_day=trading_day,
             reason=reason, **ctx,
         )
+
+    # ---- reconcile (FR-016: broker is truth) -------------------------------------
+
+    def reconcile(self, now: datetime) -> None:
+        """Compare the engine's position belief against the broker. Drift
+        pauses new entries until the operator acknowledges — never silently
+        'fixed'."""
+        if self._entries_paused and self._pause_reason == "reconcile_mismatch":
+            return
+        broker_pos = self.broker.get_position()
+        engine_open = self._entry is not None and self._entry["entry_price"] is not None
+        broker_open = broker_pos is not None
+        if engine_open == broker_open:
+            return
+        self._set_pause(
+            True, "reconcile_mismatch", timestamp=now,
+            trading_day=self._day(now), kind="reconcile_mismatch",
+            engine_open=engine_open,
+            broker_qty=(broker_pos or {}).get("qty"),
+        )
+
+    def acknowledge_reconcile(self, now: datetime) -> None:
+        if not (self._entries_paused and self._pause_reason == "reconcile_mismatch"):
+            return
+        self._set_pause(False, None, timestamp=now,
+                        trading_day=self._day(now), kind="reconcile_ack")
 
     def _resolve_leg(self, broker_order_id: str) -> str | None:
         if self._entry is None:

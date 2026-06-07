@@ -51,6 +51,7 @@ class PaperSessionRunner:
         self._aggregator = BarAggregator()
         self._stop = asyncio.Event()
         self._tick_seconds = tick_seconds
+        self._reconcile_seconds = cfg.paper.reconcile_seconds
         self._market = MarketDataStream(
             factory=market_stream_factory,
             on_bar=self.on_raw_bar,
@@ -104,9 +105,14 @@ class PaperSessionRunner:
             RUNNING.pop(self._session["id"], None)
 
     async def _ticker(self) -> None:
+        last_reconcile = datetime.now(UTC)
         while not self._stop.is_set():
+            now = datetime.now(UTC)
             try:
-                self._engine.on_tick(datetime.now(UTC))
+                self._engine.on_tick(now)
+                if (now - last_reconcile).total_seconds() >= self._reconcile_seconds:
+                    last_reconcile = now
+                    self._engine.reconcile(now)
             except Exception as exc:  # noqa: BLE001 — keep ticking
                 _log.warning("tick error: %s", exc)
             await asyncio.sleep(self._tick_seconds)

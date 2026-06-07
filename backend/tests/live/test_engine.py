@@ -337,3 +337,34 @@ def test_order_update_without_leg_resolves_from_known_ids():
                          "timestamp": _bar(11, 0).timestamp})
     assert len(storage.trades) == 1
     assert storage.trades[0]["exit_reason"] == "target"
+
+
+# ---- reconcile (FR-016) -----------------------------------------------------------
+
+def test_reconcile_mismatch_pauses_entries_until_acknowledged():
+    eng, storage, broker = _engine()
+    eng.on_five_minute_bar(_bar(9, 30, c=524.9))
+    # engine believes it's flat, but the broker reports a position — drift
+    broker.position = {"qty": 5, "avg_entry": 525.0, "unrealized_pnl": 0.0}
+    eng.reconcile(datetime(2026, 6, 8, 9, 33, tzinfo=ET))
+    assert "reconcile_mismatch" in storage.kinds()
+    assert storage.session["entries_paused"] is True
+    assert storage.session["pause_reason"] == "reconcile_mismatch"
+    # entries blocked while mismatched
+    eng.on_five_minute_bar(_bar(9, 35, c=524.8))
+    eng.on_five_minute_bar(_bar(9, 40, c=524.9))
+    eng.on_five_minute_bar(_bar(9, 45, o=524.9, h=525.9, lo=524.8, c=525.8))
+    assert broker.brackets == []
+    # a fresh bar does NOT auto-resume a reconcile pause (operator must ack)
+    assert storage.session["entries_paused"] is True
+    eng.acknowledge_reconcile(datetime(2026, 6, 8, 9, 50, tzinfo=ET))
+    assert "reconcile_ack" in storage.kinds()
+    assert storage.session["entries_paused"] is False
+
+
+def test_reconcile_matching_state_does_not_pause():
+    eng, storage, broker = _engine()
+    eng.on_five_minute_bar(_bar(9, 30, c=524.9))
+    broker.position = None  # both flat — no drift
+    eng.reconcile(datetime(2026, 6, 8, 9, 33, tzinfo=ET))
+    assert "reconcile_mismatch" not in storage.kinds()

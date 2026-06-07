@@ -152,3 +152,126 @@ def test_reconciler_interrupts_and_journals_each_session():
     storage.interrupt_running_paper_sessions.assert_called_once()
     kinds = [c.kwargs["kind"] for c in storage.append_paper_event.call_args_list]
     assert kinds == ["session_interrupted", "session_interrupted"]
+
+
+# ---- T023: GET /api/trade/state + /bars + ack-pause -------------------------------
+
+@pytest.fixture
+def fake_market(monkeypatch):
+    """Stub the Alpaca data fetchers + broker on the router module."""
+    from datetime import datetime, timedelta
+    from unittest import mock
+    from zoneinfo import ZoneInfo
+
+    import pandas as pd
+
+    ET = ZoneInfo("America/New_York")
+    t0 = datetime(2026, 6, 8, 9, 30, tzinfo=ET)
+    rows = []
+    px = 525.0
+    for i in range(12):
+        px += 0.1
+        rows.append({"timestamp": t0 + timedelta(minutes=i), "open": px,
+                     "high": px + 0.2, "low": px - 0.2, "close": px + 0.1,
+                     "volume": 1000})
+    df_1m = pd.DataFrame(rows)
+    df_daily = pd.DataFrame([
+        {"timestamp": datetime(2026, 6, d, 0, 0, tzinfo=ET), "open": 520 + d,
+         "high": 521 + d, "low": 519 + d, "close": 520.5 + d,
+         "volume": 1_000_000} for d in range(1, 6)
+    ])
+
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    monkeypatch.setattr(trade_router, "fetch_intraday_df", lambda: df_1m)
+    monkeypatch.setattr(trade_router, "fetch_daily_df", lambda days: df_daily)
+
+    broker = mock.MagicMock()
+    broker.get_position.return_value = {"qty": 12, "avg_entry": 525.1,
+                                        "unrealized_pnl": 14.4}
+    broker.get_open_orders.return_value = [
+        {"broker_order_id": "b1", "status": "accepted", "side": "sell",
+         "qty": 12, "limit_price": 526.9, "stop_price": None, "type": "limit"},
+        {"broker_order_id": "b2", "status": "accepted", "side": "sell",
+         "qty": 12, "limit_price": None, "stop_price": 524.2, "type": "stop"},
+    ]
+    broker.get_account.return_value = {"equity": 100231.55,
+                                       "buying_power": 400000.0}
+    monkeypatch.setattr(trade_router, "AlpacaPaperBroker", lambda: broker)
+    return broker
+
+
+def test_state_returns_session_market_position_account(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    row = _session_row()
+    stub_storage_client.get_running_paper_session.return_value = row
+    stub_storage_client.list_paper_trades.return_value = [
+        {"trading_day": "2026-06-08", "gross_pnl": -12.5, "realized_r": -1.0},
+    ]
+    resp = unit_client.get("/api/trade/state")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["session"]["id"] == row["id"]
+    assert body["position"]["qty"] == 12
+    assert body["account"]["broker_equity"] == 100231.55
+    assert body["account"]["sizing_account_value"] == 25000.0
+    assert "is_open" in body["market"] and "data_fresh" in body["market"]
+    assert len(body["open_orders"]) == 2
+
+
+def test_state_with_no_session_and_no_creds_still_works(
+    unit_client, stub_storage_client, fake_market, monkeypatch,
+):
+    monkeypatch.delenv("ALPACA_API_KEY", raising=False)
+    monkeypatch.delenv("ALPACA_SECRET_KEY", raising=False)
+    stub_storage_client.get_running_paper_session.return_value = None
+    resp = unit_client.get("/api/trade/state")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["session"] is None
+    assert body["position"] is None and body["account"] is None
+
+
+def test_bars_intraday_views_have_vwap_and_since_increments(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    stub_storage_client.get_running_paper_session.return_value = None
+    resp = unit_client.get("/api/trade/bars?view=1m")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["view"] == "1m" and body["vwap_available"] is True
+    assert len(body["bars"]) == 12
+    assert body["bars"][0]["vwap"] is not None
+    cut = body["bars"][8]["t"]
+    resp2 = unit_client.get(f"/api/trade/bars?view=1m&since={cut}")
+    assert len(resp2.json()["bars"]) == 3
+    assert resp2.json()["next_since"] == body["bars"][-1]["t"]
+
+
+def test_bars_30d_has_no_vwap_with_reason(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    stub_storage_client.get_running_paper_session.return_value = None
+    resp = unit_client.get("/api/trade/bars?view=30d")
+    body = resp.json()
+    assert body["vwap_available"] is False
+    assert "session" in body["vwap_reason"].lower()
+    assert all(b["vwap"] is None for b in body["bars"])
+
+
+def test_bars_rejects_unknown_view(unit_client, stub_storage_client, alpaca_env):
+    resp = unit_client.get("/api/trade/bars?view=2h")
+    assert resp.status_code == 422
+
+
+def test_ack_pause_clears_mismatch(
+    unit_client, stub_storage_client, fake_market, alpaca_env,
+):
+    row = _session_row(entries_paused=True, pause_reason="reconcile_mismatch")
+    stub_storage_client.get_running_paper_session.return_value = row
+    resp = unit_client.post("/api/trade/automation/ack-pause")
+    assert resp.status_code == 200, resp.text
+    stub_storage_client.set_paper_session_pause.assert_called_once()
+    kw = stub_storage_client.set_paper_session_pause.call_args.kwargs
+    assert kw["paused"] is False
