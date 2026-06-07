@@ -847,6 +847,76 @@ evidence-only behavior 018 promised.
 
 ---
 
+## Experiment 011 — 2026-06-07 — THE LOCKBOX SPEND: the loose-band edge does not replicate
+
+### Hypothesis
+
+Experiment 010's strongest gate-passing candidate
+(`auto07-c2-max_distance_from_vwap_pct1` = R:R 1.5 + stop buffer 0.1 +
+VWAP distance 1.0; pooled 2018–24 expectancy-$ CI [+3.04, +30.41] at the
+0.9833 bar) will show positive expectancy on the held-out 2025–26 lockbox
+— the only data no experiment, sweep, or campaign ever touched.
+
+### Setup
+
+One-shot lockbox run (irreversible, human-confirmed):
+`lockbox-run --config auto07-c2-max_distance_from_vwap_pct1 --confirm`.
+Run `23c9ed62`, fingerprint `23d9fe7e…`, lockbox state now **spent**
+(not contaminated). 2025-01-01 → 2026-06-06 effective (engine fix below),
+744 trades. Significance run on the lockbox trades afterward (data was
+already spent).
+
+### Outcome
+
+| Metric | Pooled 2018–24 (gate promise) | Lockbox 2025–26 (observed) |
+|---|---|---|
+| Expectancy $/trade | CI [+3.04, +30.41] | **+1.27** (bootstrap CI [−21.6, +27.4]) |
+| Expectancy R | — | **−0.021** |
+| Profit factor | — | **0.959** |
+| Win rate | — | 34.4% |
+| Net P&L | — | +$947 on $25k over ~17 months |
+| Max drawdown | — | **−$8,886 (−29.6%)**, 13-loss streak |
+| Sharpe | — | 0.099 |
+| vs random entry (permutation) | — | p ≈ 0.005 (significant) |
+
+### Lesson
+
+**The edge did not replicate where it counts.** The observed expectancy
+(+$1.27/trade) landed *below* the pooled gate's lower bound (+$3.04), the
+R-expectancy is negative, profit factor is under 1.0, and the equity path
+(−30% max drawdown for +2.5% total return) is undeployable by any honest
+standard. The permutation test says the entries are better than random —
+there is *signal* in VWAP-pullback entry selection — but after costs and
+risk plumbing the magnitude rounds to zero on unseen data.
+
+This was exactly the failure mode Experiment 010's caveats predicted:
+29 correlated gates over the same 12 OOS windows, seeded from the same
+surfaces, overstated the region. The Bonferroni family ledger guards
+against *within-campaign* dredging; it cannot see *operator-level*
+multiplicity. The lockbox can — and did.
+
+Strategy-1 adjudication is now COMPLETE: knob space exhausted (008–010),
+best candidate tested on unseen data and found flat (011). The lockbox is
+spent; there is no more unbiased historical data. Next research must
+either (a) change strategy logic — regime conditioning remains the
+best-motivated hypothesis (6/12 WF windows individually significant;
+entries beat random) — adjudicated by *forward* paper trading, or
+(b) build the paper-trading path and let live data accumulate as the new
+out-of-sample. Tuning vwap-pullback further is over.
+
+### Engineering note
+
+The first lockbox attempt 500'd: `materialize_bars_csv` enumerated
+expected weekdays across the full requested range, and the lockbox split
+ends 2026-12-31 — in the future by design — so it tried to download bars
+for days that haven't happened and the `DownloadRequest` future-date
+guard blew up the endpoint. Nobody had ever run the lockbox this deep
+inside its own window. Fixed (clamp expected days to today) with two
+regression tests; the failure happened before any ledger write, so the
+lockbox was provably still unspent when retried (`144a9a2`).
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical
