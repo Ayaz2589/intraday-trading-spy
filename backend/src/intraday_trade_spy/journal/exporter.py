@@ -17,6 +17,8 @@ STATUS_PRIORITY = {
     SignalStatus.EMITTED: 0,
     SignalStatus.APPROVED: 1,
     SignalStatus.REJECTED: 1,
+    # Feature 020: a window-skip is terminal for its bar, like a rejection.
+    SignalStatus.SKIPPED_WINDOW: 1,
     SignalStatus.EXECUTED: 2,
     SignalStatus.EXITED: 3,
     SignalStatus.FORCE_FLAT: 3,

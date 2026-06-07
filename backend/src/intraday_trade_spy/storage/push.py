@@ -308,6 +308,14 @@ def _transform_journal_rows(
             signals.append(_signal_from_rejected(row, user_id=user_id, run_id=run_id))
             continue
 
+        # Feature 020: window-skipped setups stay visible in the cloud as
+        # un-executed signals (reason 'entry_window') — they are deliberately
+        # NOT counted as rejections in summaries (skips are learning
+        # artifacts, not performance events).
+        if status == "skipped_window":
+            signals.append(_signal_from_window_skip(row, user_id=user_id, run_id=run_id))
+            continue
+
         if status == "executed":
             pending_executed = row
             continue
@@ -365,6 +373,24 @@ def _signal_from_rejected(row: dict, *, user_id: UUID, run_id: UUID) -> SignalRo
         target_price=Decimal(row["take_profit"]) if row.get("take_profit") else None,
         executed=False,
         rejection_reason=_normalize_rejection_reason(row.get("rejection_check")),
+        trade_id=None,
+        indicator_context=_ctx_from_row(row),
+        reason_text=row.get("reason", ""),
+    )
+
+
+def _signal_from_window_skip(row: dict, *, user_id: UUID, run_id: UUID) -> SignalRow:
+    return SignalRow(
+        id=uuid4(),
+        run_id=run_id,
+        user_id=user_id,
+        emitted_at=_parse_dt(row["timestamp"]),
+        direction="LONG",
+        entry_price=Decimal(row.get("planned_entry") or "1"),
+        stop_price=Decimal(row["stop_loss"]) if row.get("stop_loss") else None,
+        target_price=Decimal(row["take_profit"]) if row.get("take_profit") else None,
+        executed=False,
+        rejection_reason="entry_window",
         trade_id=None,
         indicator_context=_ctx_from_row(row),
         reason_text=row.get("reason", ""),

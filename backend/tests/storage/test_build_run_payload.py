@@ -124,3 +124,43 @@ def test_executed_signals_link_their_trade(engine_result):
     executed = [s for s in payload.signals if s.executed]
     assert executed, "expected at least one executed signal alongside trades"
     assert all(s.trade_id in trade_ids for s in executed)
+
+
+# ---- Feature 020: skipped-window rows are visible in the cloud payload ---------
+
+
+def test_skipped_window_rows_become_unexecuted_signals_without_inflating_counts():
+    """The entry-window tooltip promises 'you can see exactly what the filter
+    declined' — so skips must survive the cloud push as un-executed signal
+    rows (rejection_reason 'entry_window'), while the run's signal COUNTS
+    (executed/rejected) stay untouched (skips are learning artifacts, not
+    performance events)."""
+    from pathlib import Path
+    from uuid import uuid4
+
+    from intraday_trade_spy.backtest.engine import BacktestEngine
+    from intraday_trade_spy.config import EntryWindowConfig, load_config
+
+    cfg = load_config(Path(__file__).parents[1].parent / "config" / "config.yaml")
+    vp = cfg.strategy.vwap_pullback.model_copy(
+        update={"entry_window": EntryWindowConfig(
+            start_minutes_after_open=0, end_minutes_after_open=1)}
+    )
+    cfg = cfg.model_copy(
+        update={"strategy": cfg.strategy.model_copy(update={"vwap_pullback": vp})}
+    )
+    result = BacktestEngine(cfg).run(
+        csv_path=Path(__file__).parents[1] / "fixtures" / "spy_5m_sample.csv",
+        output_dir=None,
+    )
+    payload = _build(result, uuid4())
+
+    window_signals = [s for s in payload.signals if s.rejection_reason == "entry_window"]
+    assert window_signals, "skips must appear as signal rows"
+    for s in window_signals:
+        assert s.executed is False
+        assert "window" in (s.reason_text or "").lower()
+    # counts exclude skips: total signals == executed + risk-rejected only
+    journal_statuses = [r.status.value for r in result.journal_rows]
+    expected = sum(1 for st in journal_statuses if st in ("executed", "rejected"))
+    assert payload.run.summary.total_signals == expected

@@ -63,6 +63,8 @@ RejectionReason = Literal[
     "no_new_trades_cutoff",
     "force_flat_window",
     "other",
+    # Feature 020: suppressed by the config's entry window (not a risk veto)
+    "entry_window",
 ]
 
 

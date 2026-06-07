@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 # CLAUDE.md — intraday-trade-spy
 
-**Active plan**: [specs/020-entry-window/plan.md](specs/020-entry-window/plan.md) — in implementation (entry-window filter knobs: `strategy.vwap_pullback.entry_window.{start,end}_minutes_after_open`, ints [0,390], defaults 0/360 = byte-identical current behavior; strategy `evaluate` → Signal | WindowSkip | None with engine-journaled SKIPPED_WINDOW rows (VII); `MarketClock.minutes_since_open`; registry-whitelisted so sweeps/recommendations/campaigns search the window honestly; editor/diff-chips/pills/tooltip surface. Evidence: the 09:4x entry cohort carried the strategy's entire net loss — this knob lets the validation machinery judge the 10:00–14:00 hypothesis).
+**Active plan**: [specs/020-entry-window/plan.md](specs/020-entry-window/plan.md) — **implemented, live-verified** (entry-window filter knobs: `strategy.vwap_pullback.entry_window.{start,end}_minutes_after_open`, ints [0,390], defaults 0/360 = byte-identical current behavior; strategy `evaluate` → Signal | WindowSkip | None with engine-journaled SKIPPED_WINDOW rows (VII); `MarketClock.minutes_since_open`; registry-whitelisted so sweeps/recommendations/campaigns search the window honestly; editor/diff-chips/pills/tooltip surface. Evidence: the 09:4x entry cohort carried the strategy's entire net loss — this knob lets the validation machinery judge the 10:00–14:00 hypothesis).
 
 **Most recent spec**: [specs/020-entry-window/spec.md](specs/020-entry-window/spec.md)
 
