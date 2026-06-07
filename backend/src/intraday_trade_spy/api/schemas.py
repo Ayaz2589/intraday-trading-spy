@@ -602,3 +602,37 @@ class ResetResponse(_ResponseBase):
 
     deleted: dict
     default_config: str
+
+
+# ---------- Feature 019: auto-research campaigns ----------
+
+
+class StartCampaignRequest(_Base):
+    config_name: str = Field(min_length=1, max_length=200)
+    budget: Optional[int] = Field(default=None, ge=0)
+
+
+class CampaignView(_ResponseBase):
+    id: str
+    seq: int
+    starting_config_name: str
+    budget: int
+    trials_used: int
+    status: Literal["running", "halted", "failed"]
+    verdict: Optional[
+        Literal["ready_for_lockbox", "stop_tuning", "budget_exhausted", "cancelled", "failed"]
+    ] = None
+    verdict_detail: Optional[dict] = None
+    thresholds: dict
+    cycles: list[dict]
+    created_at: str
+    updated_at: str
+
+
+class CampaignListResponse(_ResponseBase):
+    campaigns: list[CampaignView]
+    default_budget: int
+
+
+class CampaignCancelResponse(_ResponseBase):
+    cancel_requested: bool

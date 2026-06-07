@@ -3,7 +3,10 @@ import { ValidationStatCards } from '@/components/validation/ValidationStatCards
 import { StartStudyCard } from '@/components/validation/StartStudyCard'
 import { StudiesTable } from '@/components/validation/StudiesTable'
 import { LockboxCard } from '@/components/validation/LockboxCard'
+import { AutoResearchCard } from '@/components/validation/AutoResearchCard'
+import { CampaignsTable } from '@/components/validation/CampaignsTable'
 import { SectionTitle, cardSection } from '@/components/section-title'
+import { useCampaigns } from '@/hooks/useCampaigns'
 import { useConfigs } from '@/hooks/useConfigs'
 import { useLockboxStatus, useRerunStudy, useRunLockbox, useStudies } from '@/hooks/useStudies'
 
@@ -20,9 +23,11 @@ function ValidationPage() {
   const runLockbox = useRunLockbox()
   const rerun = useRerunStudy()
   const configsQuery = useConfigs()
+  const campaignsQuery = useCampaigns()
 
   const studies = studiesQuery.data?.studies ?? []
   const configs = configsQuery.data?.configs ?? []
+  const campaigns = campaignsQuery.data?.campaigns ?? []
 
   return (
     <div style={{ padding: 'var(--sp-5, 20px)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4, 16px)' }}>
@@ -39,6 +44,17 @@ function ValidationPage() {
       <section style={cardSection}>
         <SectionTitle title="New validation study" subtitle="Test a saved config on data it has never seen" />
         <StartStudyCard />
+      </section>
+
+      {/* Feature 019: the unattended research loop — launch, live progress,
+          and history. It can never spend the lockbox below. */}
+      <section data-testid="auto-research-section" style={cardSection}>
+        <SectionTitle
+          title="Auto-research"
+          subtitle="One action runs study → gate → next candidate until an honest stopping rule fires"
+        />
+        <AutoResearchCard />
+        {!campaignsQuery.isError && <CampaignsTable campaigns={campaigns} />}
       </section>
 
       <section style={cardSection}>

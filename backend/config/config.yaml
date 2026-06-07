@@ -212,3 +212,10 @@ retention:
   failed_runs_days: 90
   audit_events_days: 30
   failed_downloads_days: 30
+
+# Feature 019: automated strategy research (campaigns + research CLI).
+# Stopping thresholds are published config, never code constants (FR-006).
+research:
+  default_budget: 6          # campaign trial budget when not specified at launch
+  base_alpha: 0.05           # gate alpha at k=1; cycle bar level = 1 - alpha/k
+  backfill_start: "2018-01-01"  # full-span auto-backfill start for an empty cache

@@ -187,3 +187,42 @@ def test_fast_gate_deterministic_across_calls(unit_client, stub_storage_client):
     b = _post(unit_client, study["id"]).json()
     a.pop("computed_at"), b.pop("computed_at")  # the only allowed difference
     assert a == b
+
+
+# ---- Feature 019 T015: campaign bar threading -----------------------------------
+
+
+def test_fast_gate_accepts_alpha_override_and_persists_the_bar(stub_storage_client):
+    """Campaign cycles gate at level 1 - alpha/k: run_pooled_gate_fast takes an
+    alpha override and records pooled_gate.bar = {k, level} so any cycle's
+    verdict is recomputable (SC-005)."""
+    from intraday_trade_spy.api.validation_lifecycle import run_pooled_gate_fast
+
+    study = _arm(stub_storage_client)
+    bar = {"k": 3, "level": 1 - 0.05 / 3}
+    run_pooled_gate_fast(
+        study_id=study["id"],
+        user_id="u-1",
+        storage=stub_storage_client,
+        alpha_override=0.05 / 3,
+        bar=bar,
+    )
+    merged = stub_storage_client.update_validation_study.call_args.kwargs["result"]
+    assert merged["pooled_gate"]["bar"] == bar
+
+
+def test_fast_gate_alpha_override_tightens_the_interval(stub_storage_client):
+    """The overridden alpha genuinely changes the computed CI: a wider
+    confidence level can only widen (or hold) the interval."""
+    from intraday_trade_spy.api.validation_lifecycle import run_pooled_gate_fast
+
+    study = _arm(stub_storage_client)
+    base = run_pooled_gate_fast(
+        study_id=study["id"], user_id="u-1", storage=stub_storage_client
+    )
+    tight = run_pooled_gate_fast(
+        study_id=study["id"], user_id="u-1", storage=stub_storage_client,
+        alpha_override=0.005, bar={"k": 10, "level": 0.995},
+    )
+    assert tight.expectancy_dollars_ci.low <= base.expectancy_dollars_ci.low
+    assert tight.expectancy_dollars_ci.high >= base.expectancy_dollars_ci.high

@@ -243,6 +243,19 @@ class InsightsConfig(BaseModel):
     recommend: InsightsRecommendConfig = Field(default_factory=InsightsRecommendConfig)
 
 
+# ---- Feature 019 (automated strategy research) ------------------------------
+
+
+class ResearchConfig(BaseModel):
+    """Campaign stopping thresholds (FR-006): published config, never code
+    constants. The cycle gate's bar level is 1 - base_alpha/k where k is the
+    knob family's recorded trial count."""
+
+    default_budget: int = Field(default=6, ge=0)
+    base_alpha: float = Field(default=0.05, gt=0, le=0.5)
+    backfill_start: str = "2018-01-01"  # full-span auto-backfill (empty cache)
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     market: MarketConfig
@@ -254,6 +267,7 @@ class Config(BaseModel):
     alpaca: AlpacaConfig = Field(default_factory=AlpacaConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     insights: InsightsConfig = Field(default_factory=InsightsConfig)
+    research: ResearchConfig = Field(default_factory=ResearchConfig)
 
 
 def load_config(path: str | Path) -> Config:

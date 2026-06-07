@@ -124,3 +124,37 @@ def test_insights_block_loads_from_yaml():
     assert cfg.insights.claude.model == "claude-opus-4-8"
     assert cfg.insights.claude.max_tokens == 8000
     assert cfg.insights.claude.max_timeseries_windows == 200
+
+
+# ---- Feature 019 (automated strategy research) --------------------------------
+
+
+def test_research_config_defaults():
+    from intraday_trade_spy.config import ResearchConfig
+
+    cfg = ResearchConfig()
+    assert cfg.default_budget == 6
+    assert cfg.base_alpha == 0.05
+    assert cfg.backfill_start == "2018-01-01"
+
+
+def test_research_block_loads_from_yaml():
+    from pathlib import Path
+
+    from intraday_trade_spy.config import load_config
+
+    cfg = load_config(Path(__file__).resolve().parents[1] / "config" / "config.yaml")
+    assert cfg.research.default_budget == 6
+    assert cfg.research.base_alpha == 0.05
+    assert cfg.research.backfill_start == "2018-01-01"
+
+
+def test_research_config_rejects_out_of_range_values():
+    from intraday_trade_spy.config import ResearchConfig
+
+    with pytest.raises(ValidationError):
+        ResearchConfig(base_alpha=0.0)        # alpha must be > 0
+    with pytest.raises(ValidationError):
+        ResearchConfig(base_alpha=0.6)        # ...and <= 0.5
+    with pytest.raises(ValidationError):
+        ResearchConfig(default_budget=-1)     # budget >= 0

@@ -74,6 +74,7 @@ def _armed_client(monkeypatch, captured):
 
 EXPECTED_TABLES = [
     "recommendation_trials",
+    "research_campaigns",   # Feature 019: campaigns are research data too
     "insight_analyses",
     "validation_studies",   # cascades child runs -> trades/signals
     "lockbox_ledger",       # un-burns the lockbox: true from-scratch

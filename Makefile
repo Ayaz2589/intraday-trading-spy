@@ -155,3 +155,59 @@ docker-up: ## Start the Dockerized dev stack (backend :8001 + frontend :5173, ho
 
 docker-down: ## Stop and remove the Dockerized dev stack
 	docker compose down
+
+# ---- Feature 019: research CLI (terminal pipeline + campaigns) -------------
+# Each target sources backend/.env (SUPABASE_URL/ANON_KEY for sign-in) and
+# delegates to the research CLI. The CLI acts as YOU (email-OTP session) —
+# never the service role. Requires the API running (make api-dev).
+
+RESEARCH := set -a; source .env; set +a; .venv/bin/python -m intraday_trade_spy.cli.research
+
+.PHONY: research-login backfill study-wf study-sens gate significance \
+        monte-carlo lockbox lockbox-run health recommend campaign \
+        campaign-status campaign-list campaign-cancel
+
+research-login: ## One-time CLI sign-in (email code); session persists + auto-renews
+	@cd backend && $(RESEARCH) login
+
+backfill: ## Backfill the SPY bar cache (START=/END= optional; waits to completion)
+	@cd backend && $(RESEARCH) backfill $(if $(START),--start $(START),) $(if $(END),--end $(END),) --wait
+
+study-wf: ## Launch a walk-forward study (CONFIG=name; waits to completion)
+	@cd backend && $(RESEARCH) study-wf --config $(CONFIG) --wait
+
+study-sens: ## Launch a sensitivity study (CONFIG= KNOB= VALUES=1.5,2,2.5)
+	@cd backend && $(RESEARCH) study-sens --config $(CONFIG) --knob $(KNOB) --values $(VALUES) --wait
+
+gate: ## Compute the pooled gate for a study (STUDY=id)
+	@cd backend && $(RESEARCH) gate $(STUDY)
+
+significance: ## Significance tests for a run (RUN=id)
+	@cd backend && $(RESEARCH) significance $(RUN)
+
+monte-carlo: ## Monte Carlo path-risk for a run (RUN=id)
+	@cd backend && $(RESEARCH) monte-carlo $(RUN)
+
+lockbox: ## Lockbox status (always safe)
+	@cd backend && $(RESEARCH) lockbox
+
+lockbox-run: ## The ONE-SHOT lockbox test (CONFIG=name CONFIRM=1; irreversible)
+	@cd backend && $(RESEARCH) lockbox-run --config $(CONFIG) $(if $(CONFIRM),--confirm,)
+
+health: ## Per-config health verdicts (recommendation engine)
+	@cd backend && $(RESEARCH) health
+
+recommend: ## Evidence pack + ranked candidates
+	@cd backend && $(RESEARCH) recommend
+
+campaign: ## Start an auto-research campaign (CONFIG=name [BUDGET=N])
+	@cd backend && $(RESEARCH) campaign-start --config $(CONFIG) $(if $(BUDGET),--budget $(BUDGET),)
+
+campaign-status: ## Campaign progress ([ID=campaign-id]; default: most recent)
+	@cd backend && $(RESEARCH) campaign-status $(ID)
+
+campaign-list: ## List campaigns
+	@cd backend && $(RESEARCH) campaign-list
+
+campaign-cancel: ## Cancel a running campaign (ID=campaign-id)
+	@cd backend && $(RESEARCH) campaign-cancel $(ID)

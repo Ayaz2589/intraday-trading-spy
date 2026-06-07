@@ -21,6 +21,7 @@ from intraday_trade_spy.api.routers import (
     health,
     insights,
     recommend,
+    research,
     reset,
     runs,
     strategies,
@@ -77,6 +78,24 @@ async def _lifespan(app: FastAPI):
             _log.warning("startup: reaped %d stale running studies", swept_studies)
     except Exception as exc:
         _log.warning("startup study sweep failed: %s", exc)
+
+    # Feature 019 (research.md R3): a restart leaves no phantom 'running'
+    # campaigns — they fail explicitly with the reason.
+    try:
+        from intraday_trade_spy.api.routers.research import (
+            reconcile_interrupted_campaigns,
+        )
+        from intraday_trade_spy.storage import SupabaseStorageClient
+
+        if all(os.environ.get(k) for k in
+               ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_USER_ID")):
+            failed = reconcile_interrupted_campaigns(
+                SupabaseStorageClient.from_env()
+            )
+            if failed:
+                _log.warning("startup: failed %d interrupted campaigns", failed)
+    except Exception as exc:
+        _log.warning("startup campaign reconcile failed: %s", exc)
 
     # Skip the bars catch-up in test/CI (no real Supabase + no real network).
     if os.environ.get("STARTUP_BARS_REFRESH", "1") != "0":
@@ -140,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(validation.router, prefix="/api")
     app.include_router(insights.router, prefix="/api")
     app.include_router(recommend.router, prefix="/api")
+    app.include_router(research.router, prefix="/api")
     app.include_router(reset.router, prefix="/api")
 
     # NOTE: Feature 003's static-file endpoints continue to live in

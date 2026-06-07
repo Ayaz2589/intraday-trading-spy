@@ -312,6 +312,14 @@ describe("RunViewer route", () => {
       "trial_count",
       // Feature 018.1: the side-nav factory reset; coverage in side-nav tests.
       "delete_all_data",
+      // Feature 019 auto-research keys render on the Validation page +
+      // campaign detail route; coverage lives in AutoResearchCard /
+      // CampaignDetailPage tests + help-content.test.ts.
+      "auto_research_campaign",
+      "trial_budget",
+      "tightened_bar",
+      "stopping_rules",
+      "ready_for_lockbox",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

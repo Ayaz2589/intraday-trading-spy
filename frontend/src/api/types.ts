@@ -561,3 +561,65 @@ export type RecommendPackResponse = {
   trial_counts: TrialCountsView
   snapshot_fingerprint: string
 }
+
+// ---- Feature 019: auto-research campaigns ----
+
+export type CampaignVerdict =
+  | 'ready_for_lockbox'
+  | 'stop_tuning'
+  | 'budget_exhausted'
+  | 'cancelled'
+  | 'failed'
+
+export type CampaignStage = {
+  stage: 'data' | 'study' | 'gate' | 'act' | 'error'
+  status: string
+  detail: Record<string, unknown> & {
+    k?: number
+    level?: number
+    ci_low?: number | null
+    ci_high?: number | null
+    study_id?: string
+    action?: string
+    config_name?: string
+  }
+}
+
+export type CampaignCycle = {
+  cycle: number
+  candidate_config_name: string
+  family: string
+  stages: CampaignStage[]
+  started_at?: string
+  ended_at?: string
+}
+
+export type Campaign = {
+  id: string
+  seq: number
+  starting_config_name: string
+  budget: number
+  trials_used: number
+  status: 'running' | 'halted' | 'failed'
+  verdict: CampaignVerdict | null
+  verdict_detail: (Record<string, unknown> & {
+    candidate?: string
+    reason?: string
+    hint?: string
+    bar?: { k: number; level: number }
+  }) | null
+  thresholds: Record<string, unknown>
+  cycles: CampaignCycle[]
+  created_at: string
+  updated_at: string
+}
+
+export type CampaignListResponse = {
+  campaigns: Campaign[]
+  default_budget: number
+}
+
+export type StartCampaignRequest = {
+  config_name: string
+  budget?: number
+}
