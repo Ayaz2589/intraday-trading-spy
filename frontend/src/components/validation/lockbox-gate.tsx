@@ -87,10 +87,10 @@ export function LockboxGate({
       )}
 
       {status.state === "burned" && (
-        <div className="rej-row" style={{ margin: 0, color: "var(--loss)" }}>
+        <p className="stat-label" style={{ margin: 0, color: "var(--loss)" }}>
           The lockbox has been contaminated <HelpTooltip helpKey="burned_lockbox" /> — its results
           can no longer be trusted as a clean out-of-sample test.
-        </div>
+        </p>
       )}
     </div>
   );

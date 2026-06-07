@@ -37,6 +37,15 @@ describe("LockboxGate", () => {
     expect(document.querySelector('[data-help-key="burned_lockbox"]')).toBeTruthy();
   });
 
+  it("renders the burned banner as flowing text, not a rejection grid", () => {
+    // Regression: the banner once reused .rej-row (a 1fr/64px/32px grid for
+    // rejection-breakdown rows), squeezing the trailing text into a 32px
+    // column — one word per line.
+    render(<LockboxGate status={_status({ state: "burned" })} onRun={vi.fn()} />);
+    const banner = screen.getByText(/has been contaminated/i);
+    expect(banner.closest(".rej-row")).toBeNull();
+  });
+
   // Validation-page rework: the gate renders flat inside the route's Lockbox
   // section — no nested card repeating the section title.
   it("renders flat — no nested card or duplicate Lockbox heading", () => {
