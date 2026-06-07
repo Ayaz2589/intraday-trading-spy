@@ -66,11 +66,11 @@ def default_collaborators(*, storage, user_id, cfg: Config) -> Collaborators:
     from intraday_trade_spy.api.claude_analyst import DEFAULT_CONFIG_PATH  # path const only
     from intraday_trade_spy.api.lifecycle import BackfillRangeError, start_backfill
     from intraday_trade_spy.api.validation_lifecycle import (
+        plan_walk_forward,
         run_pooled_gate_fast,
         run_study_task,
     )
     from intraday_trade_spy.recommend.candidates import assemble_recommendation
-    from intraday_trade_spy.validation.walk_forward import plan_walk_forward
 
     state: dict = {"parent": None}
 

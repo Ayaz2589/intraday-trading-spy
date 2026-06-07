@@ -166,3 +166,24 @@ def test_startup_reconciler_fails_running_campaigns_explicitly():
     n = reconcile_interrupted_campaigns(storage)
     assert n == 1
     assert storage.fail_running_campaigns.call_args.kwargs["reason"] == "service restart"
+
+
+def test_run_campaign_task_is_fail_soft_when_wiring_blows_up(monkeypatch):
+    """Regression (live e2e 2026-06-07): an exception OUTSIDE the engine —
+    e.g. collaborator wiring failing to import — must still halt the campaign
+    failed-with-reason, never leave a phantom 'running' row (FR-011)."""
+    from unittest import mock
+
+    from intraday_trade_spy.api.routers import research as research_router
+
+    monkeypatch.setattr(
+        "intraday_trade_spy.research.wiring.default_collaborators",
+        mock.MagicMock(side_effect=ImportError("cannot import name 'plan_walk_forward'")),
+    )
+    storage = mock.MagicMock()
+    campaign = _campaign_row()
+    research_router.run_campaign_task(campaign=campaign, user_id="u-1", storage=storage)
+    halt = storage.halt_research_campaign.call_args.kwargs
+    assert halt["campaign_id"] == campaign["id"]
+    assert halt["status"] == "failed" and halt["verdict"] == "failed"
+    assert "plan_walk_forward" in halt["verdict_detail"]["reason"]

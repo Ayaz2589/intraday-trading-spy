@@ -44,19 +44,30 @@ def _view(row: dict) -> CampaignView:
 
 def run_campaign_task(*, campaign: dict, user_id, storage) -> None:
     """BackgroundTask body: wire the live collaborators and run the engine.
-    Module-level so tests can stub it out."""
-    from intraday_trade_spy.research.campaign import run_campaign
-    from intraday_trade_spy.research.wiring import default_collaborators
+    Module-level so tests can stub it out. Fail-soft even OUTSIDE the engine
+    (config load / collaborator wiring): any exception halts the campaign
+    failed-with-reason — never a phantom 'running' row (FR-011)."""
+    try:
+        from intraday_trade_spy.research.campaign import run_campaign
+        from intraday_trade_spy.research.wiring import default_collaborators
 
-    cfg = load_config(DEFAULT_CONFIG_PATH)
-    run_campaign(
-        storage=storage,
-        campaign=campaign,
-        base_alpha=float((campaign.get("thresholds") or {}).get(
-            "base_alpha", cfg.research.base_alpha
-        )),
-        collab=default_collaborators(storage=storage, user_id=user_id, cfg=cfg),
-    )
+        cfg = load_config(DEFAULT_CONFIG_PATH)
+        run_campaign(
+            storage=storage,
+            campaign=campaign,
+            base_alpha=float((campaign.get("thresholds") or {}).get(
+                "base_alpha", cfg.research.base_alpha
+            )),
+            collab=default_collaborators(storage=storage, user_id=user_id, cfg=cfg),
+        )
+    except Exception as exc:  # noqa: BLE001 — last-resort halt (study-task precedent)
+        import logging
+
+        logging.getLogger(__name__).exception("campaign task crashed: %s", exc)
+        storage.halt_research_campaign(
+            campaign_id=campaign["id"], status="failed", verdict="failed",
+            verdict_detail={"reason": f"campaign task crashed: {exc}"},
+        )
 
 
 def reconcile_interrupted_campaigns(storage) -> int:
