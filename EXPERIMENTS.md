@@ -784,6 +784,69 @@ time-of-day search for free.
 
 ---
 
+## Experiment 010 — 2026-06-07 — Ten-campaign series: the loose-band/wide-buffer region passes the pooled gate
+
+### Hypothesis
+
+After 008/009 concluded "no single knob rescues the always-on strategy," run
+ten auto-research campaigns (feature 019) from ten different starting configs
+— the two measured ridges (stop buffer 0.1/0.2, VWAP distance 0.5/1.0), their
+untested interactions, both R:R U-arms, and the two untested entry-window
+directions — and let the engine search each neighborhood under the
+Bonferroni-tightened pooled gate. Question: does any *combination* clear the
+bar that no single knob could?
+
+### Setup
+
+Campaigns seq 4–13, sequential, budgets 4–6 (campaign 1 = 6). Pool
+2018-01-01→2024-12-31, 12 OOS walk-forward windows per study, gate =
+pooled expectancy-$ bootstrap CI lower bound > 0 at level 1−α/k (α=0.05,
+k = 1 + family trial count from the ledger). 29 gates computed across the
+series; the buffer family ledger reached k=10, distance k=8. Lockbox
+(2025–26) untouched throughout.
+
+### Outcome (one row per campaign; CI = best candidate's pooled gate)
+
+| # | seq | start config | verdict | best CI [$/trade] (bar) |
+|---|---|---|---|---|
+| 1 | 04 | default (rr3, buf .05, dist .25) | stop_tuning | [−5.11, +29.76] @.975 (dist 1.0) |
+| 2 | 05 | ridge-combo (buf .1 + dist .5) | stop_tuning | [−0.62, +31.29] @.95 |
+| 3 | 06 | **deep-combo (buf .2 + dist 1.0)** | **ready_for_lockbox** | **[+0.45, +29.34] @.95** |
+| 4 | 07 | rr15 → auto07-c2 (rr1.5+buf.1+dist1.0) | **ready_for_lockbox** | **[+3.04, +30.41] @.9833** |
+| 5 | 08 | **rr15-ridge (rr1.5 + dist .5)** | **ready_for_lockbox** | **[+0.02, +22.15] @.95** |
+| 6 | 09 | am-cut-1300 → auto09-c3 (end210+dist.5+buf.2) | **ready_for_lockbox** | **[+0.86, +39.43] @.9917** |
+| 7 | 10 | pm-only-1330 (start 240) | stop_tuning | [−35.54, +7.67] @.95 |
+| 8 | 11 | or30-dist50 | budget_exhausted | [−2.67, +32.20] @.975 best |
+| 9 | 12 | rr25-buffer10 | stop_tuning | [−2.79, +34.98] @.9929 best |
+| 10 | 13 | ridge-rr15 (buf.1+dist.5+rr1.5) | stop_tuning | [−0.20, +23.66] @.95 |
+
+### Lesson
+
+**Four gate passes, all in one connected region: loose VWAP band (0.5–1.0)
+× wide stop buffer (0.1–0.2), robust to R:R 1.5–3.0 and to a 13:00
+entry cutoff.** 008's single-knob verdict and this result are consistent:
+each ridge alone is sub-bar; together they clear it. The distance knob is
+the dominant driver (every passing config moved it; pm-only and OR-30
+regions failed regardless).
+
+Honesty caveats before anyone touches the lockbox: (1) the family-keyed
+Bonferroni cannot see that the ten *starting* configs were themselves
+hand-picked from 008's surfaces — the true search multiplicity across 29
+gates is higher than any single k; (2) all 29 gates share the same 12 OOS
+windows of the same 2018–2024 data, so the four passes are correlated
+re-reads of one sample, not four independent confirmations; (3) the
+strongest pass (auto07-c2, [+3.04, +30.41] @.9833) is ~+$3/trade lower
+bound on a $25k account — real but thin. The one-shot lockbox (2025–26)
+remains the only unbiased adjudicator, and spending it is a human decision.
+
+Operational notes: afternoon-only trading is decisively bad ([−35.5, +7.7])
+— the morning carries the strategy, complementing 009 (skipping the morning
+also hurt). The engine twice *reverted* operator-seeded knobs toward the
+archive's evidence (start→0, rr→2.0), which is exactly the deterministic,
+evidence-only behavior 018 promised.
+
+---
+
 <!--
 Append new experiments below this line. Use the next sequential ID
 (EXPERIMENT_LAST + 1) zero-padded to 3 digits. Never edit historical
