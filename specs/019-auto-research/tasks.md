@@ -116,7 +116,7 @@ US3 = dashboard) so each ships independently.
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T034 Run the full verification gates: backend `PYTHONPATH=src .venv/bin/python -m pytest` (env-gated suites excluded), frontend `npx vitest run` (3-test price-chart baseline) + `npm run typecheck`, `ruff check`
-- [ ] T035 Live e2e per specs/019-auto-research/quickstart.md: `make research-login` (real OTP), terminal pass (backfill → study-wf → gate → recommend), then `make campaign CONFIG=default BUDGET=2` watched from the dashboard; verify lockbox before/after identical and ledger rows match trials_used (SC-001/002/003/004)
+- [x] T035 Live e2e per specs/019-auto-research/quickstart.md: `make research-login` (real OTP), terminal pass (backfill → study-wf → gate → recommend), then `make campaign CONFIG=default BUDGET=2` watched from the dashboard; verify lockbox before/after identical and ledger rows match trials_used (SC-001/002/003/004)
 - [x] T036 [P] Docs sweep: cross-link quickstart from README/Makefile help; annotate CLAUDE.md active-plan line as implemented — docs, exempt
 
 ---
