@@ -170,3 +170,39 @@ def test_backfill_posts_range(api):
     assert code == 0
     assert api.calls[0]["path"] == "/api/bars/backfill"
     assert api.calls[0]["json"] == {"start": "2024-01-01", "end": "2024-02-01"}
+
+
+# ---- recommend (config_id resolution) ------------------------------------------
+
+CONFIGS_BODY = {"configs": [
+    {"id": "cfg-inactive", "name": "wf-rr3", "is_active": False},
+    {"id": "cfg-active", "name": "default", "is_active": True},
+]}
+
+
+def test_recommend_resolves_active_config_id(api):
+    """`recommend` must pass the active config's id — /api/recommend/pack requires it."""
+    api.push(200, CONFIGS_BODY)
+    api.push(200, {"pack": {}, "candidates": []})
+    code = run(["recommend"])
+    assert code == 0
+    assert api.calls[0]["method"] == "GET"
+    assert api.calls[0]["path"] == "/api/configs"
+    assert api.calls[1]["path"] == "/api/recommend/pack"
+    assert api.calls[1]["params"] == {"config_id": "cfg-active"}
+
+
+def test_recommend_accepts_config_name_override(api):
+    api.push(200, CONFIGS_BODY)
+    api.push(200, {"pack": {}, "candidates": []})
+    code = run(["recommend", "--config", "wf-rr3"])
+    assert code == 0
+    assert api.calls[1]["params"] == {"config_id": "cfg-inactive"}
+
+
+def test_recommend_unknown_config_refused_locally(api, capsys):
+    api.push(200, CONFIGS_BODY)
+    code = run(["recommend", "--config", "nope"])
+    assert code == 2
+    assert len(api.calls) == 1  # never hit /api/recommend/pack
+    assert "nope" in capsys.readouterr().err

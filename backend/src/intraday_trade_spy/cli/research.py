@@ -250,7 +250,24 @@ def _cmd_health(args) -> int:
 
 
 def _cmd_recommend(args) -> int:
-    resp = _request("GET", "/api/recommend/pack")
+    # /api/recommend/pack requires config_id; resolve it from the configs
+    # list (active config by default, --config NAME to override).
+    resp = _request("GET", "/api/configs")
+    if resp.status_code >= 400:
+        return _fail(resp)
+    configs = resp.json().get("configs", [])
+    wanted = getattr(args, "config", None)
+    if wanted:
+        match = next((c for c in configs if c.get("name") == wanted), None)
+        if match is None:
+            print(f"unknown config: {wanted}", file=sys.stderr)
+            return 2
+    else:
+        match = next((c for c in configs if c.get("is_active")), None)
+        if match is None:
+            print("no active config — pass --config NAME", file=sys.stderr)
+            return 2
+    resp = _request("GET", "/api/recommend/pack", params={"config_id": match["id"]})
     if resp.status_code >= 400:
         return _fail(resp)
     _emit(resp.json(), as_json=args.json, summary=["recommendations — view at /insights"])
@@ -369,7 +386,7 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument("--confirm", action="store_true"),
         p.add_argument("--override", action="store_true")))
     add("health", _cmd_health)
-    add("recommend", _cmd_recommend)
+    add("recommend", _cmd_recommend, lambda p: p.add_argument("--config"))
     add("analyze", _cmd_analyze, lambda p: (
         p.add_argument("--scope", choices=["study", "insights", "recommend"], required=True),
         p.add_argument("--scope-id"),
