@@ -35,11 +35,13 @@ hypothesis honestly.
   bind. (Recommended: the window is signal logic, like "wait for the opening
   range"; the risk veto remains the safety net, not a research knob's home.)
 - Q: What are the defaults? → A: `start_minutes_after_open = 0`,
-  `end_minutes_after_open = 360` — equivalent to today's behavior (entries
-  begin when the opening range completes; the existing 15:30 ET
-  no-new-trades cutoff still applies), so every existing config, study, and
-  baseline reproduces identically. (Recommended: backward compatibility is
-  non-negotiable for archive comparability.)
+  `end_minutes_after_open = 390` — equivalent to today's behavior. (As
+  clarified this was 360; implementation's golden rejection-breakdown test
+  revealed 360 silently re-classifies post-15:30 risk-manager REJECTIONS as
+  window skips — not byte-identical. 390 is inert: the no-new-trades cutoff
+  keeps governing, exactly as before. Recommended option's intent —
+  backward compatibility is non-negotiable — preserved by correcting the
+  number, 2026-06-07.)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -166,7 +168,8 @@ off-default chips.
 - **FR-001**: The strategy configuration MUST accept two new knobs —
   `start_minutes_after_open` and `end_minutes_after_open` (integers, minutes
   after the 09:30 ET session open) — under the VWAP-pullback strategy's
-  params, with defaults (0, 360) that reproduce current behavior exactly.
+  params, with defaults (0, 390) that reproduce current behavior exactly
+  (byte-identical journals — see the Clarifications correction).
 - **FR-002**: The strategy MUST NOT emit an entry signal whose bar falls
   outside the configured window. The effective window is
   `[max(opening-range completion, start), min(no-new-trades cutoff, end)]` —

@@ -7,7 +7,7 @@
 ## Summary
 
 Add two validated, whitelisted knobs — `entry_window.start_minutes_after_open`
-and `entry_window.end_minutes_after_open` (ints, default 0/360) — to the
+and `entry_window.end_minutes_after_open` (ints, default 0/390 — corrected from 360 during implementation; see spec Clarifications) — to the
 VWAP-pullback strategy. The strategy's `evaluate` gains a tri-state return:
 a fully-formed setup outside the window returns a `WindowSkip` (instead of a
 `Signal`), which the engine journals as a new `SKIPPED_WINDOW` status —

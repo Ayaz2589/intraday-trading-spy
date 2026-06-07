@@ -9,7 +9,7 @@ shape with a new status value.
 ```python
 class EntryWindowConfig(BaseModel):
     start_minutes_after_open: int = Field(default=0, ge=0, le=390)
-    end_minutes_after_open: int = Field(default=360, ge=1, le=390)
+    end_minutes_after_open: int = Field(default=390, ge=0, le=390)
     # model_validator: start < end, else ValueError naming both values (FR-004)
 
 class VwapPullbackConfig(BaseModel):

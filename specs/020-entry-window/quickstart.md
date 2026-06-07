@@ -32,6 +32,6 @@ decision is now a first-class learning artifact.
 
 ## What deliberately did NOT change
 
-Defaults (0/360) reproduce pre-feature behavior byte-identically; the
+Defaults (0/390) reproduce pre-feature behavior byte-identically; the
 opening-range rule and the 15:30 no-new-trades cutoff still bind; the
 diagnostic's 30→270 window is a hypothesis to test, not a shipped default.

@@ -15,7 +15,7 @@ registry/search, US3 = UI surface).
 
 ## Phase 1: Setup
 
-- [x] T001 Add the `entry_window:` block (start 0 / end 360, commented with the 09:4x evidence) under `strategy.vwap_pullback` in backend/config/config.yaml — config, exempt
+- [x] T001 Add the `entry_window:` block (start 0 / end 390, commented with the 09:4x evidence) under `strategy.vwap_pullback` in backend/config/config.yaml — config, exempt
 
 ## Phase 2: Foundational
 
@@ -74,7 +74,7 @@ registry/search, US3 = UI surface).
 
 ### Tests (write first, watch fail)
 
-- [x] T012 [P] [US3] Failing tests in frontend/src/lib/config-knobs.test.ts: KNOB_DEFAULTS gains entry_start_minutes 0 / entry_end_minutes 360; knobsFromConfig reads the nested entry_window paths (and defaults when absent); buildParams writes them back; KNOB_PATH_LABELS + SENSITIVITY_KNOBS cover both paths (grids 0/15/30/45 and 240/270/300/360 — the existing straddle/ascending invariant tests extend); configDiffChips emits accent extras ('entry from' / 'entry until') only when off-default
+- [x] T012 [P] [US3] Failing tests in frontend/src/lib/config-knobs.test.ts: KNOB_DEFAULTS gains entry_start_minutes 0 / entry_end_minutes 390; knobsFromConfig reads the nested entry_window paths (and defaults when absent); buildParams writes them back; KNOB_PATH_LABELS + SENSITIVITY_KNOBS cover both paths (grids 0/15/30/45 and 240/270/300/390 — the existing straddle/ascending invariant tests extend); configDiffChips emits accent extras ('entry from' / 'entry until') only when off-default
 - [x] T013 [P] [US3] Failing tests in frontend/src/components/strategies/config-editor.test.tsx: two Signal-group fields render with default hints; editing flags off-default; save round-trips into params; the `entry_window` tooltip is present
 - [x] T014 [P] [US3] Update frontend/src/components/help-content.test.ts (89 concepts incl. `entry_window`) and the run-viewer exclusion list in frontend/src/routes/run-viewer.test.tsx
 
