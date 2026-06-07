@@ -2130,16 +2130,18 @@ class SupabaseStorageClient:
             [paused, reason, str(session_id), self.user_id],
         )
 
-    def interrupt_running_paper_sessions(self, *, reason: str) -> int:
+    def interrupt_running_paper_sessions(self, *, reason: str) -> list[str]:
         """Startup reconciler (FR-009): a restart never silently resumes a
-        session — it is marked interrupted with the reason, explicitly."""
-        return int(self._paper_sql(
+        session — it is marked interrupted with the reason, explicitly.
+        Returns the interrupted ids so the caller can journal each one."""
+        rows = self._paper_sql(
             "UPDATE public.paper_sessions "
             "SET status = 'interrupted', stop_reason = %s, stopped_at = now(), "
             "    updated_at = now() "
-            "WHERE status = 'running'",
-            [reason],
-        ) or 0)
+            "WHERE status = 'running' RETURNING id",
+            [reason], fetch="all",
+        )
+        return [str(r[0]) for r in rows or []]
 
     def insert_paper_order(
         self, *, session_id, broker_order_id, client_order_id: str, leg: str,

@@ -130,11 +130,13 @@ def test_set_paper_session_pause_toggles_entries_paused(monkeypatch):
 
 def test_interrupt_running_paper_sessions_is_the_startup_reconciler(monkeypatch):
     c = _client()
-    state = _arm(monkeypatch, rowcount=1)
-    n = c.interrupt_running_paper_sessions(reason="service restart")
-    assert n == 1
+    state = _arm(monkeypatch, rows=[("ps-1",)])
+    ids = c.interrupt_running_paper_sessions(reason="service restart")
+    # returns the interrupted ids so the reconciler can journal each one
+    assert ids == ["ps-1"]
     sql, params = state["calls"][0]
     assert "status = 'running'" in sql and "'interrupted'" in sql
+    assert "RETURNING id" in sql
     assert any("service restart" in str(p) for p in params)
 
 

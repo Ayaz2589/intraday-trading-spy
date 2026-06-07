@@ -25,6 +25,7 @@ from intraday_trade_spy.api.routers import (
     reset,
     runs,
     strategies,
+    trade,
     validation,
 )
 
@@ -97,6 +98,26 @@ async def _lifespan(app: FastAPI):
     except Exception as exc:
         _log.warning("startup campaign reconcile failed: %s", exc)
 
+    # Feature 021 (FR-009): a restart never silently resumes a paper-trading
+    # session — interrupted explicitly, journaled, operator restarts it.
+    try:
+        from intraday_trade_spy.api.routers.trade import (
+            reconcile_interrupted_paper_sessions,
+        )
+        from intraday_trade_spy.storage import SupabaseStorageClient
+
+        if all(os.environ.get(k) for k in
+               ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_USER_ID")):
+            interrupted = reconcile_interrupted_paper_sessions(
+                SupabaseStorageClient.from_env()
+            )
+            if interrupted:
+                _log.warning(
+                    "startup: interrupted %d paper session(s)", interrupted
+                )
+    except Exception as exc:
+        _log.warning("startup paper-session reconcile failed: %s", exc)
+
     # Skip the bars catch-up in test/CI (no real Supabase + no real network).
     if os.environ.get("STARTUP_BARS_REFRESH", "1") != "0":
         try:
@@ -160,6 +181,7 @@ def create_app() -> FastAPI:
     app.include_router(insights.router, prefix="/api")
     app.include_router(recommend.router, prefix="/api")
     app.include_router(research.router, prefix="/api")
+    app.include_router(trade.router, prefix="/api")
     app.include_router(reset.router, prefix="/api")
 
     # NOTE: Feature 003's static-file endpoints continue to live in
