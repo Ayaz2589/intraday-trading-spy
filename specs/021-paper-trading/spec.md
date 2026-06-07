@@ -18,6 +18,26 @@ into a live paper-trading loop against a real brokerage paper account, and
 gives the operator one page to watch it, control it, and learn from it.
 Every day it runs, the project accumulates the new lockbox.
 
+## Clarifications
+
+### Session 2026-06-07
+
+- Q: Does the forward paper record feed the existing runs/Insights/OOS
+  archive, or stay separate? → A: Separate in v1 — surfaced on /trade only.
+  The Insights archive aggregates walk-forward windows that power gates and
+  recommendations; mixing live paper trades in would silently change what
+  those numbers mean. Promoting forward data into the archive is a future,
+  deliberate feature.
+- Q: What capital basis does live risk sizing use — config `account_value`
+  or actual broker paper equity? → A: The config's `account_value`,
+  identical to backtests, so the forward record is directly comparable to
+  the archive. Broker equity is displayed for reconciliation; a broker
+  rejection for insufficient buying power is journaled like any rejection.
+- Q: Does an automation session span multiple days? → A: Yes — automation
+  stays on until explicitly stopped or a safety event stops it. Within a
+  session it trades each market day, force-flats by 15:55 ET, idles
+  overnight, and resumes at the next open.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Start and stop automated paper trading (Priority: P1)
@@ -215,11 +235,18 @@ rule (e.g., position already open) → rejected and journaled.
   completed bar of live SPY data and route every signal through the risk
   manager; only approved signals reach the broker. The strategy itself
   MUST NOT size positions or place orders (existing architecture rule).
+  Risk sizing uses the config's `account_value` exactly as backtests do
+  (broker equity is reconciliation display only); broker buying-power
+  rejections are journaled like any other rejection.
 - **FR-005**: Every order placed MUST carry both a stop-loss and a
   take-profit as real broker-side protective orders. No stop-loss = no
   trade — with zero exceptions, including manual orders.
 - **FR-006**: Stopping automation MUST prevent new entries immediately;
   existing positions MUST continue to be managed to stop/target/force-flat.
+- **FR-006a**: An automation session spans multiple days: it remains on
+  until explicitly stopped or halted by a safety event — trading each
+  market day, force-flatting by 15:55 ET, idling overnight, resuming at the
+  next session open. Each day's activity links to the same session.
 - **FR-007**: The system MUST close all positions by the force-flat time
   (15:55 ET) and place no new entries after the cutoff (15:30 ET);
   overnight positions are forbidden.
@@ -236,7 +263,9 @@ rule (e.g., position already open) → rejected and journaled.
   context (order ids, fill prices, fees if any).
 - **FR-011**: The forward record (sessions, orders, fills, journal rows,
   per-trade R multiples) MUST persist durably and survive restarts; it is
-  append-only — no retroactive edits.
+  append-only — no retroactive edits. It is kept SEPARATE from the backtest
+  runs/Insights archive in v1: paper sessions never appear as runs, never
+  enter OOS aggregates, gates, or recommendations (Clarifications 2026-06-07).
 - **FR-012**: The /trade page MUST show per-trade history, cumulative
   P&L/equity over time, and summary metrics (trades, win rate, expectancy
   R, total R) computed the same way the backtest summary computes them.
