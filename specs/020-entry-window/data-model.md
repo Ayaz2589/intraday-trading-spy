@@ -57,11 +57,11 @@ CLI leaf resolution unaffected.)
 ## Frontend knob mirror (frontend/src/lib/config-knobs.ts)
 
 - `KnobValues` + `entry_start_minutes` / `entry_end_minutes`
-- `KNOB_DEFAULTS`: 0 / 360
+- `KNOB_DEFAULTS`: 0 / 390
 - `knobsFromConfig` / `buildParams`: nested path `strategy.vwap_pullback.entry_window.*`
 - `KNOB_PATH_LABELS`: the registry labels above
 - `configDiffChips` extras: `{label: 'entry from', value: '<n>m'}` / `{label: 'entry until', value: '<n>m'}` (diff-only, accent)
-- `SENSITIVITY_KNOBS`: start grid [0, 15, 30, 45]; end grid [240, 270, 300, 360]
+- `SENSITIVITY_KNOBS`: start grid [0, 15, 30, 45]; end grid [240, 270, 300, 390]
 
 ## Help content (frontend/src/components/help-content.ts)
 

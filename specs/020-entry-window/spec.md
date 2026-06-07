@@ -128,7 +128,7 @@ it. Config rows' diff chips surface an off-default window at a glance.
 campaigns can already exercise the knobs without it.
 
 **Independent Test**: Open a config in the editor — two new fields appear
-under Signal with "default 0 / default 360" hints; setting 30/270 marks them
+under Signal with "default 0 / default 390" hints; setting 30/270 marks them
 changed, saves into the config's params, and the config row shows the
 off-default chips.
 
