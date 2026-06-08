@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   useCloseReplayPosition,
   useControlReplay,
@@ -18,6 +18,7 @@ import { LiveChart } from './LiveChart'
 import { LiveJournalTable } from './LiveJournalTable'
 import { ManualOrderForm } from './ManualOrderForm'
 import { ReplayControls } from './ReplayControls'
+import { buildReplayMarkers } from './replay-markers'
 
 // Feature 022: the /trade/historic cockpit — replays a stored session through
 // the backtest primitives. Reuses the live chart, journal table, and manual
@@ -60,6 +61,10 @@ export function HistoricTradePage() {
   const bars = useReplayBars(active)
   const journal = useReplayJournal(active)
   const perf = useReplayPerformance(active)
+
+  // Markers redraw only when a new journal event arrives (not every poll).
+  const lastSeq = journal.length ? journal[journal.length - 1].seq : 0
+  const markers = useMemo(() => buildReplayMarkers(journal), [lastSeq]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const start = useStartReplay()
   const control = useControlReplay()
@@ -129,7 +134,7 @@ export function HistoricTradePage() {
         </Section>
 
         <Section title="Replayed SPY">
-          <LiveChart view="5m" onView={() => {}} data={bars} />
+          <LiveChart view="5m" onView={() => {}} data={bars} markers={markers} />
         </Section>
 
         {active && (
