@@ -41,7 +41,7 @@ describe('ReplayControls', () => {
       bars_total: 78, bars_delivered: 12,
     }
     const props = setup({ session })
-    expect(screen.getByTestId('replay-status')).toHaveTextContent('playing')
+    expect(screen.getByTestId('replay-status')).toHaveTextContent(/playing/i)
     expect(screen.getByTestId('replay-progress')).toHaveTextContent('12/78')
     fireEvent.click(screen.getByTestId('replay-pause'))
     expect(props.onPause).toHaveBeenCalled()

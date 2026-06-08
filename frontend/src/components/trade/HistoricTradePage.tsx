@@ -49,6 +49,7 @@ export function HistoricTradePage() {
 
   const [selectedDate, setSelectedDate] = useState('')
   const [startAutomation, setStartAutomation] = useState(false)
+  const [startSpeed, setStartSpeed] = useState(60)
 
   useEffect(() => {
     if (!selectedDate && dates.data?.dates.length) {
@@ -111,8 +112,10 @@ export function HistoricTradePage() {
             session={session}
             startAutomation={startAutomation}
             onToggleStartAutomation={setStartAutomation}
+            startSpeed={startSpeed}
+            onSelectStartSpeed={setStartSpeed}
             onStart={() =>
-              start.mutate({ date: selectedDate, automation: startAutomation })
+              start.mutate({ date: selectedDate, speed: startSpeed, automation: startAutomation })
             }
             onPlay={() => control.mutate({ action: 'play' })}
             onPause={() => control.mutate({ action: 'pause' })}

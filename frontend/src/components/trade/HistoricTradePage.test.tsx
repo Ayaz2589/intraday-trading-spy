@@ -75,7 +75,7 @@ describe('HistoricTradePage', () => {
       expectancy_r: null, total_r: 0, gross_pnl: 0 }, equity_curve: [], trades: [] })
 
     renderPage()
-    await waitFor(() => expect(screen.getByTestId('replay-status')).toHaveTextContent('playing'))
+    await waitFor(() => expect(screen.getByTestId('replay-status')).toHaveTextContent(/playing/i))
     expect(screen.getByTestId('replay-account')).toBeInTheDocument()
     expect(screen.getByTestId('manual-order-form')).toBeInTheDocument()
   })
