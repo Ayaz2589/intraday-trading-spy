@@ -42,12 +42,19 @@ def alpaca_bar_to_model(raw: Any) -> Bar:
 class PaperSessionRunner:
     def __init__(self, *, cfg: Config, session: dict, storage: Any,
                  broker: Any, market_stream_factory: Any,
-                 trade_stream_factory: Any, tick_seconds: float = 1.0) -> None:
+                 trade_stream_factory: Any, tick_seconds: float = 1.0,
+                 warmup_bars: list[Bar] | None = None) -> None:
         self._session = session
         self._storage = storage
         self._engine = LiveSessionEngine(
             cfg=cfg, session_id=session["id"], storage=storage, broker=broker,
         )
+        # Feature 023 — prime today's already-elapsed regular-session bars so
+        # session-anchored VWAP/OR are correct on the very first live bar
+        # (at-open or mid-session start). RTH-only by construction; applied
+        # before any live bar streams in.
+        if warmup_bars:
+            self._engine.session_state.warmup(warmup_bars)
         self._aggregator = BarAggregator()
         self._stop = asyncio.Event()
         self._tick_seconds = tick_seconds

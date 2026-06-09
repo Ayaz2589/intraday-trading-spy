@@ -421,3 +421,46 @@ def test_manual_close_flattens_and_marks_exit_reason_manual():
                          "filled_avg_price": 526.00,
                          "timestamp": datetime(2026, 6, 8, 11, 0, tzinfo=ET)})
     assert storage.trades[0]["exit_reason"] == "manual"
+
+
+# ---- pre-open guard (Feature 023 US1) -------------------------------------------
+
+_PRE_OPEN = [(9, 0), (9, 5), (9, 10), (9, 15), (9, 20), (9, 25)]
+_SIGNAL_KINDS = {"emitted", "approved", "rejected", "executed", "exited",
+                 "force_flat", "lockout", "skipped_window"}
+
+
+def test_preopen_bars_are_dropped_no_state_no_trades():
+    """T003 — a bar before clock.session_start never enters the session frame
+    and never triggers any signal-taxonomy event or order. (FR-002)"""
+    eng, storage, broker = _engine()
+    for hh, mm in _PRE_OPEN:
+        eng.on_five_minute_bar(_bar(hh, mm))
+    assert eng.session_state.bar_count == 0
+    assert broker.brackets == []
+    assert not (set(storage.kinds()) & _SIGNAL_KINDS)
+
+
+def test_preopen_journals_one_pre_open_event_per_bar():
+    """T005 — pre-open data activity is recorded (one event per bar). (FR-005)"""
+    eng, storage, _ = _engine()
+    for hh, mm in _PRE_OPEN:
+        eng.on_five_minute_bar(_bar(hh, mm))
+    assert storage.kinds().count("pre_open") == len(_PRE_OPEN)
+
+
+def test_preopen_bars_do_not_corrupt_vwap_or_for_rth_bars():
+    """T004 / SC-002 — VWAP & opening range for RTH bars are identical whether
+    or not (wildly different) pre-open bars were received earlier. (FR-003/004)"""
+    eng_a, storage_a, _ = _engine()
+    for hh, mm in _PRE_OPEN:  # extreme prices: would wreck VWAP/OR if leaked
+        eng_a.on_five_minute_bar(_bar(hh, mm, o=600, h=601, lo=599, c=600.5, v=9999))
+    _walk_to_signal(eng_a)
+
+    eng_b, storage_b, _ = _engine()
+    _walk_to_signal(eng_b)
+
+    emit_a = next(e for e in storage_a.events if e["kind"] == "emitted")
+    emit_b = next(e for e in storage_b.events if e["kind"] == "emitted")
+    for key in ("vwap", "or_high", "or_low", "distance_from_vwap_pct"):
+        assert emit_a["payload"][key] == emit_b["payload"][key], key

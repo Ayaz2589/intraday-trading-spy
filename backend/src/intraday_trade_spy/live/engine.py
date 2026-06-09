@@ -78,6 +78,16 @@ class LiveSessionEngine:
     # ---- bar flow ------------------------------------------------------------------
 
     def on_five_minute_bar(self, bar: Bar) -> None:
+        # Feature 023 — pre-open guard. A bar before the regular-session open
+        # is recorded as data activity then dropped: it must NEVER enter the
+        # session frame (it would corrupt the session-anchored VWAP and the
+        # first-bar-anchored opening range) and must never be evaluated. The
+        # strategy stays anchored to clock.session_start (09:30 ET).
+        if bar.timestamp.astimezone(ET).time() < self.clock.session_start:
+            self.journal.lifecycle(
+                "pre_open", timestamp=bar.timestamp, trading_day=bar.session_date,
+            )
+            return
         self._last_data_at = bar.timestamp
         self._roll_day(bar)
         snap = self.session_state.append(bar)
