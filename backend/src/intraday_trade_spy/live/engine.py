@@ -88,7 +88,10 @@ class LiveSessionEngine:
                 "pre_open", timestamp=bar.timestamp, trading_day=bar.session_date,
             )
             return
-        self._last_data_at = bar.timestamp
+        # Advance-only: never regress the freshness clock below a more-recent
+        # arrival recorded by record_data (the 5m bucket timestamp lags ~5 min).
+        if self._last_data_at is None or bar.timestamp > self._last_data_at:
+            self._last_data_at = bar.timestamp
         self._roll_day(bar)
         snap = self.session_state.append(bar)
 
@@ -380,6 +383,15 @@ class LiveSessionEngine:
             )
 
     # ---- clock ticks -----------------------------------------------------------------
+
+    def record_data(self, now: datetime) -> None:
+        """Mark that live market data arrived at wall-clock `now`. Called per
+        raw 1-minute bar by the runner. Staleness (FR safety pause) is measured
+        against real arrivals — NOT the completed-5m bucket-start timestamp,
+        which lags up to 5 minutes and would otherwise false-trip the pause
+        every cycle even while 1m bars stream in normally."""
+        if self._last_data_at is None or now > self._last_data_at:
+            self._last_data_at = now
 
     def on_tick(self, now: datetime) -> None:
         self._check_stale(now)

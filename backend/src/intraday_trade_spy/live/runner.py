@@ -63,6 +63,7 @@ class PaperSessionRunner:
             factory=market_stream_factory,
             on_bar=self.on_raw_bar,
             on_gap=self._on_gap,
+            on_fatal=self._on_data_fatal,
         )
         self._trades = TradeUpdateStream(
             factory=trade_stream_factory,
@@ -75,6 +76,9 @@ class PaperSessionRunner:
     def on_raw_bar(self, raw: Any) -> None:
         try:
             bar = alpaca_bar_to_model(raw)
+            # Freshness is per-arrival (1m bars stream ~every 60s), so the
+            # stale-data pause measures real data flow, not the 5m bucket lag.
+            self._engine.record_data(datetime.now(UTC))
             for five in self._aggregator.push(bar):
                 self._engine.on_five_minute_bar(five)
         except Exception as exc:  # noqa: BLE001 — a bad bar must not kill the loop
@@ -89,6 +93,30 @@ class PaperSessionRunner:
             )
         except Exception:  # noqa: BLE001
             _log.warning("could not journal data gap: %s", exc)
+
+    def _on_data_fatal(self, exc: Exception) -> None:
+        """Feature 024 — a fatal market-data error (connection-limit / HTTP 429 /
+        auth). The stream already stopped itself instead of hammering; end the
+        whole session cleanly: journal it, flip the DB row to `interrupted`, and
+        signal stop. The operator must resolve the duplicate connection and
+        restart — we never silently retry into a rate-limit spiral."""
+        now = datetime.now(UTC)
+        reason = f"market data feed fatal: {exc}"
+        try:
+            self._engine.journal.lifecycle(
+                "safety_pause", timestamp=now,
+                trading_day=now.astimezone(ET).date(), reason=reason,
+            )
+        except Exception:  # noqa: BLE001 — never fail the shutdown path
+            _log.warning("could not journal data-fatal: %s", exc)
+        try:
+            self._storage.stop_paper_session(
+                session_id=self._session["id"], status="interrupted",
+                stop_reason=reason,
+            )
+        except Exception:  # noqa: BLE001
+            _log.warning("could not flip session row on data-fatal: %s", exc)
+        self.request_stop(reason=reason)
 
     # ---- lifecycle ------------------------------------------------------------------
 

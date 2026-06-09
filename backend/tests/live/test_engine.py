@@ -464,3 +464,25 @@ def test_preopen_bars_do_not_corrupt_vwap_or_for_rth_bars():
     emit_b = next(e for e in storage_b.events if e["kind"] == "emitted")
     for key in ("vwap", "or_high", "or_low", "distance_from_vwap_pct"):
         assert emit_a["payload"][key] == emit_b["payload"][key], key
+
+
+# ---- staleness measured by arrival, not 5m bucket timestamp (Feature 024) -------
+
+def test_record_data_keeps_session_fresh_between_5m_bars():
+    """A 5m bar is stamped at its bucket START (up to 5 min old). As long as
+    1m bars keep arriving (record_data), the stale pause must NOT trip."""
+    eng, storage, broker = _engine()
+    eng.on_five_minute_bar(_bar(9, 30, c=524.9))      # stamped 09:30
+    eng.record_data(datetime(2026, 6, 8, 9, 33, tzinfo=ET))   # 1m bar arrived 09:33
+    eng.on_tick(datetime(2026, 6, 8, 9, 34, tzinfo=ET))       # 60s since arrival
+    assert "safety_pause" not in storage.kinds()
+    assert storage.session["entries_paused"] is False
+
+
+def test_stale_pause_still_fires_when_arrivals_actually_stop():
+    """If no data arrives for > stale_data_seconds, the pause still fires."""
+    eng, storage, broker = _engine()
+    eng.on_five_minute_bar(_bar(9, 30, c=524.9))
+    eng.record_data(datetime(2026, 6, 8, 9, 30, tzinfo=ET))
+    eng.on_tick(datetime(2026, 6, 8, 9, 45, tzinfo=ET))       # 15 min, no arrivals
+    assert "safety_pause" in storage.kinds()

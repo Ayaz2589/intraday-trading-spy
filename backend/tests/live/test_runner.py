@@ -34,6 +34,9 @@ def test_on_raw_bar_pumps_completed_buckets_into_the_engine():
     seen = []
 
     class FakeEngine:
+        def record_data(self, now):
+            pass
+
         def on_five_minute_bar(self, bar):
             seen.append(bar)
 
@@ -118,3 +121,26 @@ def test_runner_without_warmup_is_empty():
         trade_stream_factory=lambda: None,
     )
     assert runner._engine.session_state.bar_count == 0
+
+
+def test_on_raw_bar_records_data_freshness_every_minute():
+    """Feature 024 — each raw 1m bar marks data fresh (so the stale pause
+    tracks real arrivals, not the lagging 5m bucket timestamp)."""
+    from intraday_trade_spy.live.runner import PaperSessionRunner
+    from intraday_trade_spy.live.aggregator import BarAggregator
+
+    fresh = []
+
+    class FakeEngine:
+        def record_data(self, now):
+            fresh.append(now)
+
+        def on_five_minute_bar(self, bar):
+            pass
+
+    runner = PaperSessionRunner.__new__(PaperSessionRunner)
+    runner._engine = FakeEngine()
+    runner._aggregator = BarAggregator()
+    for mm in (30, 31, 32):
+        runner.on_raw_bar(_raw(13, mm))
+    assert len(fresh) == 3   # one freshness mark per raw 1m bar

@@ -14,18 +14,41 @@ from typing import Any
 
 DEFAULT_BACKOFF = (1, 2, 4, 8, 16, 30)
 
+# Auth-class failures that retrying CANNOT fix and that get WORSE if hammered:
+# another live connection already holds the slot ("connection limit exceeded"),
+# the broker is rate-limiting us (HTTP 429), or credentials are bad. We must
+# stop and surface these — never loop on them (Feature 024).
+_FATAL_MARKERS = (
+    "connection limit exceeded",
+    "http 429",
+    "too many requests",
+    "auth failed",
+    "unauthorized",
+    "forbidden",
+    "http 403",
+)
+
+
+def is_fatal_stream_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _FATAL_MARKERS)
+
 
 class MarketDataStream:
     """Pumps 1-minute SPY bars from a stream factory into on_bar; reconnects
-    forever (until the stop event) with backoff, reporting gaps."""
+    with backoff on TRANSIENT drops (until the stop event), reporting gaps. A
+    FATAL auth/connection-limit error stops the loop and fires on_fatal —
+    retrying it would only hammer the broker (Feature 024)."""
 
     def __init__(self, *, factory: Callable[[], Any], on_bar: Callable[[Any], None],
                  on_gap: Callable[[Exception], None],
+                 on_fatal: Callable[[Exception], None] | None = None,
                  backoff_seconds: tuple = DEFAULT_BACKOFF,
                  sleep: Callable[[float], Any] | None = None) -> None:
         self._factory = factory
         self._on_bar = on_bar
         self._on_gap = on_gap
+        self._on_fatal = on_fatal
         self._backoff = backoff_seconds
         self._sleep = sleep or asyncio.sleep
 
@@ -47,6 +70,12 @@ class MarketDataStream:
                 if stop.is_set():
                     return
                 self._on_gap(exc)
+                if is_fatal_stream_error(exc):
+                    # Do NOT retry — surface it and stop (the runner ends the
+                    # session). Hammering an auth/limit error makes it worse.
+                    if self._on_fatal is not None:
+                        self._on_fatal(exc)
+                    return
                 delay = self._backoff[min(attempt, len(self._backoff) - 1)]
                 attempt += 1
                 await self._sleep(delay)
