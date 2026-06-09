@@ -366,3 +366,97 @@ def test_close_position_200_flattens(
     resp = unit_client.post("/api/trade/position/close")
     assert resp.status_code == 200, resp.text
     fake_market.flatten.assert_called_once()
+
+
+# ---- Feature 023: pre-open warmup wiring (US2) -------------------------------------
+
+def _warmup_1m_df(start_hh=9, start_mm=30, n=12):
+    """A regular-session 1m frame like fetch_intraday_df returns (start=09:30)."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    import pandas as pd
+
+    et = ZoneInfo("America/New_York")
+    t0 = datetime(2026, 6, 8, start_hh, start_mm, tzinfo=et)
+    rows, px = [], 525.0
+    for i in range(n):
+        px += 0.05
+        rows.append({"timestamp": t0 + timedelta(minutes=i), "open": px,
+                     "high": px + 0.1, "low": px - 0.1, "close": px + 0.05,
+                     "volume": 1000})
+    return pd.DataFrame(rows)
+
+
+def test_fetch_warmup_bars_aggregates_completed_5m_rth_only(monkeypatch):
+    """T012 / FR-007 — warmup yields completed 5m bars, all at/after 09:30 ET
+    (RTH-only by construction; the open final bucket is left to the stream)."""
+    from zoneinfo import ZoneInfo
+
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    et = ZoneInfo("America/New_York")
+    monkeypatch.setattr(trade_router, "fetch_intraday_df",
+                        lambda: _warmup_1m_df(n=12))  # 09:30–09:41 → buckets 30,35
+    bars = trade_router.fetch_warmup_bars()
+    assert len(bars) >= 2  # 09:30 and 09:35 completed buckets
+    assert all(b.timestamp.astimezone(et).time().hour * 60
+               + b.timestamp.astimezone(et).time().minute >= 9 * 60 + 30
+               for b in bars)
+    # completed-bucket granularity: every returned bar is on a 5-min boundary
+    assert all(b.timestamp.astimezone(et).minute % 5 == 0 for b in bars)
+
+
+def test_fetch_warmup_bars_empty_when_no_data(monkeypatch):
+    """T011 / FR-008 — empty fetch → empty warmup, no error."""
+    import pandas as pd
+
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    monkeypatch.setattr(trade_router, "fetch_intraday_df", lambda: pd.DataFrame())
+    assert trade_router.fetch_warmup_bars() == []
+
+
+def test_fetch_warmup_bars_fail_soft_when_fetch_raises(monkeypatch):
+    """T011 / FR-008 — a fetch error must not escape; warmup degrades to []."""
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    def _boom():
+        raise RuntimeError("alpaca down")
+
+    monkeypatch.setattr(trade_router, "fetch_intraday_df", _boom)
+    assert trade_router.fetch_warmup_bars() == []
+
+
+def test_warmup_session_journals_loaded_count(monkeypatch):
+    """T011 / FR-006 — the start path journals a `warmup` event with loaded=N."""
+    from unittest import mock
+
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    monkeypatch.setattr(trade_router, "fetch_intraday_df", lambda: _warmup_1m_df(n=12))
+    storage = mock.MagicMock()
+    bars = trade_router.warmup_session(storage, "ps-1")
+    assert len(bars) >= 2
+    evt = [c.kwargs for c in storage.append_paper_event.call_args_list
+           if c.kwargs.get("kind") == "warmup"]
+    assert len(evt) == 1
+    assert evt[0]["payload"]["loaded"] == len(bars)
+
+
+def test_warmup_session_journals_zero_on_failure(monkeypatch):
+    """T011 / FR-008 — on fetch failure, warmup is journaled loaded=0, no raise."""
+    from unittest import mock
+
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    def _boom():
+        raise RuntimeError("alpaca down")
+
+    monkeypatch.setattr(trade_router, "fetch_intraday_df", _boom)
+    storage = mock.MagicMock()
+    bars = trade_router.warmup_session(storage, "ps-1")
+    assert bars == []
+    evt = [c.kwargs for c in storage.append_paper_event.call_args_list
+           if c.kwargs.get("kind") == "warmup"]
+    assert len(evt) == 1 and evt[0]["payload"]["loaded"] == 0

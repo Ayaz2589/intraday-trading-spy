@@ -52,3 +52,69 @@ def test_on_raw_bar_pumps_completed_buckets_into_the_engine():
     runner.on_raw_bar(_raw(13, 35))
     assert len(seen) == 1
     assert seen[0].timestamp.astimezone(ET).minute == 30
+
+
+# ---- warmup wiring (Feature 023 US2) --------------------------------------------
+
+def _cfg():
+    from pathlib import Path
+
+    from intraday_trade_spy.config import load_config
+
+    return load_config(Path(__file__).resolve().parents[2] / "config" / "config.yaml")
+
+
+def _rth_5m_bars(n=4):
+    from datetime import date, timedelta
+
+    from intraday_trade_spy.models import Bar
+
+    day = date(2026, 6, 8)
+    t0 = datetime(2026, 6, 8, 9, 30, tzinfo=ET)
+    out = []
+    px = 525.0
+    for i in range(n):
+        px += 0.2
+        out.append(Bar(symbol="SPY", timestamp=t0 + timedelta(minutes=5 * i),
+                       open=px, high=px + 0.3, low=px - 0.3, close=px + 0.1,
+                       volume=1000 + i, session_date=day))
+    return out
+
+
+class _FakeStorage:
+    def append_paper_event(self, **kw):
+        return 1
+
+
+class _FakeBroker:
+    def get_position(self):
+        return None
+
+
+def test_runner_applies_warmup_bars_before_streaming():
+    """T010 / C2 — warmup bars are loaded into the engine's session state at
+    construction, before any live bar is streamed."""
+    from intraday_trade_spy.live.runner import PaperSessionRunner
+
+    warmup = _rth_5m_bars(4)
+    runner = PaperSessionRunner(
+        cfg=_cfg(), session={"id": "ps-1"}, storage=_FakeStorage(),
+        broker=_FakeBroker(),
+        market_stream_factory=lambda: None,
+        trade_stream_factory=lambda: None,
+        warmup_bars=warmup,
+    )
+    assert runner._engine.session_state.bar_count == 4
+
+
+def test_runner_without_warmup_is_empty():
+    """T010 — default (no warmup) leaves the session frame empty."""
+    from intraday_trade_spy.live.runner import PaperSessionRunner
+
+    runner = PaperSessionRunner(
+        cfg=_cfg(), session={"id": "ps-2"}, storage=_FakeStorage(),
+        broker=_FakeBroker(),
+        market_stream_factory=lambda: None,
+        trade_stream_factory=lambda: None,
+    )
+    assert runner._engine.session_state.bar_count == 0

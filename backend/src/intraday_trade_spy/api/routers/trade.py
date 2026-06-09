@@ -52,6 +52,9 @@ async def run_paper_session_task(*, session: dict, user_id, storage) -> None:
         secret = os.environ["ALPACA_SECRET_KEY"]
         feed = DataFeed.SIP if cfg.alpaca.feed == "sip" else DataFeed.IEX
 
+        # Feature 023 — backfill today's elapsed RTH bars so indicators are
+        # correct on the first live bar (journals the warmup outcome; fail-soft).
+        warmup_bars = warmup_session(storage, session["id"])
         runner = PaperSessionRunner(
             cfg=cfg,
             session=session,
@@ -59,6 +62,7 @@ async def run_paper_session_task(*, session: dict, user_id, storage) -> None:
             broker=AlpacaPaperBroker(),
             market_stream_factory=lambda: StockDataStream(key, secret, feed=feed),
             trade_stream_factory=lambda: TradingStream(key, secret, paper=True),
+            warmup_bars=warmup_bars,
         )
         await runner.run()
     except Exception as exc:  # noqa: BLE001 — last-resort interrupt
@@ -189,6 +193,50 @@ def fetch_intraday_df():
         "timestamp": b.timestamp, "open": float(b.open), "high": float(b.high),
         "low": float(b.low), "close": float(b.close), "volume": int(b.volume),
     } for b in bars])
+
+
+def fetch_warmup_bars() -> list:
+    """Feature 023 — today's already-elapsed regular-session bars as completed
+    5m `Bar`s, for indicator warmup at session start. Reuses the RTH intraday
+    fetcher (start=09:30) so it is RTH-only by construction, then aggregates
+    1m → completed 5m buckets. The still-open final bucket is intentionally
+    NOT flushed — the live stream continues from it (avoids a duplicate bar at
+    the boundary). Fail-soft: returns [] on empty data or any error so a start
+    never crashes (FR-008)."""
+    try:
+        from intraday_trade_spy.live.aggregator import BarAggregator
+        from intraday_trade_spy.models import Bar
+
+        df = fetch_intraday_df()
+        if df is None or df.empty:
+            return []
+        agg = BarAggregator()
+        out: list = []
+        for row in df.itertuples(index=False):
+            ts = row.timestamp
+            bar = Bar(
+                symbol="SPY", timestamp=ts, open=float(row.open),
+                high=float(row.high), low=float(row.low), close=float(row.close),
+                volume=int(row.volume), session_date=ts.astimezone(ET).date(),
+            )
+            out += agg.push(bar)
+        return out  # completed buckets only — open bucket left to the stream
+    except Exception:  # noqa: BLE001 — warmup is best-effort; never fail the start
+        return []
+
+
+def warmup_session(storage, session_id) -> list:
+    """Fetch RTH warmup bars and journal the outcome (FR-006). Always journals
+    a `warmup` event (loaded=N, including 0) so the audit trail records the
+    backfill; never raises (fetch_warmup_bars is itself fail-soft)."""
+    bars = fetch_warmup_bars()
+    try:
+        LiveJournal(storage, session_id=session_id).lifecycle(
+            "warmup", timestamp=_now(), trading_day=_today(), loaded=len(bars),
+        )
+    except Exception:  # noqa: BLE001 — journaling must not fail the start
+        pass
+    return bars
 
 
 def fetch_daily_df(days: int):
