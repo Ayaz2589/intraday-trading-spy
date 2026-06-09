@@ -26,6 +26,42 @@ ET = ZoneInfo("America/New_York")
 
 router = APIRouter(prefix="/trade")
 
+# Feature 024 — transient Alpaca REST failures (SSL EOF, connection resets,
+# timeouts, "max retries exceeded") are common under load and self-recover; a
+# blind 500 blips the chart on every poll. Retry a few times with short
+# backoff, then let callers surface a clean 503.
+_TRANSIENT_NET_MARKERS = (
+    "ssl", "eof occurred", "unexpected_eof", "connection reset",
+    "connection aborted", "connectionerror", "timed out", "timeout",
+    "max retries exceeded", "remotedisconnected", "temporarily unavailable",
+)
+
+
+def is_transient_net_error(exc: Exception) -> bool:
+    text = f"{type(exc).__name__} {exc}".lower()
+    return any(marker in text for marker in _TRANSIENT_NET_MARKERS)
+
+
+def retry_transient(fn, *, attempts: int = 3, backoff: tuple = (0.25, 0.75),
+                    sleep=None):
+    """Call fn(); on a TRANSIENT network/SSL error retry up to `attempts` times
+    with short backoff. Non-transient errors raise immediately; a transient
+    error that survives every attempt re-raises (callers map it to 503)."""
+    import time as _time
+
+    sleep = sleep or _time.sleep
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001 — reraised below
+            if not is_transient_net_error(exc):
+                raise
+            last = exc
+            if i < attempts - 1:
+                sleep(backoff[min(i, len(backoff) - 1)])
+    raise last  # type: ignore[misc]
+
 
 def _now() -> datetime:
     return datetime.now(UTC)
@@ -188,7 +224,7 @@ def fetch_intraday_df():
         adjustment=Adjustment.SPLIT,
         feed=DataFeed.SIP if cfg.alpaca.feed == "sip" else DataFeed.IEX,
     )
-    bars = client.get_stock_bars(req).data.get("SPY", [])
+    bars = retry_transient(lambda: client.get_stock_bars(req)).data.get("SPY", [])
     return pd.DataFrame([{
         "timestamp": b.timestamp, "open": float(b.open), "high": float(b.high),
         "low": float(b.low), "close": float(b.close), "volume": int(b.volume),
@@ -260,7 +296,7 @@ def fetch_daily_df(days: int):
         adjustment=Adjustment.SPLIT,
         feed=DataFeed.SIP if cfg.alpaca.feed == "sip" else DataFeed.IEX,
     )
-    bars = client.get_stock_bars(req).data.get("SPY", [])
+    bars = retry_transient(lambda: client.get_stock_bars(req)).data.get("SPY", [])
     return pd.DataFrame([{
         "timestamp": b.timestamp, "open": float(b.open), "high": float(b.high),
         "low": float(b.low), "close": float(b.close), "volume": int(b.volume),
@@ -394,15 +430,24 @@ def trade_bars(
                     "message": "view must be one of 1m, 5m, 1d, 30d"},
         )
     cfg = load_config(DEFAULT_CONFIG_PATH)
-    if view == "30d":
-        bars = daily_view(fetch_daily_df(cfg.paper.chart_30d_days), since=since)
-        vwap_available = False
-        vwap_reason = ("VWAP is anchored to a single trading session — it has "
-                       "no meaning on daily candles")
-    else:
-        bars = intraday_view(fetch_intraday_df(), view=view, since=since)
-        vwap_available = True
-        vwap_reason = None
+    try:
+        if view == "30d":
+            bars = daily_view(fetch_daily_df(cfg.paper.chart_30d_days), since=since)
+            vwap_available = False
+            vwap_reason = ("VWAP is anchored to a single trading session — it has "
+                           "no meaning on daily candles")
+        else:
+            bars = intraday_view(fetch_intraday_df(), view=view, since=since)
+            vwap_available = True
+            vwap_reason = None
+    except Exception as exc:  # noqa: BLE001 — transient Alpaca blip → clean 503
+        if is_transient_net_error(exc):
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "data_unavailable",
+                        "message": "market data temporarily unavailable; please retry"},
+            ) from exc
+        raise
 
     levels = None
     if _have_creds():

@@ -460,3 +460,68 @@ def test_warmup_session_journals_zero_on_failure(monkeypatch):
     evt = [c.kwargs for c in storage.append_paper_event.call_args_list
            if c.kwargs.get("kind") == "warmup"]
     assert len(evt) == 1 and evt[0]["payload"]["loaded"] == 0
+
+
+# ---- Feature 024: resilient Alpaca REST fetchers (retry + clean 503) --------------
+
+def test_is_transient_net_error_classifies_ssl_and_timeouts():
+    from intraday_trade_spy.api.routers import trade as t
+    assert t.is_transient_net_error(Exception("SSL: UNEXPECTED_EOF_WHILE_READING"))
+    assert t.is_transient_net_error(Exception("HTTPSConnectionPool ... Max retries exceeded"))
+    assert t.is_transient_net_error(Exception("connection reset by peer"))
+    assert t.is_transient_net_error(TimeoutError("timed out"))
+    assert not t.is_transient_net_error(ValueError("bad request"))
+    assert not t.is_transient_net_error(KeyError("SPY"))
+
+
+def test_retry_transient_retries_then_succeeds():
+    from intraday_trade_spy.api.routers import trade as t
+    calls, sleeps = [], []
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise Exception("SSL: UNEXPECTED_EOF_WHILE_READING")
+        return "ok"
+    out = t.retry_transient(flaky, attempts=3, backoff=(0.1, 0.2), sleep=sleeps.append)
+    assert out == "ok"
+    assert len(calls) == 3 and sleeps == [0.1, 0.2]
+
+
+def test_retry_transient_reraises_non_transient_immediately():
+    from intraday_trade_spy.api.routers import trade as t
+    calls = []
+    def boom():
+        calls.append(1)
+        raise ValueError("not a network error")
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        t.retry_transient(boom, attempts=3, sleep=lambda s: None)
+    assert len(calls) == 1   # no retry on non-transient
+
+
+def test_retry_transient_exhausts_then_reraises():
+    from intraday_trade_spy.api.routers import trade as t
+    calls = []
+    def always():
+        calls.append(1)
+        raise Exception("connection reset")
+    import pytest as _pytest
+    with _pytest.raises(Exception, match="connection reset"):
+        t.retry_transient(always, attempts=3, sleep=lambda s: None)
+    assert len(calls) == 3
+
+
+def test_trade_bars_returns_503_on_transient_fetch_error(
+    unit_client, stub_storage_client, alpaca_env, monkeypatch,
+):
+    """A persistent transient Alpaca error surfaces as a clean 503, not a 500."""
+    from intraday_trade_spy.api.routers import trade as trade_router
+
+    def _ssl_boom():
+        raise Exception("SSL: UNEXPECTED_EOF_WHILE_READING (data.alpaca.markets)")
+
+    monkeypatch.setattr(trade_router, "fetch_intraday_df", _ssl_boom)
+    stub_storage_client.get_running_paper_session.return_value = None
+    resp = unit_client.get("/api/trade/bars?view=1m")
+    assert resp.status_code == 503, resp.text
+    assert resp.json()["detail"]["error"] == "data_unavailable"
