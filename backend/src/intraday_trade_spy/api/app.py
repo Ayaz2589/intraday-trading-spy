@@ -21,6 +21,7 @@ from intraday_trade_spy.api.routers import (
     health,
     insights,
     recommend,
+    replay,
     research,
     reset,
     runs,
@@ -184,6 +185,7 @@ def create_app() -> FastAPI:
     app.include_router(recommend.router, prefix="/api")
     app.include_router(research.router, prefix="/api")
     app.include_router(trade.router, prefix="/api")
+    app.include_router(replay.router, prefix="/api")
     app.include_router(reset.router, prefix="/api")
 
     # NOTE: Feature 003's static-file endpoints continue to live in

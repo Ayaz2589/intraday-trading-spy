@@ -87,3 +87,20 @@ def test_flush_emits_the_open_bucket():
     out = agg.flush()
     assert len(out) == 1 and out[0].volume == 30
     assert agg.flush() == []  # idempotent
+
+
+def test_preopen_minutes_do_not_contaminate_the_0930_bucket():
+    """Feature 023 T006 / C3 — pre-open 1m bars flush as their own 5m bucket;
+    the 09:30 regular-session bar excludes all pre-open price/volume."""
+    agg = _agg()
+    for m in range(25, 30):  # pre-open 09:25–09:29, extreme values
+        agg.push(_bar(9, m, o=600, h=601, lo=599, c=600, v=9))
+    out = []
+    for m in range(30, 35):  # clean 09:30 bucket
+        out += agg.push(_bar(9, m, o=100, h=101, lo=99, c=100, v=100)) or []
+    out += agg.push(_bar(9, 35, o=100, h=100, lo=100, c=100, v=1)) or []
+    by_min = {b.timestamp.minute: b for b in out}
+    assert 25 in by_min                       # pre-open bucket emitted separately
+    b0930 = by_min[30]
+    assert b0930.high == 101 and b0930.low == 99   # no pre-open 601/599
+    assert b0930.volume == 500                     # 5×100, no pre-open volume

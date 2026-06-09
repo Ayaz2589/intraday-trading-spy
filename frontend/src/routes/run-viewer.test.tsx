@@ -335,6 +335,14 @@ describe("RunViewer route", () => {
       "forward_record",
       "manual_order",
       "live_journal",
+      // Feature 022 replay keys render on /trade/historic; coverage lives in
+      // components/trade/replay-help-coverage.test.tsx.
+      "replay",
+      "simulated_clock",
+      "playback_speed",
+      "simulated_fill",
+      "session_recap",
+      "strategy_automation_replay",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;

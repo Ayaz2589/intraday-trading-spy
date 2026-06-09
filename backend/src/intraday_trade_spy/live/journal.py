@@ -19,6 +19,9 @@ LIFECYCLE_KINDS = frozenset({
     "session_started", "session_stopped", "session_interrupted", "armed",
     "day_rolled", "data_gap", "safety_pause", "safety_resume",
     "reconcile_mismatch", "reconcile_ack", "broker_reject",
+    # Feature 023 — pre-open warmup: data flowing before the open (dropped,
+    # never traded) and the at-start warmup-backfill outcome.
+    "pre_open", "warmup",
 })
 
 

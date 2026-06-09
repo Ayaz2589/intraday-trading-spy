@@ -23,4 +23,11 @@ RUN pip install --upgrade pip && pip install -e ".[dev]" watchfiles
 
 EXPOSE 8001
 
-CMD ["uvicorn", "intraday_trade_spy.api.app:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+# --reload-exclude the live/ package: a running paper session owns a single
+# Alpaca market-data websocket (one connection per account). If --reload
+# restarts the worker while that session is live, the old websocket may not
+# close before the new one opens → "connection limit exceeded". Editing
+# live-session code therefore must NOT hot-reload; restart the container
+# manually to pick up live/ changes. All other src edits still hot-reload.
+CMD ["uvicorn", "intraday_trade_spy.api.app:app", "--host", "0.0.0.0", "--port", "8001", \
+     "--reload", "--reload-exclude", "*/intraday_trade_spy/live/*"]

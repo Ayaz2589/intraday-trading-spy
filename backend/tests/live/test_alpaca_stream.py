@@ -105,3 +105,94 @@ def test_trade_update_conversion_handles_missing_fills():
     out = trade_update_to_dict(data)
     assert out["filled_qty"] == 0 and out["filled_avg_price"] is None
     assert out["timestamp"] is not None  # defaults to now (aware)
+
+
+# ---- Feature 024: stop hammering on fatal auth / connection-limit errors --------
+
+@pytest.mark.asyncio
+@pytest.mark.api
+async def test_market_stream_stops_on_connection_limit_instead_of_hammering():
+    """A `connection limit exceeded` auth failure is FATAL: report it, fire
+    on_fatal once, and STOP the retry loop — never hammer the broker."""
+    from intraday_trade_spy.live.alpaca_stream import MarketDataStream
+
+    stop = asyncio.Event()
+    attempts = []
+    sleeps = []
+    fatals = []
+
+    class FakeStream:
+        def subscribe_bars(self, handler, symbol):
+            pass
+
+        async def _run_forever(self):
+            raise ValueError("connection limit exceeded")
+
+    def factory():
+        attempts.append(1)
+        return FakeStream()
+
+    async def fake_sleep(s):
+        sleeps.append(s)
+
+    stream = MarketDataStream(
+        factory=factory, on_bar=lambda b: None, on_gap=lambda e: None,
+        on_fatal=fatals.append, backoff_seconds=(1, 2, 4), sleep=fake_sleep,
+    )
+    await stream.run(stop)
+    assert len(attempts) == 1     # tried once, did NOT retry
+    assert sleeps == []           # no backoff-retry hammering
+    assert len(fatals) == 1       # surfaced the fatal error
+
+
+@pytest.mark.asyncio
+@pytest.mark.api
+async def test_market_stream_treats_http_429_as_fatal():
+    from intraday_trade_spy.live.alpaca_stream import MarketDataStream
+
+    stop = asyncio.Event()
+    attempts = []
+    fatals = []
+
+    class FakeStream:
+        def subscribe_bars(self, handler, symbol):
+            pass
+
+        async def _run_forever(self):
+            raise Exception("server rejected WebSocket connection: HTTP 429")
+
+    def factory():
+        attempts.append(1)
+        return FakeStream()
+
+    stream = MarketDataStream(
+        factory=factory, on_bar=lambda b: None, on_gap=lambda e: None,
+        on_fatal=fatals.append, sleep=lambda s: asyncio.sleep(0),
+    )
+    await stream.run(stop)
+    assert len(attempts) == 1 and len(fatals) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.api
+async def test_market_stream_without_on_fatal_still_stops_on_fatal_error():
+    """on_fatal is optional; a fatal error must still stop the loop (not loop)."""
+    from intraday_trade_spy.live.alpaca_stream import MarketDataStream
+
+    stop = asyncio.Event()
+    attempts = []
+
+    class FakeStream:
+        def subscribe_bars(self, handler, symbol):
+            pass
+
+        async def _run_forever(self):
+            raise ValueError("connection limit exceeded")
+
+    stream = MarketDataStream(
+        factory=lambda: (attempts.append(1), FakeStream())[1],
+        on_bar=lambda b: None, on_gap=lambda e: None,
+        sleep=lambda s: asyncio.sleep(0),
+    )
+    await stream.run(stop)
+    assert len(attempts) == 1

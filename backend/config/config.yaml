@@ -237,3 +237,10 @@ paper:
   reconcile_seconds: 5        # broker truth poll cadence (position/orders/equity)
   warmup_lookback_days: 1     # historical fetch span to rebuild today's session bars
   chart_30d_days: 30          # daily-bar span of the 30d chart view
+
+replay:
+  # Historic replay playback speeds (/trade/historic). Each value = simulated
+  # market-seconds elapsed per one real second: 1 = real-time, 3600 = a full
+  # 6.5h session in ~7s. default_speed must be one of speeds.
+  speeds: [1, 10, 30, 60, 300, 600, 1800, 3600]
+  default_speed: 60

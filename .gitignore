@@ -28,6 +28,9 @@ backend/.env.*
 !backend/.env.example
 backend/.supabase/
 
+# Local sandbox credentials (GitHub token, etc.) — never commit.
+sandbox.env
+
 # superpowers visual-companion sessions
 .superpowers/
 
