@@ -154,7 +154,18 @@ function ConfigRow({
                 fontSize: 'var(--fs-sm)',
               }}
             >
-              <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: 10 }}>
+              <span
+                aria-hidden
+                style={{
+                  color: 'var(--text-muted)',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  width: 16,
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                }}
+              >
                 {expanded ? '▾' : '▸'}
               </span>
               <span style={{ fontSize: 'var(--fs-md)' }}>{config.name}</span>
