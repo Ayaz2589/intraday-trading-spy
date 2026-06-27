@@ -200,13 +200,18 @@ function ConfigRow({
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
               {offCount > 0 && (
                 // Muted on purpose: ACTIVE (and the health badge) are the only
-                // accent badges, so rows stay scannable.
-                <span
-                  data-testid={`off-default-${config.name}`}
-                  className="chip"
-                  style={{ ...summaryChip, border: '1px solid var(--border)' }}
-                >
-                  {offCount} off default
+                // accent badges, so rows stay scannable. "customized" = knobs
+                // that differ from the config.yaml baseline (NOT the config
+                // named "default") — the HelpTooltip spells that out.
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span
+                    data-testid={`off-default-${config.name}`}
+                    className="chip"
+                    style={{ ...summaryChip, border: '1px solid var(--border)' }}
+                  >
+                    {offCount} customized
+                  </span>
+                  <HelpTooltip helpKey="customized_knobs" />
                 </span>
               )}
               {!config.is_active && (

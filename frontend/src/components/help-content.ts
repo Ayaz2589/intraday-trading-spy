@@ -126,13 +126,20 @@ export type HelpContentKey =
   // Feature 020 (entry-window filter) concept
   | "entry_window"
   // Feature 025 (human-readable config summary) concept
-  | "config_summary";
+  | "config_summary"
+  // Feature 025 follow-up (config "N customized" chip) concept
+  | "customized_knobs";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
   config_summary: {
     title: "Config summary",
     description:
       "A plain-English description of what this config does, generated automatically from its parameters (entry, stop, target, opening range, entry window). It is read-only — derived live, never stored or edited — so it always matches the config's actual knobs. The technical name above stays as the durable identifier.",
+  },
+  customized_knobs: {
+    title: "Customized knobs",
+    description:
+      "How many of this config's tunable knobs differ from the built-in baseline defaults in config.yaml (e.g. 0.1% risk per trade, 400% position cap, 2:1 reward, 2 max consecutive losses). It is measured against the config FILE baseline — NOT against the config named 'default', which is itself just a tunable starting point and may carry customized values. A higher number means a more heavily tuned config.",
   },
   vwap: {
     title: "VWAP",

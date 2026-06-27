@@ -119,7 +119,7 @@ describe('ConfigsSection', () => {
         onToggle={() => {}}
       />,
     )
-    expect(screen.getByTestId('off-default-wf-rr3')).toHaveTextContent('2 off default')
+    expect(screen.getByTestId('off-default-wf-rr3')).toHaveTextContent('2 customized')
     expect(screen.queryByTestId('off-default-default')).toBeNull()
   })
 
