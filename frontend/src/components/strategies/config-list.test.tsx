@@ -314,3 +314,35 @@ describe('ConfigsSection — ordering', () => {
     expect(rows[2].textContent).toContain('deep-combo')
   })
 })
+
+// Feature 025 — the auto-derived human-readable summary appears next to the
+// cryptic technical name, with an educational help tooltip.
+describe('ConfigsSection — config summary (025)', () => {
+  const SUMMARY = 'VWAP pullback · 0.2% stop buffer · 2:1 R:R'
+
+  it('renders the summary next to the technical name without replacing it (US1)', () => {
+    wrap(
+      <ConfigsSection
+        configs={[{ ...cfg('1', 'auto09-c3-buffer_pct0.2', true), summary: SUMMARY }]}
+        expandedId={null}
+        onToggle={() => {}}
+      />,
+    )
+    const row = screen.getByTestId('config-row-auto09-c3-buffer_pct0.2')
+    // technical name still present
+    expect(within(row).getByText('auto09-c3-buffer_pct0.2')).toBeInTheDocument()
+    // summary present alongside it
+    expect(within(row).getByTestId('config-summary')).toHaveTextContent(SUMMARY)
+  })
+
+  it('shows the config_summary educational help tooltip (US3)', () => {
+    wrap(
+      <ConfigsSection
+        configs={[{ ...cfg('1', 'auto09-c3', true), summary: SUMMARY }]}
+        expandedId={null}
+        onToggle={() => {}}
+      />,
+    )
+    expect(document.querySelector('[data-help-key="config_summary"]')).toBeTruthy()
+  })
+})

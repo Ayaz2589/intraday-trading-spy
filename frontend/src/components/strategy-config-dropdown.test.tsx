@@ -43,7 +43,12 @@ function config(over: Partial<Config>): Config {
   } as Config
 }
 
-const CONFIGS = [config({}), config({ id: 'c2', name: 'default', is_active: false })]
+// Feature 025 — the active config's auto-derived human summary.
+const ACTIVE_SUMMARY = 'VWAP pullback · ≤0.25% from VWAP · 0.05% stop buffer · 3:1 R:R'
+const CONFIGS = [
+  config({ summary: ACTIVE_SUMMARY }),
+  config({ id: 'c2', name: 'default', is_active: false }),
+]
 
 const STRATEGY: Strategy = {
   key: 'vwap_pullback_long',
@@ -117,5 +122,19 @@ describe('<StrategyConfigDropdown /> (read-only selector redesign)', () => {
     openPanel()
     fireEvent.click(screen.getByRole('button', { name: /create new strategy/i }))
     expect(navigate).toHaveBeenCalledWith({ to: '/strategies' })
+  })
+
+  // Feature 025 (US2) — the active config's human-readable summary helps the
+  // user confirm they're selecting the right config.
+  it('shows the active config summary in the panel', () => {
+    openPanel()
+    expect(screen.getByTestId('config-summary')).toHaveTextContent(ACTIVE_SUMMARY)
+    // and it lives inside the description box, next to the name (not replacing it)
+    expect(screen.getByTestId('strategy-description').textContent).toContain(ACTIVE_SUMMARY)
+  })
+
+  it('exposes the active config summary on the trigger title', () => {
+    render(<StrategyConfigDropdown />)
+    expect(screen.getByTestId('strategy-dropdown-trigger')).toHaveAttribute('title', ACTIVE_SUMMARY)
   })
 })

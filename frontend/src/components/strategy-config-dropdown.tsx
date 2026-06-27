@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useActivateConfig, useConfigs } from '@/hooks/useConfigs'
 import { useStrategies } from '@/hooks/useStrategies'
 import { get, knobsFromConfig } from '@/lib/config-knobs'
+import { ConfigSummary } from '@/components/strategies/config-summary'
 
 // Strategy panel (redesigned): a read-only strategy SELECTOR. Pick which
 // named config is active and read what it does — the strategy's description
@@ -65,6 +66,7 @@ export function StrategyConfigDropdown() {
         <button
           type="button"
           data-testid="strategy-dropdown-trigger"
+          title={config?.summary}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -156,6 +158,12 @@ export function StrategyConfigDropdown() {
           <div style={{ fontWeight: 700, fontSize: 'var(--fs-sm, 13px)', marginBottom: 4 }}>
             {displayName}
           </div>
+          {/* 025: the active config's auto-derived human summary */}
+          {config?.summary && (
+            <div style={{ marginBottom: 8 }}>
+              <ConfigSummary summary={config.summary} highlights={config.highlights} />
+            </div>
+          )}
           {strategy?.description && (
             <p style={{ margin: '0 0 8px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               {strategy.description}

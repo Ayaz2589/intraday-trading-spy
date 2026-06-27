@@ -124,9 +124,16 @@ export type HelpContentKey =
   | "stopping_rules"
   | "ready_for_lockbox"
   // Feature 020 (entry-window filter) concept
-  | "entry_window";
+  | "entry_window"
+  // Feature 025 (human-readable config summary) concept
+  | "config_summary";
 
 export const HELP_CONTENT: Record<HelpContentKey, HelpContent> = {
+  config_summary: {
+    title: "Config summary",
+    description:
+      "A plain-English description of what this config does, generated automatically from its parameters (entry, stop, target, opening range, entry window). It is read-only — derived live, never stored or edited — so it always matches the config's actual knobs. The technical name above stays as the durable identifier.",
+  },
   vwap: {
     title: "VWAP",
     description:
