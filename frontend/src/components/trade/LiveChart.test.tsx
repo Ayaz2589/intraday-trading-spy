@@ -22,6 +22,7 @@ vi.mock('klinecharts', () => {
   }
 })
 
+import { init } from 'klinecharts'
 const { LiveChart } = await import('./LiveChart')
 import type { LiveBars } from '@/hooks/useTrade'
 
@@ -75,5 +76,23 @@ describe('LiveChart', () => {
   it('pairs VWAP with a HelpTooltip', () => {
     const { container } = render(<LiveChart view="5m" onView={vi.fn()} data={bars()} />)
     expect(container.querySelector('[data-help-key="vwap"]')).toBeTruthy()
+  })
+
+  // The klinecharts default grid is too prominent in dark mode; apply the
+  // design's subtle `--grid` token (matches price-chart) so the dashed
+  // horizontal lines recede.
+  it('styles the grid with a subtle color instead of the library default', () => {
+    render(<LiveChart view="5m" onView={vi.fn()} data={bars()} />)
+    const chart = vi.mocked(init).mock.results.at(-1)?.value as {
+      setStyles: ReturnType<typeof vi.fn>
+    }
+    const gridCalls = chart.setStyles.mock.calls.filter(
+      (call: unknown[]) => (call[0] as { grid?: { horizontal?: { color?: string } } })?.grid?.horizontal?.color,
+    )
+    expect(gridCalls.length).toBeGreaterThan(0)
+    const color = (gridCalls.at(-1)![0] as { grid: { horizontal: { color: string } } }).grid
+      .horizontal.color
+    expect(typeof color).toBe('string')
+    expect(color.length).toBeGreaterThan(0)
   })
 })

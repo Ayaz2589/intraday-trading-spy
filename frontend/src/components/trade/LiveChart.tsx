@@ -4,9 +4,16 @@ import {
   type Chart, type KLineData,
 } from 'klinecharts'
 import { HelpTooltip } from '../help-tooltip'
+import { useTheme } from '@/lib/theme'
 import type { TradeView } from '@/api/trade'
 import type { LiveBars } from '@/hooks/useTrade'
 import { TONE_COLOR, type ReplayMarker } from './replay-markers'
+
+// Read a design token (e.g. `--grid`) so the canvas grid tracks the theme.
+function resolveToken(name: string): string {
+  if (typeof document === 'undefined') return ''
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
 
 // Feature 021 (US2, FR-013/014/015): the live SPY chart. Bars arrive from
 // the polled /api/trade/bars increments; VWAP values are the backend's
@@ -71,6 +78,7 @@ export function LiveChart({
   const elRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [hover, setHover] = useState<HoverState>(null)
+  const { theme } = useTheme()
 
   useEffect(() => {
     if (!elRef.current) return
@@ -88,6 +96,18 @@ export function LiveChart({
       chartRef.current = null
     }
   }, [])
+
+  // The klinecharts default grid is too bright (esp. in dark mode); apply the
+  // design's subtle `--grid` token so the dashed horizontal lines recede, and
+  // re-apply on theme change. Mirrors price-chart.tsx.
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    const grid =
+      resolveToken('--grid') ||
+      (theme === 'dark' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(15, 23, 42, 0.06)')
+    chart.setStyles({ grid: { horizontal: { color: grid }, vertical: { color: grid } } })
+  }, [theme])
 
   useEffect(() => {
     const chart = chartRef.current
