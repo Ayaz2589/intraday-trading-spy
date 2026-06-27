@@ -4,6 +4,7 @@ import { useActivateConfig, useDeleteConfig, useRenameConfig } from '@/hooks/use
 import { HelpTooltip } from '@/components/help-tooltip'
 import { SectionTitle, cardSection } from '@/components/section-title'
 import { ConfigEditor } from './config-editor'
+import { ConfigSummary } from './config-summary'
 import { inputStyle } from './field'
 import { configDiffChips, knobsFromConfig, offDefaultKeys } from '@/lib/config-knobs'
 import { ActiveConfigHealthBadge } from '@/components/recommend/HealthBadge'
@@ -153,7 +154,18 @@ function ConfigRow({
                 fontSize: 'var(--fs-sm)',
               }}
             >
-              <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: 10 }}>
+              <span
+                aria-hidden
+                style={{
+                  color: 'var(--text-muted)',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  width: 16,
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                }}
+              >
                 {expanded ? '▾' : '▸'}
               </span>
               <span style={{ fontSize: 'var(--fs-md)' }}>{config.name}</span>
@@ -242,6 +254,13 @@ function ConfigRow({
           </span>
         )}
       </div>
+      {/* 025: auto-derived plain-English summary of what the config does,
+          shown UNDER the technical name (which stays as the identifier). */}
+      {config.summary && (
+        <div style={{ padding: '0 12px 10px 30px' }}>
+          <ConfigSummary summary={config.summary} highlights={config.highlights} help />
+        </div>
+      )}
       {expanded && !renaming && (
         <div style={{ borderTop: '1px solid var(--border)', padding: 12 }}>
           <ConfigEditor key={config.id} config={config} />

@@ -13,7 +13,9 @@ from decimal import Decimal
 from typing import Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+
+from intraday_trade_spy.config_summary import summarize_config
 
 
 class _Base(BaseModel):
@@ -192,6 +194,12 @@ class RunSessionsResponse(_ResponseBase):
     sessions: list[date]
 
 
+class ConfigHighlightView(_ResponseBase):
+    # Feature 025 — one salient param rendered for humans.
+    label: str
+    value: str
+
+
 class ConfigView(_ResponseBase):
     id: UUID
     name: str
@@ -201,6 +209,22 @@ class ConfigView(_ResponseBase):
     params: dict
     is_active: bool = False  # Feature 012
     description: Optional[str] = None  # Feature 017 — provenance
+
+    # Feature 025 — auto-derived, read-only human-readable summary of what this
+    # config does, computed from `params` (never persisted, never reads/writes
+    # `description`). Serialized on every config response via computed fields.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def summary(self) -> str:
+        return summarize_config(self.params).summary
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def highlights(self) -> list[ConfigHighlightView]:
+        return [
+            ConfigHighlightView(label=h.label, value=h.value)
+            for h in summarize_config(self.params).highlights
+        ]
 
 
 class StrategyView(_ResponseBase):

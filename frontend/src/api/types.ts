@@ -144,7 +144,16 @@ export type Config = {
   is_active?: boolean
   // Feature 017 — durable provenance (e.g. drafted from a Claude experiment).
   description?: string | null
+  // Feature 025 — auto-derived, read-only human-readable summary of what the
+  // config does (computed server-side from params). Optional so pre-025 cached
+  // shapes still type-check; the backend always populates them.
+  summary?: string
+  highlights?: ConfigHighlight[]
 }
+
+// Feature 025 — one salient parameter, rendered for humans (e.g.
+// { label: 'stop buffer (%)', value: '0.2%' }).
+export type ConfigHighlight = { label: string; value: string }
 
 // Feature 012 — built-in preset a config can be created from. Read-only
 // templates surfaced by GET /api/configs/presets; not user-editable themselves.

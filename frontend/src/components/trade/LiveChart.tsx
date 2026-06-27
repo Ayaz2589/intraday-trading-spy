@@ -41,11 +41,10 @@ registerOverlay({
   needDefaultPointFigure: false,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  // @ts-expect-error klinecharts createPointFigures signature varies by version
   createPointFigures: ({ coordinates, overlay }) => {
     const c = coordinates?.[0]
     if (!c) return []
-    const color = (overlay?.extendData?.color as string) ?? '#8a96ab'
+    const color = ((overlay?.extendData as { color?: string } | undefined)?.color) ?? '#8a96ab'
     return [{
       type: 'circle',
       attrs: { x: c.x, y: c.y, r: 5 },

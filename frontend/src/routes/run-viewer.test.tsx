@@ -343,6 +343,9 @@ describe("RunViewer route", () => {
       "simulated_fill",
       "session_recap",
       "strategy_automation_replay",
+      // Feature 025 config-summary key renders on /strategies; coverage lives in
+      // components/strategies/config-list.test.tsx + config-summary.test.tsx.
+      "config_summary",
     ]);
     for (const key of Object.keys(HELP_CONTENT)) {
       if (feature007Keys.has(key)) continue;
