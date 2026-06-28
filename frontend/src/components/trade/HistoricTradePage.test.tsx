@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 vi.mock('klinecharts', () => ({
   init: vi.fn(() => ({ setSymbol: vi.fn(), setPeriod: vi.fn(),
                        setDataLoader: vi.fn(), createIndicator: vi.fn(),
-                       createOverlay: vi.fn(), removeOverlay: vi.fn() })),
+                       createOverlay: vi.fn(), removeOverlay: vi.fn(),
+                       setStyles: vi.fn() })),
   dispose: vi.fn(),
   registerIndicator: vi.fn(),
   registerOverlay: vi.fn(),
