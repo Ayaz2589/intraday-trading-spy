@@ -41,38 +41,42 @@ beforeEach(() => {
 })
 
 describe('ConfigWorkbench', () => {
-  it('expands the active config by default', async () => {
+  it('starts with the slide-out closed; clicking a card opens that config', async () => {
     listConfigsMock.mockResolvedValue({
       configs: [cfg('1', 'default'), cfg('2', 'wf-rr3', true)],
     })
     wrap(<ConfigWorkbench />)
+    // Cards render, but no detail editor is open by default.
+    await waitFor(() => expect(screen.getByTestId('config-card-wf-rr3')).toBeInTheDocument())
+    expect(screen.queryByTestId('config-editor-wf-rr3')).toBeNull()
+    fireEvent.click(screen.getByLabelText('open wf-rr3'))
     await waitFor(() =>
       expect(screen.getByTestId('config-editor-wf-rr3')).toBeInTheDocument(),
     )
     expect(screen.queryByTestId('config-editor-default')).toBeNull()
   })
 
-  it('collapses an expanded row and does not re-expand it', async () => {
+  it('closes the slide-out and does not re-open it', async () => {
     listConfigsMock.mockResolvedValue({ configs: [cfg('1', 'default', true)] })
     wrap(<ConfigWorkbench />)
+    await waitFor(() => expect(screen.getByTestId('config-card-default')).toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('open default'))
     await waitFor(() =>
       expect(screen.getByTestId('config-editor-default')).toBeInTheDocument(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'toggle default' }))
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
     await waitFor(() =>
       expect(screen.queryByTestId('config-editor-default')).toBeNull(),
     )
   })
 
-  it('auto-expands a freshly created config', async () => {
+  it('opens the slide-out for a freshly created config', async () => {
     listConfigsMock
       .mockResolvedValueOnce({ configs: [cfg('1', 'default', true)] })
       .mockResolvedValue({ configs: [cfg('1', 'default', true), cfg('3', 'my-aggro')] })
     createConfigMock.mockResolvedValue(cfg('3', 'my-aggro'))
     wrap(<ConfigWorkbench />)
-    await waitFor(() =>
-      expect(screen.getByTestId('config-editor-default')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByTestId('config-card-default')).toBeInTheDocument())
     fireEvent.change(screen.getByLabelText('new config name'), { target: { value: 'my-aggro' } })
     fireEvent.click(screen.getByRole('button', { name: '+ Create config' }))
     await waitFor(() =>
@@ -80,20 +84,19 @@ describe('ConfigWorkbench', () => {
     )
   })
 
-  it('collapses cleanly when the expanded config is deleted', async () => {
+  it('closes the slide-out cleanly when the open config is deleted', async () => {
     listConfigsMock
       .mockResolvedValueOnce({ configs: [cfg('1', 'default', true), cfg('2', 'wf-rr3')] })
       .mockResolvedValue({ configs: [cfg('1', 'default', true)] })
     deleteConfigMock.mockResolvedValue({ deleted: '2' })
     wrap(<ConfigWorkbench />)
-    // Expand the non-active config, then delete it.
-    await waitFor(() => expect(screen.getByTestId('config-editor-default')).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: 'toggle wf-rr3' }))
+    await waitFor(() => expect(screen.getByTestId('config-card-wf-rr3')).toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('open wf-rr3'))
     await waitFor(() => expect(screen.getByTestId('config-editor-wf-rr3')).toBeInTheDocument())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'confirm delete wf-rr3' }))
-    await waitFor(() => expect(screen.queryByTestId('config-row-wf-rr3')).toBeNull())
-    // Stale expandedId must be cleared — nothing expanded, no crash.
+    await waitFor(() => expect(screen.queryByTestId('config-card-wf-rr3')).toBeNull())
+    // Stale expandedId must be cleared — slide-out closed, no crash.
     expect(screen.queryByTestId('config-editor-wf-rr3')).toBeNull()
   })
 })

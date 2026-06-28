@@ -25,14 +25,12 @@ export function ConfigWorkbench({
     [configs],
   )
 
-  // undefined = not yet initialized (expand the active config once loaded);
-  // null = the operator explicitly collapsed the open row.
-  const [expandedId, setExpandedId] = useState<string | null | undefined>(undefined)
-  useEffect(() => {
-    if (expandedId === undefined && activeConfig) setExpandedId(activeConfig.id)
-  }, [expandedId, activeConfig])
+  // The detail slide-out starts CLOSED — it opens when the operator clicks a
+  // config card, or when a new config is created (onCreated below). null = no
+  // config open.
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // If the expanded config disappears (deleted), collapse cleanly instead of
+  // If the open config disappears (deleted), close cleanly instead of
   // pointing at a dead id.
   useEffect(() => {
     if (
